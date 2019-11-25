@@ -1,0 +1,605 @@
+Reserve::4
+Quebec City::2
+CBSSports.com::2
+Kevin Spain::8
+San Jose Sharks CEO::6
+USA TODAY Sports::17
+Ice Edge::6
+Olver::21
+Anthony Davis::4
+Kaites::2
+Zach Parise::6
+Jonathan Tjarks::2
+San Jose::15
+Manu Ginóbili::4
+Nick Johnson::4
+Rams::7
+Popovich::2
+Marcin Gortat::2
+Ottawa::2
+Matt Hunwick::3
+Leonard Fromm::5
+Albany::9
+Tom Thibodeau::5
+National Hockey League::4
+Mike Smith::20
+RBS::4
+Toronto Raptors::1
+Chicago White Sox::4
+Seattle::2
+NBATV::5
+Lebron::1
+Gordon Hayward::2
+Parker::26
+Detroit Pistons::3
+Richard Hamilton::2
+San Jose Sharks::4
+Chicago Bulls::12
+New Orleans Hornets::3
+Detroit Free Press::6
+LeBron::3
+Sal LaRocca::4
+Davis Drewiske::2
+UMass::9
+East::6
+Atlantic::3
+Maryland::1
+Mark Olver::21
+Greg Zanon::31
+Ben Scrivens::6
+Guard Russell Westbrook::2
+Gregg Popovich::2
+Newcastle::2
+Russell Westbrook::1
+Paul::5
+Numi Mitchell::3
+D-League::1
+Russ Granik::2
+Milan Hejduk::12
+Bucks::2
+Jeff Skinner::3
+Patrick Bordeleau::17
+Neal::2
+Kawhi Leonard::9
+Leland Irving::4
+Audubon::10
+Kobe Bryant::1
+Southampton::3
+Thursday::18
+Washington Wizards::7
+Hollinger Power Rankings::1
+Canton::3
+Montreal::7
+Orlando Magic::1
+George Washington::3
+Monday::72
+ESPN.com::1
+UPS Team Performance Index::4
+Index::3
+Boyes::2
+Children 's Museum of Phoenix::1
+Greivis Vasquez::4
+Dubinsky::2
+Ice Edge Holdings::1
+USA TODAY Sports ' NBA::1
+Nuggets::4
+Friday::14
+Musketeers::2
+Alex Semin::6
+Buffalo::1
+Kirk Hinrich::4
+Sacramento::2
+Aaron Palushaj::7
+Barcelona::2
+Billikens::6
+Rick Welts::2
+Isles::2
+Korbinian Holzer::2
+ET::5
+Koivu::10
+Tye McGinn::2
+NCAA::5
+Minnesota Wild::4
+Lawrence Norman::4
+Sports Xchange::2
+St. Louis Blues::1
+Lopez::8
+Kyle Brodziak::2
+Brittney Griner::1
+ROOT::5
+Coyotes::124
+All-Star Game::10
+Brooklyn::10
+Jim Crews::19
+L.A.::3
+P.A. Parenteau::3
+Dan Hurley::2
+Jimmy Butler::2
+Colorado::71
+Weber State::4
+San Antonio Silver Stars::3
+Colorado Avalanche::14
+New York Knicks::6
+Guber::1
+November::5
+Texas A&M::2
+New York::8
+Portland Winterhawks::6
+Robinson::5
+Perkins::6
+Joe Pavelski::2
+Ottawa Senators::10
+John Kaites::4
+Minnesota::5
+Blues::2
+James Harden::2
+Zach Dillard::1
+Timmy::8
+Associated Press::9
+Chris Mack::1
+Phoenix Suns::2
+South Portsmouth::1
+Clippers::9
+David Jones::3
+AHL::4
+$ 612 Million::5
+Peter Guber::3
+Antoine Vermette::13
+Fordham::5
+Magnitogorsk Metallurg::4
+Colonials::9
+NBA::72
+Odd::1
+December::2
+Des Moines Register::6
+George::7
+UPS::10
+Leonard::8
+Premier League::6
+Spurs::112
+Steve Kyler::9
+Dion Phaneuf::3
+USAToday.com::1
+Silver Stars::4
+Anaheim::4
+Clarke MacArthur::3
+Rostislav Klesla::1
+Patrick Marleau::2
+Hibbert::9
+Michael A. De Leon::3
+Nikita Nikitin::3
+Stempniak::2
+Sgarbossa::2
+WOAI::3
+Blue Jackets::3
+Dallas Mavericks::3
+Lang Greene::9
+Florida::4
+Troy::1
+Eastern Conference::7
+Cleveland Cavaliers::2
+Wayne Simmonds::2
+Phoenix Coyotes::15
+Jiri Hudler::2
+Senators::2
+Michael Stone::2
+Columbus::12
+Jamison::12
+Toronto::7
+Twitter Google::2
+Paul Millsap::2
+James van Riemsdyk::4
+North Carolina Central::4
+Dutchy::1
+MacGregor Sand-Knit::4
+Joakim Noah::18
+Tlusty::6
+O'Reilly::12
+Al Jefferson::3
+Rose::5
+Ms. Mitchell::5
+Jaroslav Halak::2
+Desert Dogs::2
+Rondo::2
+Farmington Hills::3
+Los Angeles Lakers::5
+Ovechkin::1
+h/t Marc Stein::1
+Blazers::3
+Roy Hibbert::1
+David JOnes::7
+Bernabeu::2
+Denver::26
+Division::3
+Tribune::1
+Tony Parker::15
+Johnson::27
+Mikkel Boedker::4
+James::4
+San Antonio::47
+Ebone Henry::3
+Katie Abrahamson-Henderson::2
+Chipchura::10
+Fox Sports Arizona::2
+Alex Ovechkin::4
+Defense::2
+Temple::4
+Florida Panthers::1
+Eric Staal::1
+WNBA::2
+Goran Dragic::2
+Boise State::2
+Oklahoma City::11
+NBA Eastern Conference::2
+Hornets::6
+San Antonio Spurs::52
+8:00 p.m. ET::5
+Jerry Reinsdorf::4
+Indianapolis Star::1
+Gabriel Landeskog::7
+Village Manager Peter Scalera::4
+Chris Paul::3
+isportstimes.com::6
+Spread::2
+Rick DiPietro::1
+Brandon Dubinsky::1
+Adi Joseph::21
+Habitat Wildlife Sancturary::16
+Tyson Chandler::1
+Narragansett Bay Coyote Study::2
+Islanders::3
+Saint Louis::2
+Jim McGaw::1
+Europe::2
+Blue Devils::4
+Kevin Love::16
+Carolina::3
+Frans Nielsen::2
+Hurricanes::4
+Public::3
+Belmont Animal Control Officer John Maguranis.e::4
+April::16
+Flyers::1
+Semyon Varlamov::13
+Carlos Boozer::8
+Sevilla::1
+Nando De Colo::7
+Craig::4
+Sunday::17
+Wednesday::16
+Jonathan Cheechoo::10
+Western Athletic Conference::1
+Aron Baynes::1
+Portsmouth::1
+Pacers::42
+Yandle::4
+NCAA Division::1
+Stanley Cup::3
+LIBOR Rate-Rigging Scandal::1
+Julie Forster::2
+Lance Stephenson::1
+Scalera::2
+Gallacher::7
+RPI::5
+Shane Doan::14
+New York Islanders::4
+Adidas::24
+h/t Matt Moore::1
+Dayton::11
+S.U.::1
+NHL::5
+Williams::7
+Bulldogs::1
+Alex Tanguay::1
+Miami Heat::9
+last Saturday::4
+Reggie Evans::7
+Ilya Bryzgalov::8
+David Backes::3
+Cheechoo::4
+Danny Granger::2
+OT::7
+West::11
+Magic::2
+Harrison Barnes::3
+Fromm::3
+UConn::2
+Noah::28
+English::2
+Dave Tippett::8
+Niklas Backstrom::3
+Vince Ellis::8
+Manchester United::10
+Los Angeles::5
+Jobing.com Arena::1
+Dan Hughes::1
+Drake::2
+Riemsdyk::5
+Houston::13
+Indiana::12
+United::3
+Celtics::2
+Seth Rosenthal::1
+Calgary Flames::5
+Minutes::3
+Saturday::13
+Sacramento Kings::3
+USA TODAY Sports NBA::8
+John Tavares::3
+Damian Lillard::6
+Ryan O'Byrne::4
+Travis Hamonic::5
+La Salle::3
+January::1
+Captain Gabriel Landeskog::7
+Arlington::4
+Rudy::6
+Great Danes::7
+Weiss::21
+David West::6
+Avery Johnson::1
+Mark Letestu::7
+Atlanta Hawks::2
+American Hockey League::1
+Avalanche::66
+Denver Nuggets::2
+Pop::1
+LinkedIn::2
+Granger::8
+Heat::35
+Duchene::24
+NBA Finals::1
+Doan::46
+Denver Post::2
+London::2
+49ers::1
+CSNC::5
+Eastern::1
+Pepsi Center::3
+Varly::1
+James Wisniewski::2
+Knicks::17
+Department of Environmental Management::4
+Derrick Rose::19
+Hill::12
+Hoopsworld.com::3
+Greg Jamison::2
+Andre Drummond::1
+St. Bonaventure::1
+Hamburg::1
+March::2
+Louisville::2
+Kyle Chipchura::13
+FREE::2
+Marco Belinelli::1
+Eastern Central Conference::4
+Brett Shumway::3
+Wigan::2
+Tyrone Black on Sun::1
+Anderson Varejao::2
+Manu::8
+Bordeleau::7
+Spurscast::1
+Semin::7
+Peoria Rivermen::1
+Champions League::9
+SU::2
+Norman::2
+Glendale City Council::1
+Town Council::2
+Houston Rockets::4
+Nate Robinson::4
+Thunder G Kevin Martin::1
+Coyotes D Rostislav Klesla::1
+Martin Hanzal::18
+Kevin Durant::9
+Des Plaines River::1
+Dachshund::4
+Gary Neal::8
+NBA All-Access Member::3
+Bulls::62
+Jeff Zillgitt::8
+Everton::2
+Howard Road::1
+Philadelphia::4
+Duncan::9
+Detroit::12
+Charlotte::16
+Senior Center::4
+Maguranis::70
+Patrick Ewing::3
+Eric Gordon::4
+KHL::4
+Aggies::2
+Andrea Bargnani::2
+Xavier::1
+Portuguese::3
+Marreese Speights::1
+Hinkle Fieldhouse::4
+Vermette::1
+Colton Orr::4
+Huskies::3
+Grizzlies::17
+Matt Duchene::24
+Kurt Helin::1
+Jarrett Stoll::2
+Real Madrid::9
+Calgary::11
+AP Top::1
+LeBron James::20
+Schenn::5
+Ryan O'Bryne::1
+Alexander Semin::1
+Nets::4
+Ryan O'Reilly::4
+Texas::2
+Games::6
+Michael Kelly::2
+Avs::51
+Shane O'Brien::1
+Richmond::2
+Indianapolis::3
+Radim Vrbata::1
+James Reimer::7
+Vinny Prospal::2
+KLNT::3
+Welts::2
+Jonathan Bernier::2
+Manchester City::4
+Sharks::16
+Cody Goloubef::3
+warriorsteamstore.com::2
+Twitter::4
+Durant::7
+Russia::5
+Project Coyote::6
+Mars::1
+Oklahoma City Thunder::8
+Saint Joe::2
+Defenseman Greg Zanon::4
+Phoenix::110
+Defenseman Erik Johnson::5
+Tuesday::5
+Stephen Weiss::3
+Boyd Gordon::4
+Taj Gibson::3
+Derrick Williams::2
+Minnesota Timberwolves::1
+Paul Bissonnette::5
+Jia::4
+Jeff Carter::4
+New Jersey::1
+Miami::6
+Mike Chambers::5
+Paul Pierce::7
+Saturday.The::2
+Danny Green::3
+Joe Johnson::6
+Matt Moulson::2
+Aquidneck Island::2
+Tim Duncan::39
+All-Star::18
+Getafe::2
+Belmont::14
+Boston Celtics::1
+Lakers::6
+ESPN::8
+C.J. Watson::2
+SportsBettingOnline.com::1
+Glendale::14
+Utah::10
+Toronto Maple Leafs::4
+Guard Kirk Hinrich::4
+Liga::2
+Palushaj::3
+McLeod::6
+Jose Calderon::4
+FoxSportsSouth.com::1
+Arizona::3
+Deron Williams::5
+Boston::6
+Golden State Warriors::3
+Ginobili::8
+Smith::86
+Tippett::5
+Manu Ginobili::14
+Rockets::4
+Mikko Koivu::9
+Arizona Republic::1
+Thibodeau::7
+Valley::2
+New England::2
+Police Chief Thomas Weitzel::4
+Baylor::9
+Rajon Rondo::17
+Mark Fraser::2
+Paige Fumo Fox::1
+D.J. Augustin::5
+ESPN Scoreboard::3
+Austin Daye::4
+Los Angeles Clippers::5
+Josh Smith::1
+VCU::2
+United Center::6
+Bankers Life Fieldhouse::3
+NBA.com::4
+Varlamov::30
+James Sheppard::6
+Mavs::1
+Islander Tim Wallace::3
+Massachusetts::3
+Europa League::7
+St. Louis::8
+Ekman-Larsson::2
+Butler::16
+Cody McLeod::20
+Thunder::47
+Indiana University::1
+ECI::2
+Arlington Land Trust::4
+Brook Lopez::17
+Nick Foligno::1
+Tiago Splitter::8
+Evans::1
+last Wednesday::3
+David Woods::25
+Tayshaun Prince::4
+Brian Elliott::5
+Riverside::7
+Ian Mahinmi::4
+Matt Calvert::1
+Moss::2
+Andrew Bynum::17
+Terrapins::4
+DENVER::2
+City Council::6
+Stephen Jackson::6
+Barons::1
+Michael Dzugan::2
+Philadelphia Flyers::2
+Indiana Pacers::14
+Wheaton::7
+Adrian Dater::5
+Brad Boyes::5
+John Mitchell::3
+Bailey Avenue::4
+Chelsea::4
+Marc Stein::4
+Matt Bonner::5
+Memphis::1
+Project Spurs::3
+Murphy::2
+Facebook::4
+Bosh::6
+Oklahoma City Barons::2
+Matt Frattin::4
+Brian Stubits::1
+New Zealand::1
+America East::5
+Jamie McGinn::3
+Euro Club Index::6
+Woods::9
+MVP::10
+Lee Stempniak::9
+Cleveland::1
+Kings::6
+Steve Downie::2
+Middletown::7
+Andy McDonald::2
+David Moss::4
+Columbus Blue Jackets::6
+Dubsinky::1
+U.S. Army::10
+February::2
+Suns::1
+Rhode Island::18
+Alex Steen::2
+Splitter::2
+Chicago::36
+Calderon::1
+Police Commander Mike Ciaramitaro::1
+Jia Perkins::3
+Golden State::7
+Oliver Ekman-Larsson::20
+Hinrich::7
+Michal Handzus::5

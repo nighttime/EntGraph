@@ -1,0 +1,14 @@
+# directories
+data/
+lib/
+lib_data/
+
+sims/
+freebase_types/
+newsspike_sims/
+
+# files
+news_raw.json
+news_linked.json
+news_gen_100k.json
+news_gen_500k.json
