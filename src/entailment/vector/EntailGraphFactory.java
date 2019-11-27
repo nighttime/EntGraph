@@ -17,16 +17,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 
 import constants.ConstantsAgg;
 import entailment.Util;
 import entailment.linkingTyping.DistrTyping;
 import entailment.linkingTyping.StanfordNERHandler;
 import entailment.vector.EntailGraphFactoryAggregator.TypeScheme;
+import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 
 public class EntailGraphFactory implements Runnable {
 	String fName, entTypesFName;
@@ -109,6 +107,7 @@ public class EntailGraphFactory implements Runnable {
 
 		int lineNumbers = 0;
 		JsonParser jsonParser = new JsonParser();
+		List<String> unary_relStrs = new ArrayList<>();
 
 		// long t0;
 		// long sharedTime = 0;
@@ -166,6 +165,13 @@ public class EntailGraphFactory implements Runnable {
 						String relStr = relObj.get("r").getAsString();
 						relStrs.add(relStr);
 						counts.add(1);
+					}
+					if (ConstantsAgg.generateBinaryUnaryGraphs) {
+						JsonArray unaryRels = jObj.get("rels_unary").getAsJsonArray();
+						for (JsonElement relObj : unaryRels) {
+							String relStr = relObj.getAsJsonObject().get("r").getAsString();
+							unary_relStrs.add(relStr);
+						}
 					}
 				} else {
 					String[] ss = line.split("\t");
@@ -479,13 +485,13 @@ public class EntailGraphFactory implements Runnable {
 									continue;
 								}
 
-								addRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
+								addBinaryRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
 										datestamp, prob, false, false);
 								if (type1.equals(type2)) {
 									// the main one! (arg1-arg2)
 									// String featName = arg1 + "#" + arg2;
 									// String thisType = type1 + "#" + type2;
-									addRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
+									addBinaryRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
 											datestamp, prob, true, false);
 								}
 							}
@@ -499,7 +505,7 @@ public class EntailGraphFactory implements Runnable {
 
 						EntailGraphFactoryAggregator.numAllTuples++;
 
-						addRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval, datestamp,
+						addBinaryRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval, datestamp,
 								count, false, false);
 
 						// F_X mixed
@@ -545,7 +551,7 @@ public class EntailGraphFactory implements Runnable {
 							// the main one! (arg1-arg2)
 							// String featName = arg1 + "#" + arg2;
 							// String thisType = type1 + "#" + type2;
-							addRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
+							addBinaryRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
 									datestamp, count, true, false);
 
 							// F_X mixed
@@ -637,15 +643,77 @@ public class EntailGraphFactory implements Runnable {
 			// typedOp.println();
 		}
 
+		if (ConstantsAgg.generateBinaryUnaryGraphs) {
+			for (String unary_relStr : unary_relStrs) {
+				intakeUnaryRelStr(unary_relStr);
+			}
+		}
+
 		System.err.println("allNNZ: " + EntailGraphFactoryAggregator.allNonZero);
 
 		br.close();
 	}
 
+	void intakeUnaryRelStr(String unary_relStr) {
+		// (win.over.2::Colorado_Avalanche::E::0::27)
+		unary_relStr = unary_relStr.substring(1, unary_relStr.length()-1);
+		String[] parts = unary_relStr.split("::");
+
+		String pred = parts[0];
+		// System.out.println("now pred: "+pred);
+
+		if (!Util.acceptablePredFormat(pred, ConstantsAgg.isCCG, true)) {
+			return;
+		}
+
+		// Skip if: the pred is empty; or the arg is a general entity
+		if (pred.equals("") || parts[2].equals("G")) {
+			return;
+		}
+
+		// Predicate lemmatization / normalization
+		/*
+		String[] predicateLemma;
+		if (!ConstantsAgg.rawExtractions && !ConstantsAgg.isForeign) {
+			predicateLemma = Util.getPredicateNormalized(pred, ConstantsAgg.isCCG);
+			if (predicateLemma == null) {
+				System.err.println(pred);
+				System.err.println("predlemma is null");
+				predicateLemma = Util.getPredicateNormalized(pred, ConstantsAgg.isCCG);
+			}
+		} else {
+			predicateLemma = new String[] { pred, "false" };
+		}
+		if (predicateLemma == null) {
+			System.err.println(pred);
+			System.err.println("predlemma is null");
+		}
+		pred = predicateLemma[0];
+		*/
+
+		if (ConstantsAgg.onlyDSPreds && !EntailGraphFactoryAggregator.dsPreds.contains(pred)) {
+			// System.out.println("continue: " + pred);
+			return;
+		}
+
+		if (ConstantsAgg.removeStopPreds && Util.stopPreds.contains(pred)) {
+			return;
+		}
+
+//		if (ConstantsAgg.maxPredsTotal > 0 && !EntailGraphFactoryAggregator.acceptablePreds.contains(pred)) {
+//			return;
+//		}
+
+		String arg = Util.simpleNormalize(parts[1]);
+		String type = Util.getType(arg, true, null);
+
+		addUnaryRelationToEntGraphs(typesToGraph, pred, arg, type, null, null, 1);
+	}
+
 	// First, finds the related graph based on the type(s), then inserts the
 	// pred. forceRev is because for unaryX you might have previously reversed
 	// a pred, so you must do it again!
-	boolean addRelationToEntGraphs(Map<String, EntailGraph> thisTypesToGraph, String pred, String arg1, String arg2,
+	boolean addBinaryRelationToEntGraphs(Map<String, EntailGraph> thisTypesToGraph, String pred, String arg1, String arg2,
 			String type1, String type2, String timeInterval, String datestamp, float count, boolean forceRev,
 			boolean unary) {
 
@@ -703,6 +771,16 @@ public class EntailGraphFactory implements Runnable {
 		thisEntailGraph.addBinaryRelation(typedPred, thisArg, timeInterval, count, -1, -1);
 
 		return rev;
+	}
+
+	void addUnaryRelationToEntGraphs(Map<String, EntailGraph> thisTypesToGraph, String pred, String arg,
+										String type, String timeInterval, String datestamp, float count) {
+		String typedPred = pred + "#" + type;
+		for (String t : acceptableTypes) {
+			if (!t.contains(type)) { continue; }
+			EntailGraph graph = thisTypesToGraph.get(t);
+			graph.addUnaryRelation(typedPred, arg, timeInterval, count, -1, -1);
+		}
 	}
 
 	String getTypedPred(String pred, String type1, String type2, boolean rev) {

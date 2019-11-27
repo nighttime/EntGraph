@@ -1,3 +1,6 @@
+# project files
+.idea
+
 # directories
 data/
 lib/

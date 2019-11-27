@@ -55,7 +55,7 @@ public class ConstantsAgg {
 	// public static String relAddress = "news_gen12.json";
 	// public static String relAddress = "news_genC.json";
 //	public static String relAddress = "news_genC_GG_CN_nbee.json";
-	public static String relAddress = "news_gen_200.json";
+	public static String relAddress = "news_gen_1k_unary.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
@@ -103,5 +103,7 @@ public class ConstantsAgg {
 			NSPredSizesAddress = "data/NS_pred_sizes.txt";
 		}
 	}
+
+	public static boolean generateBinaryUnaryGraphs = true;
 
 }
