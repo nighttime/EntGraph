@@ -507,7 +507,7 @@ public class LinesHandler {
 		// teshashMap();
 		// convertToLinkedEntityAnnotated(args);
 		if (args.length == 0) {
-			args = new String[] { "news_raw_1k.json" };
+			args = new String[] { "news_raw_50k.json" };
 		}
 		System.err.println("args:" + args[0]);
 		LinesHandler lineHandler = new LinesHandler(args);

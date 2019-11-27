@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.management.RuntimeErrorException;
 
+import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
@@ -1533,7 +1534,7 @@ public class Util {
 
 	static void convertPredArgsToJson(String[] args) throws IOException {
 		if (args == null || args.length == 0) {
-			args = new String[] { "predArgs_gen.txt", "true", "true", "12000000", "news_linked.json" };
+			args = new String[] { "predArgs_gen.txt", "true", "true", "12000000", "news_linked_50k.json" };
 		}
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(args[0]), "UTF-8"));
 		boolean shouldLink = Boolean.parseBoolean(args[1]);
@@ -1956,11 +1957,12 @@ public class Util {
 		sc.close();
 	}
 
-	public static boolean acceptablePredFormat(String pred, boolean isCCG) {
+	public static boolean acceptablePredFormat(String pred, boolean isCCG, boolean unary) {
 		if (!isCCG) {
 			return true;
 		}
-		if (Util.isCoordination(pred)) {
+
+		if (!unary && Util.isCoordination(pred)) {
 			return false;
 		}
 		if (ConstantsAgg.removeEventEventModifiers) {
@@ -1969,17 +1971,21 @@ public class Util {
 				return false;
 			}
 		}
-		pred = pred.substring(1, pred.length() - 1);
-		String[] parts = pred.split(",");
-		if (parts.length != 2) {
-			return false;
+
+		if (unary) {
+			return acceptablePredPartFormat(pred);
+		} else {
+			pred = pred.substring(1, pred.length() - 1);
+			String[] parts = pred.split(",");
+			if (parts.length != 2) {
+				return false;
+			}
+			return acceptablePredPartFormat(parts[0]) || acceptablePredPartFormat(parts[1]);
 		}
+	}
 
-		// System.out.println("parts: "+parts[0]+" "+parts[1]);
-		// System.out.println(acceptablePredPartFormat(parts[0]));
-		// System.out.println(acceptablePredPartFormat(parts[1]));
-
-		return acceptablePredPartFormat(parts[0]) || acceptablePredPartFormat(parts[1]);
+	public static boolean acceptablePredFormat(String pred, boolean isCCG) {
+		return acceptablePredFormat(pred, isCCG, false);
 	}
 
 	// basically doesn't do much, because everything ends with .1, .2 or .3!
