@@ -31,8 +31,8 @@ public class ConstantsAgg {
 	
 
 	// cutoffs
-	public static int minArgPairForPred = 1;// 100;
-	public static int minPredForArgPair = 1;// 20;// min num of unique predicates for argpair
+	public static int minArgPairForPred = 3;// 100;
+	public static int minPredForArgPair = 3;// 20;// min num of unique predicates for argpair
 	// when NS based num aps, we allow x aps for each pred, even if not in NS
 	public static int numArgPairsNSBasedAlwaysAllowed = 0;// default: 10
 	public static int numTopTypePairs = 20;// the big types, used in NSbased sizes
@@ -42,7 +42,7 @@ public class ConstantsAgg {
 	public static boolean removeGGFromTopPairs = true;// whether we should remove triples with two general entities
 														// from top pairs
 
-	public static final int numThreads = 1; //20 max?
+	public static final int numThreads = 20; //20 max?
 
 	// embedding parameters
 	public static boolean embBasedScores = false;// use sigmoid(transE score) instead of counts
@@ -55,7 +55,7 @@ public class ConstantsAgg {
 	// public static String relAddress = "news_gen12.json";
 	// public static String relAddress = "news_genC.json";
 //	public static String relAddress = "news_genC_GG_CN_nbee.json";
-	public static String relAddress = "news_gen_1k_unary.json";
+	public static String relAddress = "news_gen_50k_unary.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
