@@ -77,6 +77,7 @@ public class EntailGraphFactory implements Runnable {
 	public void run() {
 		try {
 			if (runPart == 0) {
+				initializeGraphs();
 				// build the graphs
 				buildGraphs();
 				// process all the entailmentGraphs
@@ -100,8 +101,15 @@ public class EntailGraphFactory implements Runnable {
 
 	}
 
-	void buildGraphs() throws JsonSyntaxException, IOException {
+	void initializeGraphs() {
+		for (String type : acceptableTypes) {
+			String opName = typedEntGrDir + "/" + type;
+			EntailGraph graph = new EntailGraph(type, opName, ConstantsAgg.minPredForArgPair, false);
+			typesToGraph.put(type, graph);
+		}
+	}
 
+	void buildGraphs() throws JsonSyntaxException, IOException {
 		// BufferedReader br = new BufferedReader(new FileReader(fName));
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fName), "UTF-8"));
 
@@ -733,18 +741,18 @@ public class EntailGraphFactory implements Runnable {
 		// }
 		String thisArg;
 
-		if (!thisTypesToGraph.containsKey(thisType)) {
-			String opName = typedEntGrDir + "/" + thisType;
-			EntailGraph entGraph;
-			if (type1.equals("") || type2.equals("")) {// unary
-				entGraph = new EntailGraph(thisType, opName, ConstantsAgg.minPredForArg, unary);
-			} else {
-				entGraph = new EntailGraph(thisType, opName, ConstantsAgg.minPredForArgPair, unary);
-			}
-
-			thisTypesToGraph.put(thisType, entGraph);
-
-		}
+//		if (!thisTypesToGraph.containsKey(thisType)) {
+//			String opName = typedEntGrDir + "/" + thisType;
+//			EntailGraph entGraph;
+//			if (type1.equals("") || type2.equals("")) {// unary
+//				entGraph = new EntailGraph(thisType, opName, ConstantsAgg.minPredForArg, unary);
+//			} else {
+//				entGraph = new EntailGraph(thisType, opName, ConstantsAgg.minPredForArgPair, unary);
+//			}
+//
+//			thisTypesToGraph.put(thisType, entGraph);
+//
+//		}
 
 		EntailGraph thisEntailGraph = thisTypesToGraph.get(thisType);
 
