@@ -1534,7 +1534,7 @@ public class Util {
 
 	static void convertPredArgsToJson(String[] args) throws IOException {
 		if (args == null || args.length == 0) {
-			args = new String[] { "predArgs_gen.txt", "true", "true", "12000000", "news_linked_50k.json" };
+			args = new String[] { "predArgs_gen.txt", "true", "true", "12000000", "news_linked/news_linked_500k.json" };
 		}
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(args[0]), "UTF-8"));
 		boolean shouldLink = Boolean.parseBoolean(args[1]);

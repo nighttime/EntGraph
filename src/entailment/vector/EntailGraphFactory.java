@@ -1,15 +1,10 @@
 package entailment.vector;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +19,6 @@ import entailment.Util;
 import entailment.linkingTyping.DistrTyping;
 import entailment.linkingTyping.StanfordNERHandler;
 import entailment.vector.EntailGraphFactoryAggregator.TypeScheme;
-import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 
 public class EntailGraphFactory implements Runnable {
 	String fName, entTypesFName;
@@ -776,7 +770,7 @@ public class EntailGraphFactory implements Runnable {
 		if (ConstantsAgg.addTimeStampToFeats) {
 			thisArg += "#" + datestamp;
 		}
-		thisEntailGraph.addBinaryRelation(typedPred, thisArg, timeInterval, count, -1, -1);
+		thisEntailGraph.addBinaryPredicate(typedPred, thisArg, timeInterval, count, -1, -1);
 
 		return rev;
 	}
@@ -787,7 +781,7 @@ public class EntailGraphFactory implements Runnable {
 		for (String t : acceptableTypes) {
 			if (!t.contains(type)) { continue; }
 			EntailGraph graph = thisTypesToGraph.get(t);
-			graph.addUnaryRelation(typedPred, arg, timeInterval, count, -1, -1);
+			graph.addUnaryPredicate(typedPred, arg, timeInterval, count, -1, -1);
 		}
 	}
 

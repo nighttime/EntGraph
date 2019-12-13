@@ -573,7 +573,7 @@ public class EntailGraph extends SimpleEntailGraph {
 
 		for (PredicateVector pvec : pvecs) {
 			for (String argPair : allRemainedArgPairs) {
-				addBinaryRelation(pvec.predicate, argPair, null, 1, EntailGraphFactoryAggregator.linkPredThreshold, -1);
+				addBinaryPredicate(pvec.predicate, argPair, null, 1, EntailGraphFactoryAggregator.linkPredThreshold, -1);
 				// String[] ss = argPair.split("#");
 				// String reverseArgPair = ss[1] + "#" + ss[0];
 				// addBinaryRelation(pvec.predicate, reverseArgPair, null, 1,
@@ -586,10 +586,10 @@ public class EntailGraph extends SimpleEntailGraph {
 		System.out.println("adding anchor arg pairs to all remainig predicates!");
 		for (PredicateVector pvec : pvecs) {
 			for (String argPair : EntailGraphFactoryAggregator.anchorArgPairs) {
-				addBinaryRelation(pvec.predicate, argPair, null, 1, EntailGraphFactoryAggregator.linkPredThreshold, -1);
+				addBinaryPredicate(pvec.predicate, argPair, null, 1, EntailGraphFactoryAggregator.linkPredThreshold, -1);
 				String[] ss = argPair.split("#");
 				String reverseArgPair = ss[1] + "#" + ss[0];
-				addBinaryRelation(pvec.predicate, reverseArgPair, null, 1,
+				addBinaryPredicate(pvec.predicate, reverseArgPair, null, 1,
 						EntailGraphFactoryAggregator.linkPredThreshold, -1);
 			}
 		}
@@ -872,8 +872,8 @@ public class EntailGraph extends SimpleEntailGraph {
 		}
 	}
 
-	void addBinaryRelation(String pred, String featName, String timeInterval, double count, double threshold,
-						   double preComputedScore) {
+	void addBinaryPredicate(String pred, String featName, String timeInterval, double count, double threshold,
+							double preComputedScore) {
 		int role_idx = pred.indexOf(")") + 1;
 		String[] featNames = featName.split("#");
 		String[] typeNames = this.types.split("#");
@@ -884,17 +884,19 @@ public class EntailGraph extends SimpleEntailGraph {
 		String featName_sub = featNames[0] + "-" + typeNames[0];
 		String featName_obj = featNames[1] + "-" + typeNames[1];
 
-		addDecomposedRelation(pred_sub, featName_sub, timeInterval, count, threshold, preComputedScore);
-		addDecomposedRelation(pred_obj, featName_obj, timeInterval, count, threshold, preComputedScore);
+		addArgumentwisePredicate(pred_sub, featName_sub, timeInterval, count, threshold, preComputedScore);
+		addArgumentwisePredicate(pred_obj, featName_obj, timeInterval, count, threshold, preComputedScore);
 	}
 
-	void addUnaryRelation(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
+	void addUnaryPredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
 		String pred_unary = "[unary]" + pred;
-		addDecomposedRelation(pred_unary, featName, timeInterval, count, threshold, preComputedScore);
+		String type = pred.split("#")[1];
+		String featName_unary = featName + "-" + type;
+		addArgumentwisePredicate(pred_unary, featName_unary, timeInterval, count, threshold, preComputedScore);
 	}
 
 	//	void addBinaryRelation(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
-	void addDecomposedRelation(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
+	void addArgumentwisePredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
 		EntailGraphFactoryAggregator.numAllTuplesPlusReverse++;
 		if (!predToIdx.containsKey(pred)) {
 			PredicateVector pvec = new PredicateVector(pred, predToIdx.size(), this);
