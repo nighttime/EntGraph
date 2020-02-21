@@ -18,6 +18,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import constants.ConstantsAgg;
 import org.apache.commons.lang3.StringUtils;
 import org.jgrapht.graph.DefaultDirectedWeightedGraph;
 import org.jgrapht.graph.DefaultWeightedEdge;
@@ -86,7 +87,7 @@ public class PGraph implements Comparable<PGraph> {
 
 		try {
 			buildGraphFromFile(fname);
-			System.out.println("the name: " + this.name);
+//			System.out.println("the name: " + this.name);
 			if (this.name == null) {
 				return;
 			}
@@ -207,7 +208,7 @@ public class PGraph implements Comparable<PGraph> {
 		while ((line = br.readLine()) != null) {
 			line = line.replace("` ", "").trim();
 			if (lIdx % 1000000 == 0) {
-				System.out.println("lidx: " + lIdx);
+//				System.out.println("lidx: " + lIdx);
 			}
 			lIdx++;
 			if (first) {
@@ -368,8 +369,8 @@ public class PGraph implements Comparable<PGraph> {
 		if (ConstantsGraphs.removeEventEventModifers && pred.contains("__") && !pred.startsWith("NEG__")) {
 			return true;
 		}
-		return isConjunction(pred);
-	}
+		return !ConstantsAgg.generateArgwiseGraphs && isConjunction(pred);
+	} // TODO: Nick asks: why is a conjunction bad? also what is a "conjunction" not clear what this is doing
 
 	// isConjunction or a bad thing!
 	static boolean isConjunction(String pred) {

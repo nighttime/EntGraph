@@ -89,6 +89,7 @@ public class PredicateArgumentExtractor implements Runnable {
 		// }
 		String mainStr = "";
 		String mainStrOnlyNEs = "";
+		long lineId = -1;
 
 		try {
 			JsonObject obj = (JsonObject) jsonParser.parse(line).getAsJsonObject();
@@ -96,7 +97,7 @@ public class PredicateArgumentExtractor implements Runnable {
 			// text = Util.normalize(text);
 			String date = obj.get("date").getAsString();
 			long articleId = obj.get("articleId").getAsLong();
-			long lineId = obj.get("lineId").getAsLong();
+			lineId = obj.get("lineId").getAsLong();
 
 			mainStr += "#line: " + text + "\n";
 
@@ -122,7 +123,9 @@ public class PredicateArgumentExtractor implements Runnable {
 		}
 
 		LinesHandler.mainStrs.add(mainStr);
+//		LinesHandler.mainStrs.add(new LinesHandler.LineData(lineId, mainStr));
 		LinesHandler.mainStrsOnlyNEs.add(mainStrOnlyNEs);
+//		LinesHandler.mainStrsOnlyNEs.add(new LinesHandler.LineData(lineId, mainStrOnlyNEs));
 
 		// System.out.println(mainStr);
 

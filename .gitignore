@@ -1,5 +1,6 @@
 # project files
 .idea
+.iml
 
 # directories
 data/
@@ -10,8 +11,13 @@ sims/
 freebase_types/
 newsspike_sims/
 
+# code
+out/
+
 # data folders
 news_raw/
 news_linked/
 news_gen/
-news_gen/
+_news_gen/
+news_gen_argwise/
+

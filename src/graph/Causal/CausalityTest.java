@@ -1,16 +1,15 @@
 package graph.Causal;
 
-import com.github.jsonldjava.utils.JsonUtils;
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
+import com.google.common.collect.Sets;
 import com.google.common.collect.TreeMultiset;
 import constants.ConstantsGraphs;
-import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 import graph.Edge;
 import graph.Node;
 import graph.Oedge;
 import graph.PGraph;
+import in.sivareddy.graphparser.util.graph.Graph;
 
 import java.io.FileNotFoundException;
 import java.text.DecimalFormat;
@@ -44,7 +43,7 @@ public class CausalityTest {
 			graph.setSortedEdges();
 			for (Node n : graph.nodes) {
 				System.out.println(ANSI_BLUE + n.id + ANSI_RESET + "\n--------");
-				Map<Node, Float> entailmentMap = getEntailments(n, graph);
+				Map<Node, Float> entailmentMap = getEntailments(n, graph, false);
 				printEntailmentMapSorted(n, entailmentMap, topK);
 			}
 			System.out.println("\n=========\n");
@@ -100,12 +99,12 @@ public class CausalityTest {
 
 				// Generate entailment map with remaining entries
 				Map<Node, Float> imperfective_entailments = imperfective_nodes.stream()
-						.map(n -> getEntailments(n, graph))
+						.map(n -> getEntailments(n, graph, false))
 						.flatMap(map -> map.entrySet().stream())
 						.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, Math::max));
 
 				// Generate base entailment map
-				Map<Node, Float> perfective_entailments = getEntailments(base_node, graph);
+				Map<Node, Float> perfective_entailments = getEntailments(base_node, graph, false);
 				Map<Node, Float> intersection_entailments = new HashMap<>(perfective_entailments);
 
 				// Do set arithmetic to divide into: (only base) (intersection) (only try)
@@ -136,20 +135,80 @@ public class CausalityTest {
 		}
 	}
 
+//	public static Map<Node, Map<Node, Float>> getEntailmentsForModifierInGraph(String modifier, PGraph graph) {
+//
+//	}
+
+	public static Map<String, Map<String, Map<Node, Map<Node, Float>>>> getEntailmentSetsForModifiers(Set<String> modifiers, PGraph graph, boolean weightConfidence) {
+		Map<String, Map<String, Map<Node, Map<Node, Float>>>> entsets = new HashMap<>();
+		for (String modifier : modifiers) {
+			entsets.put(modifier, new HashMap<>());
+		}
+
+		for (String modifier : modifiers) {
+			String mod = modifier + "__";
+			Map<Node, Map<Node, Float>> ents = graph.nodes.stream()
+					.filter(n -> n.id.contains(mod))
+					.collect(Collectors.toMap(n -> n, n -> getEntailments(n, graph, weightConfidence)));
+
+			entsets.get(modifier).put(graph.types, ents);
+		}
+
+		return entsets;
+	}
+
+	public static Map<String, Map<String, Float>> entNodesToEntPreds(Map<Node, Map<Node, Float>> entNodes, boolean stripModifiersAntecedent) {
+		Map<String, Map<String, Float>> entPreds = new HashMap<>();
+		for (Node n : entNodes.keySet()) {
+			String antecedent = stripModifiersAntecedent ? n.id.substring(n.id.indexOf("(")) : n.id;
+			Map<String, Float> entailments = entNodes.get(n).entrySet().stream().collect(Collectors.toMap(e -> e.getKey().id, Map.Entry::getValue));
+			entPreds.put(antecedent, entailments);
+		}
+		return entPreds;
+	}
+
+	public static Float entsetDivergance(Map<String, Map<String, Float>> base, Map<String, Map<String, Float>> comp) {
+		float tp = 0;
+		float fp = 0;
+		float fn = 0;
+
+		for (String key : base.keySet()) {
+			if (!comp.containsKey(key)) { continue; }
+			int intersectionSize = Sets.intersection(base.get(key).keySet(), comp.get(key).keySet()).size();
+			tp += intersectionSize;
+			fp += comp.get(key).size() - intersectionSize;
+			fn += base.get(key).size() - intersectionSize;
+		}
+
+		float precision = tp / (tp + fp);
+		float recall = tp / (tp + fn);
+		float f1 = (2 * precision * recall) / (precision + recall);
+
+		if (!Float.isNaN(f1)) {
+			System.out.print(String.format("tp:%f\tfp:%f\tfn:%f\tp:%f\tr:%f\t", tp, fp, fn, precision, recall));
+		}
+
+		return f1;
+	}
+
 	public static int getConfidence(String id_ant, String id_con) {
 		int antOccurrences = PGraph.predToOcc.get(id_ant);
 		int conOccurrences = PGraph.predToOcc.get(id_con);
 		return min(antOccurrences, conOccurrences);
 	}
 
-	public static Map<Node, Float> getEntailments(Node node, PGraph graph) {
+	public static Map<Node, Float> getEntailments(Node node, PGraph graph, boolean weightConfidence) {
 		Map<Node, Float> entailments = new HashMap<>();
 		for (Oedge e : node.oedges) {
 			if (e.sim < 0.15) { continue; }
 			Node entailedNode = graph.idx2node.get(e.nIdx);
-			int confidence = getConfidence(node.id, entailedNode.id);
-			if (confidence < 5) { continue; }
-			entailments.put(entailedNode, e.sim * confidence);
+			float score = e.sim;
+			if (weightConfidence) {
+				int confidence = getConfidence(node.id, entailedNode.id);
+				if (confidence < 3) { continue; }
+				score *= confidence;
+			}
+			entailments.put(entailedNode, score);
 		}
 		return entailments;
 	}
@@ -200,14 +259,53 @@ public class CausalityTest {
 		}
 	}
 
+	public static void printModifierDeverganceFromFailure(String modifier, boolean weightConfidence) {
+		System.out.println("== Divergance of \"" + modifier + "\" from failed");
+
+		final String failString = "failed";
+
+		Set<String> modifiers = Sets.newHashSet(failString, modifier);
+
+		if (weightConfidence) {
+			System.out.println("Reading occurrence files...");
+			PGraph.setPredToOcc(ConstantsGraphs.root);
+		}
+		System.out.println("Scanning graphs...");
+
+		for (PGraph graph : GraphSet.generator()) {
+			if (graph.nodes.isEmpty()) { continue; }
+			if (weightConfidence) {
+				graph.setSortedEdges();
+			}
+
+			Map<String, Map<String, Map<Node, Map<Node, Float>>>> entNodes = getEntailmentSetsForModifiers(modifiers, graph, weightConfidence);
+			Map<String, Map<Node, Map<Node, Float>>> entNodesFail = entNodes.get(failString);
+			Map<String, Map<Node, Map<Node, Float>>> entNodesTry = entNodes.get(modifier);
+
+			for (String type : entNodesTry.keySet()) {
+				if (!entNodesFail.containsKey(type)) { continue; }
+				Map<String, Map<String, Float>> entPredsFail = entNodesToEntPreds(entNodesFail.get(type), true);
+				Map<String, Map<String, Float>> entPredsTry = entNodesToEntPreds(entNodesTry.get(type), true);
+
+				Float div = entsetDivergance(entPredsFail, entPredsTry);
+				if (Float.isNaN(div)) { continue; }
+				System.out.println(type + ": " + div);
+			}
+		}
+	}
+
 	public static void main(String[] args) throws FileNotFoundException {
 		System.out.println("PROGRAM START");
 		ConstantsGraphs.edgeThreshold = -1;
 
 //		printPredicateEntailments(10);
-		printCausalEntailments();
+//		printCausalEntailments();
 //		printPredicateModifiers();
 //		printPredicatesContaining("trying__");
+
+		printModifierDeverganceFromFailure("trying", false);
+
+
 
 		System.out.println("END");
 	}

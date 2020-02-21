@@ -31,8 +31,8 @@ public class ConstantsAgg {
 	
 
 	// cutoffs
-	public static int minArgPairForPred = 3;// 100;
-	public static int minPredForArgPair = 3;// 20;// min num of unique predicates for argpair
+	public static int minArgPairForPred = 10;// 100;
+	public static int minPredForArgPair = 10;// 20;// min num of unique predicates for argpair
 	// when NS based num aps, we allow x aps for each pred, even if not in NS
 	public static int numArgPairsNSBasedAlwaysAllowed = 0;// default: 10
 	public static int numTopTypePairs = 20;// the big types, used in NSbased sizes
@@ -42,7 +42,7 @@ public class ConstantsAgg {
 	public static boolean removeGGFromTopPairs = true;// whether we should remove triples with two general entities
 														// from top pairs
 
-	public static final int numThreads = 20; //20 max?
+	public static final int numThreads = 10; //20 max?
 
 	// embedding parameters
 	public static boolean embBasedScores = false;// use sigmoid(transE score) instead of counts
@@ -52,35 +52,17 @@ public class ConstantsAgg {
 	public static EntailGraphFactoryAggregator.ProbModel probModel = EntailGraphFactoryAggregator.ProbModel.PEL;
 	public static EntailGraphFactoryAggregator.LinkPredModel linkPredModel = EntailGraphFactoryAggregator.LinkPredModel.ConvE;
 
-	// public static String relAddress = "news_gen12.json";
-	// public static String relAddress = "news_genC.json";
-//	public static String relAddress = "news_genC_GG_CN_nbee.json";
-	public static String relAddress = "news_gen_1k_unary.json";
+
+	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
+
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
-//	public static String simsFolder = "typedEntGrDir_aida_gen12_UT_hier_back" + minArgPairForPred + "_"
-//			+ minPredForArgPair;
-
-	// public static String simsFolder = "typedEntGrDirC_NSBased_f20_thing60_60_" +
-	// minArgPairForPred + "_"
-	// + minPredForArgPair + "_test";
-//	public static String simsFolder = "typedEntGrDirC_NSBased_" + minArgPairForPred + "_" + minPredForArgPair
-//			+ "thing_80_location_thing_times4_f20_GG_UT_back_noGGThing_week";
-//	public static String simsFolder = "typedEntGrDirC_NSBased_" + minArgPairForPred + "_" + minPredForArgPair
-//			+ "f20_GG_noGGThing_week";
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
-	public static String simsFolder = "newsspike_sims/newsspike_decomp_" + minArgPairForPred + "_" + minPredForArgPair;
-//	public static String simsFolder = "sims/newscrawl_modifiers_3_3";
-//	public static String simsFolder = "newsspike_sims/typedEntGrDirC_CN_NBEE_NSBased_" + minArgPairForPred + "_" + minPredForArgPair
-//			+ "_thth_thloc_time6_f20_GG_noGGThing";
-//	public static String simsFolder = "typedEntGrDirC" + minArgPairForPred + "_" + minPredForArgPair
-//			+ "f20_GG_noGGThing_week";
+//	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
+	public static String simsFolder = "newsspike_sims/newsspike_argwise_argnumbers_" + minArgPairForPred + "_" + minPredForArgPair;
 
 	public static String foreinTypesAddress = "data/german_types.txt";// only important if isForeign=True
-
-	// public static String simsFolder = "typedEntGrDir_datestamp_" +
-	// minArgPairForPred + "_" + minPredForArgPair;
 
 	public static boolean computeProbELSims = false;
 	public static boolean linkPredBasedRandWalk = false;
@@ -89,7 +71,6 @@ public class ConstantsAgg {
 	public static String NSPredSizesAddress;
 	
 	static {
-		
 		if (ConstantsAgg.addTimeStampToFeats) {
 			NSSizesAddress = "data/NS_sizes_week_3_3.txt";
 			NSPredSizesAddress = "data/NS_pred_sizes_week_3_3.txt";
@@ -104,6 +85,13 @@ public class ConstantsAgg {
 		}
 	}
 
-	public static boolean generateBinaryUnaryGraphs = true;
+	// Generate graphs with entailments calculated for each predicate argument; also entailments with unaries
+	public static boolean generateArgwiseGraphs = true;
+	// Must have generateArgwiseGraphs = true in order to also make unary-only graphs
+	public static boolean generateUnaryOnlyGraphs = true;
+	// Include unary predicates which are possessive e.g. "Obama's strength"
+	public static boolean keepPossessiveUnaries = false;
+	// During graph building phase, build only 1/N graphs at a time to reduce memory constraints
+	public static int numGraphBuildingPasses = 10;
 
 }

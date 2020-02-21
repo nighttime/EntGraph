@@ -3,18 +3,13 @@ package entailment.vector;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import constants.ConstantsAgg;
 import entailment.randWalk.RandWalkMatrix;
@@ -782,8 +777,7 @@ public class EntailGraph extends SimpleEntailGraph {
 						int mb = 1024 * 1024;
 						long usedMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / mb;
 
-						System.err
-								.println("alledges: " + EntailGraphFactoryAggregator.allEdgeCounts + " mb: " + usedMb);
+						System.err.println("alledges: " + EntailGraphFactoryAggregator.allEdgeCounts + " mb: " + usedMb);
 					}
 
 					pvec2.similarityInfos.get(pvecIdx1).addSims(val1 * val2, val2, PMI2, Math.min(val1, val2),
@@ -872,17 +866,39 @@ public class EntailGraph extends SimpleEntailGraph {
 		}
 	}
 
-	void addBinaryPredicate(String pred, String featName, String timeInterval, double count, double threshold,
+	/// This is code for splitting binary predicates i.e. (arrive.1,arrive.in) => (arrive.1), (arrive.in)
+//	void addBinaryPredicate(String pred, String featName, String timeInterval, double count, double threshold,
+//							double preComputedScore) {
+//		String[] featNames = featName.split("#");
+//		String[] typeNames = this.types.split("#");
+//
+//		int begin_base_pred_idx = pred.indexOf("(");
+//		int end_base_pred_idx = pred.indexOf(")");
+//		String modifier = pred.substring(0, begin_base_pred_idx);
+//		String[] base_pred_parts = pred.substring(begin_base_pred_idx+1, end_base_pred_idx).split(",");
+//
+//		String pred_1 = modifier + base_pred_parts[0] + "#" + typeNames[0];
+//		String pred_2 = modifier + base_pred_parts[1] + "#" + typeNames[1];
+//
+//		String featName_sub = featNames[0] + "-" + typeNames[0];
+//		String featName_obj = featNames[1] + "-" + typeNames[1];
+//
+//		addArgumentwisePredicate(pred_1, featName_sub, timeInterval, count, threshold, preComputedScore);
+//		addArgumentwisePredicate(pred_2, featName_obj, timeInterval, count, threshold, preComputedScore);
+//	}
+
+    void  addBinaryPredicate(String pred, String featName, String timeInterval, double count, double threshold,
 							double preComputedScore) {
 		int role_idx = pred.indexOf(")") + 1;
 		String[] featNames = featName.split("#");
-		String[] typeNames = this.types.split("#");
+		String[] typeNames = pred.substring(role_idx+1).split("#");
+		String[] graphTypes = this.types.split("#");
 
-		String pred_sub = "[sub]" + pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
-		String pred_obj = "[obj]" + pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
+		String pred_sub = "[sub]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
+		String pred_obj = "[obj]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
 
-		String featName_sub = featNames[0] + "-" + typeNames[0];
-		String featName_obj = featNames[1] + "-" + typeNames[1];
+		String featName_sub = featNames[0] + "-" + graphTypes[0];
+		String featName_obj = featNames[1] + "-" + graphTypes[1];
 
 		addArgumentwisePredicate(pred_sub, featName_sub, timeInterval, count, threshold, preComputedScore);
 		addArgumentwisePredicate(pred_obj, featName_obj, timeInterval, count, threshold, preComputedScore);
@@ -897,7 +913,7 @@ public class EntailGraph extends SimpleEntailGraph {
 
 	//	void addBinaryRelation(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
 	void addArgumentwisePredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
-		EntailGraphFactoryAggregator.numAllTuplesPlusReverse++;
+
 		if (!predToIdx.containsKey(pred)) {
 			PredicateVector pvec = new PredicateVector(pred, predToIdx.size(), this);
 			predToIdx.put(pred, pvec.uniqueId);

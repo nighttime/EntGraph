@@ -18,12 +18,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
+import com.google.common.collect.MinMaxPriorityQueue;
+import com.google.gson.Gson;
+import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -45,7 +44,9 @@ public class LinesHandler {
 	BufferedWriter opMainStrs;
 	BufferedWriter opMainStrsOnlyNEs;
 	static ArrayList<String> mainStrs;
+//	static PriorityBlockingQueue<LineData> mainStrs;
 	static ArrayList<String> mainStrsOnlyNEs;
+//	static PriorityBlockingQueue<LineData> mainStrsOnlyNEs;
 	static ArrayList<String> errStrs;
 
 	static ArrayList<String> lines;
@@ -55,9 +56,24 @@ public class LinesHandler {
 	static Map<String, Integer> allGens = new HashMap<>();
 	final int lineOffset;
 
+	public static class LineData implements Comparable<LineData> {
+		Long lineNumber;
+		String data;
+		public LineData(Long lineNumber, String data) {
+			this.lineNumber = lineNumber;
+			this.data = data;
+		}
+		@Override
+		public int compareTo(LineData line) {
+			return this.lineNumber.compareTo(line.lineNumber);
+		}
+	}
+
 	public LinesHandler(String[] args) {
 		mainStrs = new ArrayList<>();
+//		mainStrs = new PriorityBlockingQueue<>(500);
 		mainStrsOnlyNEs = new ArrayList<>();
+//		mainStrsOnlyNEs = new PriorityBlockingQueue<>(500);
 		errStrs = new ArrayList<>();
 
 		lineNumber = 0;
@@ -126,7 +142,6 @@ public class LinesHandler {
 			spots = new ArrayList<ArrayList<String>>();
 			wikiNames = new ArrayList<ArrayList<String>>();
 			lines = new ArrayList<String>();
-
 		}
 
 		final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(ConstantsParsing.numThreads);
@@ -215,7 +230,7 @@ public class LinesHandler {
 			} catch (Exception e) {
 				System.err.println("Could not process line: ");
 				System.err.println(line);
-				// e.printStackTrace();
+				 e.printStackTrace();
 			}
 
 			if (lineNumber % 10 == 0) {
@@ -231,6 +246,17 @@ public class LinesHandler {
 				op.println(lineNumber);
 				op.close();
 			}
+
+//			if (lineNumber % ConstantsParsing.numThreads == 0) {
+//				threadPool.awaitTermination();
+//				writeOutPut();
+//				if (ConstantsParsing.convToEntityLinked) {
+//					writeConvertedToEntityLinked();
+//				}
+//				PrintStream op = new PrintStream(new File("offset.txt"));
+//				op.println(lineNumber);
+//				op.close();
+//			}
 		}
 
 		// See if memory has exceeded and we should run for continue!
@@ -328,10 +354,12 @@ public class LinesHandler {
 	private void writeOutPut() throws IOException {
 		while (mainStrs.size() > 0) {
 			String s = mainStrs.remove(0);
+//			String s = mainStrs.poll().data;
 			opMainStrs.write(s + "\n");
 		}
 		while (mainStrsOnlyNEs.size() > 0) {
 			String s = mainStrsOnlyNEs.remove(0);
+//			String s = mainStrsOnlyNEs.poll().data;
 			opMainStrsOnlyNEs.write(s + "\n");
 		}
 		while (errStrs.size() > 0) {
@@ -507,7 +535,7 @@ public class LinesHandler {
 		// teshashMap();
 		// convertToLinkedEntityAnnotated(args);
 		if (args.length == 0) {
-			args = new String[] { "news_raw_500k.json" };
+			args = new String[] { "news_raw/news_raw.json" };
 		}
 		System.err.println("args:" + args[0]);
 		LinesHandler lineHandler = new LinesHandler(args);

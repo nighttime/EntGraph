@@ -8,21 +8,14 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -34,6 +27,9 @@ import entailment.linkingTyping.DistrTyping;
 import entailment.linkingTyping.SimpleSpot;
 import entailment.linkingTyping.StanfordNERHandler;
 import entailment.randWalk.RandWalkMatrix;
+import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
+
+import static java.lang.System.exit;
 
 //This is to do multithreading over EntGrFactory
 public class EntailGraphFactoryAggregator {
@@ -72,6 +68,23 @@ public class EntailGraphFactoryAggregator {
 	static int allEdgeCounts = 0;
 	static int numAllTuples = 0;
 	static int numAllTuplesPlusReverse = 0;
+
+	// Nick added these :)
+	static long numUnaryNodes = 0;
+	static long numUnaryNodesBroadcasted = 0;
+	static long numBinaryArgNodes = 0;
+
+	public static synchronized void inc_numUnaryNodes() {
+		EntailGraphFactoryAggregator.numUnaryNodes++;
+	}
+
+	public static synchronized void inc_numUnaryNodesBroadcasted() {
+		EntailGraphFactoryAggregator.numUnaryNodesBroadcasted++;
+	}
+
+	public static synchronized void inc2_numBinaryArgNodes() {
+		EntailGraphFactoryAggregator.numBinaryArgNodes += 2;
+	}
 
 	static {
 		if (ConstantsAgg.maxPredsTotal != -1) {// we should just look at maxPT predicates, no other cutoff
@@ -609,7 +622,7 @@ public class EntailGraphFactoryAggregator {
 		});
 	}
 
-	void runAllEntGrFacts(String fName, String entTypesFName, String genTypesFName, String typedEntGrDir)
+	void runAllEntGrFacts(String fName, String entTypesFName, String genTypesFName, String typedEntGrDir, List<String> types)
 			throws InterruptedException, FileNotFoundException {
 
 		if (!(new File(typedEntGrDir)).exists()) {
@@ -624,13 +637,14 @@ public class EntailGraphFactoryAggregator {
 			entGrFacts[i].threadNum = i;
 		}
 
-		assignTypesToEntGrFacts();
+		assignTypesToEntGrFacts(types);
 		
 		if (ConstantsAgg.backupToStanNER) {
 			try {
 				StanfordNERHandler.loadNER(ConstantsAgg.NERAddress);
 			} catch (IOException e) {
-				e.printStackTrace();
+				System.err.println("NER File Error: " + e.getMessage());
+//				e.printStackTrace();
 			}
 		}
 
@@ -706,114 +720,27 @@ public class EntailGraphFactoryAggregator {
 //		op.close();
 	}
 
-	void assignTypesToEntGrFacts() {
+	void assignTypesToEntGrFacts(List<String> types) {
 		System.out.println("assigning types");
-		Set<String> allTypes = new HashSet<>();
+		System.out.println("type partition size: " + types.size());
 
-		allTypes.add("thing");
-		if (ConstantsAgg.isTyped) {
-			if (!ConstantsAgg.isForeign) {
-				if (EntailGraphFactoryAggregator.typeScheme == TypeScheme.FIGER) {
-					for (String s : Util.getEntToFigerType().values()) {
-						allTypes.add(s);
-					}
-				}
-				// else if (EntailGraphFactoryAggregator.typeScheme == TypeScheme.GKG) {
-				// for (String s : Util.entToType.values()) {
-				// allTypes.add(s);
-				// }
-				// for (String s : Util.genToType.values()) {
-				// allTypes.add(s);
-				// }
-				// }
-				else if (EntailGraphFactoryAggregator.typeScheme == TypeScheme.LDA) {
-					for (int i = 0; i < DistrTyping.numTopics; i++) {
-						allTypes.add("type" + i);
-					}
-				}
-			} else {
-				Scanner sc;
-				try {
-					sc = new Scanner(new File(ConstantsAgg.foreinTypesAddress));
-					while (sc.hasNextLine()) {
-						String s = sc.nextLine();
-						allTypes.add(s);
-					}
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
+		for (String t1 : types) {
+			int thread = (int) (Math.random() * ConstantsAgg.numThreads);
+			System.out.println("adding " + t1 + " to thread " + thread);
+			entGrFacts[thread].acceptableTypes.add(t1);
+
+			if (t1.contains("#")) {
+				String[] type_split = t1.split("#");
+				String t2 = type_split[1] + "#" + type_split[0];
+				entGrFacts[thread].acceptableTypes.add(t2);
 			}
 		}
 
-		List<String> allTypesArr = new ArrayList<>();
-
-		for (String s : allTypes) {
-
-			allTypesArr.add(s);
-		}
-
-		Collections.sort(allTypesArr);
-
-		System.out.println("alltypes size: " + allTypes.size());
-
-		for (int i = 0; i < allTypesArr.size(); i++) {
-			// System.out.println("type: " +allTypesArr.get(i) );
-			int r = (int) (Math.random() * ConstantsAgg.numThreads);
-			// entGrFacts[r].acceptableTypes.add(allTypesArr.get(i));
-
-			for (int j = i; j < allTypesArr.size(); j++) {
-				String t1 = allTypesArr.get(i) + "#" + allTypesArr.get(j);
-				String t2 = allTypesArr.get(j) + "#" + allTypesArr.get(i);
-				r = (int) (Math.random() * ConstantsAgg.numThreads);
-				System.out.println("adding " + t1 + " to thread " + r);
-				entGrFacts[r].acceptableTypes.add(t1);
-				entGrFacts[r].acceptableTypes.add(t2);
-			}
-		}
-
-		System.out.println("types assigned");
-
+		System.out.println("* types assigned");
 	}
 
-	// EntailGraphFactory aggregate(String typedEntGrDir) {
-	// EntailGraphFactory aggEntGrFact = new EntailGraphFactory(typedEntGrDir);
-	//
-	// for (EntailGraphFactory entGrFact : entGrFacts) {
-	// addTypesToGraphs(aggEntGrFact.typesToSimpleGraph,
-	// entGrFact.typesToSimpleGraph);
-	// addTypesToGraphs(aggEntGrFact.typesToSimpleGraphX,
-	// entGrFact.typesToSimpleGraphX);
-	// addTypesToGraphs(aggEntGrFact.typesToSimpleGraphY,
-	// entGrFact.typesToSimpleGraphY);
-	// addTypesToGraphs(aggEntGrFact.typesToSimpleGraphUnaryX,
-	// entGrFact.typesToSimpleGraphUnaryX);
-	// addTypesToGraphs(aggEntGrFact.typesToSimpleGraphUnaryY,
-	// entGrFact.typesToSimpleGraphUnaryY);
-	//
-	// addTypeToOrderedType(aggEntGrFact.typeToOrderedType,
-	// entGrFact.typeToOrderedType);
-	//
-	// }
-	// return aggEntGrFact;
-	// }
-
-	// 1 = 2
-	// private void addTypesToGraphs(HashMap<String, SimpleEntailGraph>
-	// typeToGr1,
-	// HashMap<String, SimpleEntailGraph> typeToGr2) {
-	// for (String types : typeToGr2.keySet()) {
-	// typeToGr1.put(types, typeToGr2.get(types));
-	// }
-	// }
-
-	// private void addTypeToOrderedType(HashMap<String, String> h1,
-	// HashMap<String, String> h2) {
-	// for (String types : h2.keySet()) {
-	// h1.put(types, h2.get(types));
-	// }
-	// }
-
-	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
+	// Run the aggregator on a partition of the graph type pairs
+	public static void runAggregationForTypePartition(List<String> types) throws FileNotFoundException, InterruptedException {
 		if (ConstantsAgg.linkPredBasedRandWalk) {
 			RandWalkMatrix.loadLinkPredInfo();
 		}
@@ -822,8 +749,106 @@ public class EntailGraphFactoryAggregator {
 			DistrTyping.loadLDATypes();
 		}
 		System.out.println("fileName: " + ConstantsAgg.relAddress);
-		agg.runAllEntGrFacts(ConstantsAgg.relAddress, "", "", ConstantsAgg.simsFolder);
+		agg.runAllEntGrFacts(ConstantsAgg.relAddress, "", "", ConstantsAgg.simsFolder, types);
+	}
 
+	// Generate all possible type-pairs of graphs (includes same-typed graphs e.g. person#person)
+	// Does NOT include type reversals (e.g. person#location & location#person), so this can be done at the thread-level more optimally
+	public static List<String> generateBasicGraphTypes(boolean resumeProgress) {
+		Set<String> entityTypeSet = new HashSet<>();
+
+		entityTypeSet.add("thing");
+		if (ConstantsAgg.isTyped) {
+			if (!ConstantsAgg.isForeign) {
+				if (EntailGraphFactoryAggregator.typeScheme == TypeScheme.FIGER) {
+					for (String s : Util.getEntToFigerType().values()) {
+						entityTypeSet.add(s);
+					}
+				} else if (EntailGraphFactoryAggregator.typeScheme == TypeScheme.LDA) {
+					for (int i = 0; i < DistrTyping.numTopics; i++) {
+						entityTypeSet.add("type" + i);
+					}
+				}
+			} else {
+				Scanner sc;
+				try {
+					sc = new Scanner(new File(ConstantsAgg.foreinTypesAddress));
+					while (sc.hasNextLine()) {
+						String s = sc.nextLine();
+						entityTypeSet.add(s);
+					}
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		List<String> entityTypes = new ArrayList<>(entityTypeSet);
+
+		// Assign individual types to pairs (reverse typing is done in each thread for efficiency)
+		List<String> typePairs = new ArrayList<>();
+		for (int i = 0; i < entityTypes.size(); i++) {
+			for (int j = i; j < entityTypes.size(); j++) {
+				String t = entityTypes.get(i) + "#" + entityTypes.get(j);
+				typePairs.add(t);
+			}
+		}
+
+		List<String> graphTypes = new ArrayList<>(typePairs);
+
+		// Generate Unary-only one-type graphs
+		if (ConstantsAgg.generateArgwiseGraphs && ConstantsAgg.generateUnaryOnlyGraphs) {
+			graphTypes.addAll(entityTypes);
+		}
+
+		// Previous run of this program may have been terminated
+		// Remove graph types that have already been computed in results folder
+		if (resumeProgress) {
+			File[] graphFiles = new File(ConstantsAgg.simsFolder).listFiles((dir, name) -> name.endsWith("_sim.txt"));
+			List<String> finishedGraphNames = Arrays.stream(graphFiles)
+					.map(f -> f.getName())
+					.map(s -> s.substring(0,s.lastIndexOf("_sim")))
+					.collect(Collectors.toList());
+			if (finishedGraphNames.size() > 0) {
+				System.out.println("* Resuming progress from: " + ConstantsAgg.simsFolder);
+				graphTypes.removeAll(finishedGraphNames);
+			}
+		}
+
+		Collections.sort(graphTypes);
+		return graphTypes;
+	}
+
+	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
+		System.out.println("== Starting Local Graph Construction");
+
+		// Pre-allocate types for graph instantiation
+//		List<String> basicGraphTypes = generateBasicGraphTypes(true);
+		List<String> basicGraphTypes = Arrays.asList("person#person");
+
+		if (basicGraphTypes.isEmpty()) {
+			System.out.println("This job is already finished. To start a new job, change params or rename the (completed) results folder.");
+			return;
+		}
+
+		// Randomize types to reduce likelihood of processing two large graphs at once
+		Collections.shuffle(basicGraphTypes);
+
+		// Partition graph type-space and build one partition at a time
+		int partitionSize = (int) Math.ceil(Double.valueOf(basicGraphTypes.size())/ConstantsAgg.numGraphBuildingPasses);
+		for (int p = 0; p < ConstantsAgg.numGraphBuildingPasses; p++) {
+			int start = p * partitionSize;
+			int end = Math.min(start + partitionSize, basicGraphTypes.size());
+			if (start > basicGraphTypes.size()) {
+				break;
+			}
+
+			List<String> typePartition = basicGraphTypes.subList(start, end);
+			System.out.println("== Starting Partition: " + (p+1) + " of " + ConstantsAgg.numGraphBuildingPasses);
+			runAggregationForTypePartition(typePartition);
+		}
+
+		System.out.println("== Finished Local Graph Construction");
 	}
 
 	public enum TypeScheme {

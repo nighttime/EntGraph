@@ -19,6 +19,7 @@ import entailment.Util;
 import entailment.linkingTyping.DistrTyping;
 import entailment.linkingTyping.StanfordNERHandler;
 import entailment.vector.EntailGraphFactoryAggregator.TypeScheme;
+import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 
 public class EntailGraphFactory implements Runnable {
 	String fName, entTypesFName;
@@ -74,8 +75,10 @@ public class EntailGraphFactory implements Runnable {
 				initializeGraphs();
 				// build the graphs
 				buildGraphs();
+
 				// process all the entailmentGraphs
 				processAllEntGraphsBinary();
+				// TODO: Nick: uncomment this!!!! ^
 			}
 			// else if (runPart == 1) {
 			// processAllEntGraphsUnary();
@@ -98,7 +101,8 @@ public class EntailGraphFactory implements Runnable {
 	void initializeGraphs() {
 		for (String type : acceptableTypes) {
 			String opName = typedEntGrDir + "/" + type;
-			EntailGraph graph = new EntailGraph(type, opName, ConstantsAgg.minPredForArgPair, false);
+			boolean unary = ConstantsAgg.generateArgwiseGraphs && !type.contains("#");
+			EntailGraph graph = new EntailGraph(type, opName, ConstantsAgg.minPredForArgPair, unary);
 			typesToGraph.put(type, graph);
 		}
 	}
@@ -168,10 +172,13 @@ public class EntailGraphFactory implements Runnable {
 						relStrs.add(relStr);
 						counts.add(1);
 					}
-					if (ConstantsAgg.generateBinaryUnaryGraphs) {
+					if (ConstantsAgg.generateArgwiseGraphs) {
 						JsonArray unaryRels = jObj.get("rels_unary").getAsJsonArray();
 						for (JsonElement relObj : unaryRels) {
 							String relStr = relObj.getAsJsonObject().get("r").getAsString();
+							if (!ConstantsAgg.keepPossessiveUnaries && relStr.contains("'")) {
+								continue;
+							}
 							unary_relStrs.add(relStr);
 						}
 					}
@@ -553,6 +560,7 @@ public class EntailGraphFactory implements Runnable {
 							// the main one! (arg1-arg2)
 							// String featName = arg1 + "#" + arg2;
 							// String thisType = type1 + "#" + type2;
+
 							addBinaryRelationToEntGraphs(typesToGraph, pred, arg1, arg2, type1, type2, timeInterval,
 									datestamp, count, true, false);
 
@@ -628,15 +636,26 @@ public class EntailGraphFactory implements Runnable {
 				}
 
 				lineNumbers++;
-				if (lineNumbers % 10000 == 0) {
+				if (lineNumbers % 500000 == 0) {
 					int mb = 1024 * 1024;
 					long usedMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / mb;
 					// System.gc();
-					System.err.println(threadNum + ": " + lineNumbers + " time(s): "
-							+ ((System.currentTimeMillis() - startTime) / 1000) + " memory (mb):" + usedMb
-							+ " alltuples: " + EntailGraphFactoryAggregator.numAllTuples + " alltuplesPlusRev: "
-							+ EntailGraphFactoryAggregator.numAllTuplesPlusReverse + " allNNZ: "
-							+ EntailGraphFactoryAggregator.allNonZero);
+					if (ConstantsAgg.generateArgwiseGraphs) {
+						System.err.println(threadNum + ": " + lineNumbers + " time(s): "
+								+ ((System.currentTimeMillis() - startTime) / 1000) + " memory (mb):" + usedMb
+								+ " allRealNodes: " + (EntailGraphFactoryAggregator.numUnaryNodesBroadcasted + EntailGraphFactoryAggregator.numBinaryArgNodes)
+								+ " realUnaries: " + EntailGraphFactoryAggregator.numUnaryNodesBroadcasted
+								+ " RealBinaryArgs: " + EntailGraphFactoryAggregator.numBinaryArgNodes
+								+ "  ## "
+								+ " unaryUniques: " + + EntailGraphFactoryAggregator.numUnaryNodes
+								+ " binaryTuples: " + EntailGraphFactoryAggregator.numBinaryArgNodes/2);
+					} else {
+						System.err.println(threadNum + ": " + lineNumbers + " time(s): "
+								+ ((System.currentTimeMillis() - startTime) / 1000) + " memory (mb):" + usedMb
+								+ " alltuples: " + EntailGraphFactoryAggregator.numAllTuples + " alltuplesPlusRev: "
+								+ EntailGraphFactoryAggregator.numAllTuplesPlusReverse + " allNNZ: "
+								+ EntailGraphFactoryAggregator.allNonZero);
+					}
 				}
 			} catch (Exception e) {
 				System.err.println("exception for: " + line);
@@ -645,11 +664,21 @@ public class EntailGraphFactory implements Runnable {
 			// typedOp.println();
 		}
 
-		if (ConstantsAgg.generateBinaryUnaryGraphs) {
+		if (ConstantsAgg.generateArgwiseGraphs) {
 			for (String unary_relStr : unary_relStrs) {
 				intakeUnaryRelStr(unary_relStr);
 			}
 		}
+
+		System.err.println(threadNum + ": " + lineNumbers + " time(s): "
+				+ " allRealNodes: " + (EntailGraphFactoryAggregator.numUnaryNodesBroadcasted + EntailGraphFactoryAggregator.numBinaryArgNodes)
+				+ " realUnaries: " + EntailGraphFactoryAggregator.numUnaryNodesBroadcasted
+				+ " RealBinaryArgs: " + EntailGraphFactoryAggregator.numBinaryArgNodes
+				+ "  ## "
+				+ " unaryUniques: " + + EntailGraphFactoryAggregator.numUnaryNodes
+				+ " binaryTuples: " + EntailGraphFactoryAggregator.numBinaryArgNodes/2);
+
+		System.out.println("***********************");
 
 		System.err.println("allNNZ: " + EntailGraphFactoryAggregator.allNonZero);
 
@@ -770,7 +799,10 @@ public class EntailGraphFactory implements Runnable {
 		if (ConstantsAgg.addTimeStampToFeats) {
 			thisArg += "#" + datestamp;
 		}
+		EntailGraphFactoryAggregator.numAllTuplesPlusReverse++;
 		thisEntailGraph.addBinaryPredicate(typedPred, thisArg, timeInterval, count, -1, -1);
+
+		EntailGraphFactoryAggregator.inc2_numBinaryArgNodes();
 
 		return rev;
 	}
@@ -778,11 +810,15 @@ public class EntailGraphFactory implements Runnable {
 	void addUnaryRelationToEntGraphs(Map<String, EntailGraph> thisTypesToGraph, String pred, String arg,
 										String type, String timeInterval, String datestamp, float count) {
 		String typedPred = pred + "#" + type;
+		boolean inserted = false;
 		for (String t : acceptableTypes) {
 			if (!t.contains(type)) { continue; }
+			inserted = true;
 			EntailGraph graph = thisTypesToGraph.get(t);
 			graph.addUnaryPredicate(typedPred, arg, timeInterval, count, -1, -1);
+			EntailGraphFactoryAggregator.inc_numUnaryNodesBroadcasted();
 		}
+		if (inserted) EntailGraphFactoryAggregator.inc_numUnaryNodes();
 	}
 
 	String getTypedPred(String pred, String type1, String type2, boolean rev) {
