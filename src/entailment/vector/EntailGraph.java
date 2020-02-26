@@ -12,9 +12,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import constants.ConstantsAgg;
+import edu.uw.easysrl.semantics.Constant;
 import entailment.randWalk.RandWalkMatrix;
 import entailment.vector.EntailGraphFactoryAggregator.LinkPredModel;
 import entailment.vector.EntailGraphFactoryAggregator.ProbModel;
+
+import static java.lang.System.exit;
 
 public class EntailGraph extends SimpleEntailGraph {
 
@@ -34,7 +37,7 @@ public class EntailGraph extends SimpleEntailGraph {
 	final int minPredForArgPair;// min num of unique predicates for
 
 	List<InvertedIdx> invertedIdxes;
-	boolean unary = false;
+	boolean unary;
 
 	@Override
 	public List<SimplePredicateVector> getPvecs() {
@@ -267,6 +270,14 @@ public class EntailGraph extends SimpleEntailGraph {
 
 		for (PredicateVector pvec : pvecs) {
 			pvec.clean();
+		}
+
+
+		if (ConstantsAgg.generateArgwiseGraphs) {
+			long numUnaryEdges = pvecs.stream().filter(x -> x.predicate.contains("[unary]")).mapToLong(x -> x.similarityInfos.values().size()).sum();
+			long edgeCount = EntailGraphFactoryAggregator.allEdgeCounts;
+			System.out.println("EDGES: " + (edgeCount - numUnaryEdges) + "  edgeCount=" + edgeCount + "  numUnaryEdges=" + numUnaryEdges);
+			exit(1);
 		}
 
 		t0 = System.currentTimeMillis();
@@ -663,6 +674,15 @@ public class EntailGraph extends SimpleEntailGraph {
 	void computeSimilarities() {
 		int ii = 0;
 		for (PredicateVector pvec : pvecs) {
+			if (ConstantsAgg.generateArgwiseGraphs) {
+				// We allow queueing B->U edges which automatically queues the reverse (U->B)
+				// Skip these unless in a 1-type graph
+				boolean pvecIsUnary = pvec.predicate.contains("[unary]");
+				if (pvecIsUnary && !unary) {
+					continue;
+				}
+			}
+
 			if (ii % 1000 == 0) {
 				System.err.println(this.types+" "+ii);
 			}
@@ -716,6 +736,9 @@ public class EntailGraph extends SimpleEntailGraph {
 
 				PredicateVector pvec1 = pvecs.get(pvecIdx1);
 
+				boolean pvec1isArgwise = pvec1.predicate.contains("[sub]") || pvec1.predicate.contains("[obj]");
+				boolean pvec1isUnary = pvec1.predicate.contains("[unary]");
+
 				if (val1 == 0) {
 					System.err.println("weird val1: " + pvec1.predicate + " ");
 				}
@@ -736,6 +759,15 @@ public class EntailGraph extends SimpleEntailGraph {
 					}
 
 					PredicateVector pvec2 = pvecs.get(pvecIdx2);
+
+					if (ConstantsAgg.generateArgwiseGraphs) {
+						// Do not queue B->B or U->U edges
+						boolean pvec2isArgwise = pvec2.predicate.contains("[sub]") || pvec2.predicate.contains("[obj]");
+						boolean pvec2isUnary = pvec2.predicate.contains("[unary]");
+						if ((pvec1isArgwise && pvec2isArgwise) || (pvec1isUnary && pvec2isUnary)){
+							continue;
+						}
+					}
 
 					// This is important if we have unary
 					// if (unary && !EntailGraphFactory.acceptablePredPairs
@@ -772,6 +804,9 @@ public class EntailGraph extends SimpleEntailGraph {
 						EntailGraphFactoryAggregator.allEdgeCounts++;
 					}
 
+					pvec2.similarityInfos.get(pvecIdx1).addSims(val1 * val2, val2, PMI2, Math.min(val1, val2),
+							timePreceding2);
+
 					if (EntailGraphFactoryAggregator.allEdgeCounts % 1000000 == 0) {
 
 						int mb = 1024 * 1024;
@@ -779,9 +814,6 @@ public class EntailGraph extends SimpleEntailGraph {
 
 						System.err.println("alledges: " + EntailGraphFactoryAggregator.allEdgeCounts + " mb: " + usedMb);
 					}
-
-					pvec2.similarityInfos.get(pvecIdx1).addSims(val1 * val2, val2, PMI2, Math.min(val1, val2),
-							timePreceding2);
 				}
 			}
 			invertedIdxes.set(ii, null);

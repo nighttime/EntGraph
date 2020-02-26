@@ -363,6 +363,9 @@ public class PredicateVector extends SimplePredicateVector {
 		// ArrayList<Similarity> timeSims = new ArrayList<Similarity>();
 
 		for (int pvecIdx : similarityInfos.keySet()) {
+
+			//filter
+
 			SimilaritiesInfo simInfo = similarityInfos.get(pvecIdx);
 			PredicateVector pvec2 = (PredicateVector) this.entGraph.getPvecs().get(pvecIdx);
 			SimilaritiesInfo simInfo2 = pvec2.similarityInfos.get(this.uniqueId);

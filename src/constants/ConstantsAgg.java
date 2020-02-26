@@ -54,6 +54,7 @@ public class ConstantsAgg {
 
 
 	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
+//	public static String relAddress = "news_gen_argwise/news_gen_argwise_500k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";

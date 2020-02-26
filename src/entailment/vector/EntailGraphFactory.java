@@ -21,6 +21,8 @@ import entailment.linkingTyping.StanfordNERHandler;
 import entailment.vector.EntailGraphFactoryAggregator.TypeScheme;
 import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 
+import static java.lang.System.exit;
+
 public class EntailGraphFactory implements Runnable {
 	String fName, entTypesFName;
 	Map<String, EntailGraph> typesToGraph = new HashMap<>();
@@ -78,7 +80,6 @@ public class EntailGraphFactory implements Runnable {
 
 				// process all the entailmentGraphs
 				processAllEntGraphsBinary();
-				// TODO: Nick: uncomment this!!!! ^
 			}
 			// else if (runPart == 1) {
 			// processAllEntGraphsUnary();
@@ -89,7 +90,7 @@ public class EntailGraphFactory implements Runnable {
 			// }
 			else {
 				System.out.println("wrong runPart");
-				System.exit(0);
+				exit(0);
 			}
 
 		} catch (JsonSyntaxException | IOException e) {
@@ -1077,9 +1078,17 @@ public class EntailGraphFactory implements Runnable {
 
 		entGraph.graphOp2.println("types: " + types + ", num preds: " + numPreds);
 
+		boolean unary = !entGraph.types.contains("#");
+
 		for (SimplePredicateVector pvec : entGraph.getPvecs()) {
 			if (pvec.similarityInfos.size() == 0) {
 				continue;
+			}
+
+			if (ConstantsAgg.generateArgwiseGraphs) {
+				if (pvec.predicate.contains("[unary]") && !unary) {
+					continue;
+				}
 			}
 
 			String pred = pvec.predicate;
