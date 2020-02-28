@@ -93,6 +93,6 @@ public class ConstantsAgg {
 	// Include unary predicates which are possessive e.g. "Obama's strength"
 	public static boolean keepPossessiveUnaries = false;
 	// During graph building phase, build only 1/N graphs at a time to reduce memory constraints
-	public static int numGraphBuildingPasses = 10;
+	public static int numGraphBuildingPasses = 2;
 
 }

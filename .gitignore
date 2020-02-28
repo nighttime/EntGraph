@@ -7,9 +7,13 @@ data/
 lib/
 lib_data/
 
-sims/
 freebase_types/
 newsspike_sims/
+
+# sims
+sims/
+*_sim.txt
+*_rels.txt
 
 # code
 out/

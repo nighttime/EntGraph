@@ -823,12 +823,15 @@ public class EntailGraphFactoryAggregator {
 		System.out.println("== Starting Local Graph Construction");
 
 		// Pre-allocate types for graph instantiation
-//		List<String> basicGraphTypes = generateBasicGraphTypes(true);
-		List<String> basicGraphTypes = Arrays.asList("person#person");
+		List<String> basicGraphTypes = generateBasicGraphTypes(true);
+//		List<String> basicGraphTypes = Arrays.asList("person#person");
 
 		if (basicGraphTypes.isEmpty()) {
 			System.out.println("This job is already finished. To start a new job, change params or rename the (completed) results folder.");
 			return;
+		} else {
+			System.out.println("Building graph types:");
+			System.out.println(basicGraphTypes);
 		}
 
 		// Randomize types to reduce likelihood of processing two large graphs at once

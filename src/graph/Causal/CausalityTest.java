@@ -5,6 +5,7 @@ import com.google.common.collect.Multisets;
 import com.google.common.collect.Sets;
 import com.google.common.collect.TreeMultiset;
 import constants.ConstantsGraphs;
+import data.Stats;
 import graph.Edge;
 import graph.Node;
 import graph.Oedge;
@@ -167,7 +168,7 @@ public class CausalityTest {
 		return entPreds;
 	}
 
-	public static Float entsetDivergance(Map<String, Map<String, Float>> base, Map<String, Map<String, Float>> comp) {
+	public static Double entsetF1Divergance(Map<String, Map<String, Float>> base, Map<String, Map<String, Float>> comp) {
 		float tp = 0;
 		float fp = 0;
 		float fn = 0;
@@ -180,15 +181,35 @@ public class CausalityTest {
 			fn += base.get(key).size() - intersectionSize;
 		}
 
-		float precision = tp / (tp + fp);
-		float recall = tp / (tp + fn);
-		float f1 = (2 * precision * recall) / (precision + recall);
+		double precision = tp / (tp + fp);
+		double recall = tp / (tp + fn);
+		double f1 = (2 * precision * recall) / (precision + recall);
 
-		if (!Float.isNaN(f1)) {
+		if (!Double.isNaN(f1)) {
 			System.out.print(String.format("tp:%f\tfp:%f\tfn:%f\tp:%f\tr:%f\t", tp, fp, fn, precision, recall));
 		}
 
 		return f1;
+	}
+
+	public static Double[] entsetJaccardSim(Map<String, Map<String, Float>> predsA, Map<String, Map<String, Float>> predsB) {
+		List<Double> jaccards = new ArrayList<>();
+
+		for (String predA : predsA.keySet()) {
+			if (!predsB.containsKey(predA)) { continue; }
+
+			// Compute Jaccard
+			Sets.SetView<String> intersection = Sets.intersection(predsA.keySet(), predsB.keySet());
+			Sets.SetView<String> union = Sets.union(predsA.keySet(), predsB.keySet());
+
+			double j = (double) intersection.size() / union.size();
+			jaccards.add(j);
+		}
+
+		double mean = jaccards.stream().reduce(0., Double::sum)/jaccards.size();
+		double var = jaccards.stream().map(x -> Math.pow(x - mean, 2)).reduce(0., Double::sum)/(jaccards.size()-1);
+
+		return new Double[]{mean, var, (double) jaccards.size()};
 	}
 
 	public static int getConfidence(String id_ant, String id_con) {
@@ -200,7 +221,7 @@ public class CausalityTest {
 	public static Map<Node, Float> getEntailments(Node node, PGraph graph, boolean weightConfidence) {
 		Map<Node, Float> entailments = new HashMap<>();
 		for (Oedge e : node.oedges) {
-			if (e.sim < 0.15) { continue; }
+			if (e.sim < 0.1) { continue; }
 			Node entailedNode = graph.idx2node.get(e.nIdx);
 			float score = e.sim;
 			if (weightConfidence) {
@@ -259,12 +280,11 @@ public class CausalityTest {
 		}
 	}
 
-	public static void printModifierDeverganceFromFailure(String modifier, boolean weightConfidence) {
-		System.out.println("== Divergance of \"" + modifier + "\" from failed");
+	// weightConfidence: whether to use confidence when scoring entailments
+	public static void printModifierSimilarity(String modifierA, String modifierB, boolean weightConfidence) {
+		System.out.println("== Similarity of \"" + modifierA + "\" with \"" + modifierB + "\"");
 
-		final String failString = "failed";
-
-		Set<String> modifiers = Sets.newHashSet(failString, modifier);
+		Set<String> modifiers = Sets.newHashSet(modifierA, modifierB);
 
 		if (weightConfidence) {
 			System.out.println("Reading occurrence files...");
@@ -279,17 +299,22 @@ public class CausalityTest {
 			}
 
 			Map<String, Map<String, Map<Node, Map<Node, Float>>>> entNodes = getEntailmentSetsForModifiers(modifiers, graph, weightConfidence);
-			Map<String, Map<Node, Map<Node, Float>>> entNodesFail = entNodes.get(failString);
-			Map<String, Map<Node, Map<Node, Float>>> entNodesTry = entNodes.get(modifier);
+			Map<String, Map<Node, Map<Node, Float>>> entNodesA = entNodes.get(modifierA);
+			Map<String, Map<Node, Map<Node, Float>>> entNodesB = entNodes.get(modifierB);
 
-			for (String type : entNodesTry.keySet()) {
-				if (!entNodesFail.containsKey(type)) { continue; }
-				Map<String, Map<String, Float>> entPredsFail = entNodesToEntPreds(entNodesFail.get(type), true);
-				Map<String, Map<String, Float>> entPredsTry = entNodesToEntPreds(entNodesTry.get(type), true);
+			for (String type : entNodesA.keySet()) {
+				if (!entNodesB.containsKey(type)) { continue; }
 
-				Float div = entsetDivergance(entPredsFail, entPredsTry);
-				if (Float.isNaN(div)) { continue; }
-				System.out.println(type + ": " + div);
+				Map<String, Map<String, Float>> entPredsA = entNodesToEntPreds(entNodesA.get(type), true);
+				Map<String, Map<String, Float>> entPredsB = entNodesToEntPreds(entNodesB.get(type), true);
+
+//				Float div = entsetDivergance(entPredsFail, entPredsTry);
+//				if (Float.isNaN(div)) { continue; }
+//				System.out.println(type + ": " + div);
+
+				Double[] sim = entsetJaccardSim(entPredsA, entPredsB);
+				if (Double.isNaN(sim[0])) { continue; }
+				System.out.println(type + ": mean=" + sim[0] + " var=" + sim[1] + " count=" + sim[2]);
 			}
 		}
 	}
@@ -302,8 +327,7 @@ public class CausalityTest {
 //		printCausalEntailments();
 //		printPredicateModifiers();
 //		printPredicatesContaining("trying__");
-
-		printModifierDeverganceFromFailure("trying", false);
+		printModifierSimilarity("trying", "failed", false);
 
 
 

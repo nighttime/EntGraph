@@ -7,7 +7,7 @@ public class ConstantsGraphs {
 
 //	public static String root = "../../python/gfiles/typedEntGrDirC_NSBased_10_3thing_80_location_thing_times4_f20_GG_UT_back_noGGThing_hier/";
 //	public static String root = "/home/nick/Documents/datasets/entgraphs/newsspike/";
-	public static String root = "/home/nick/Documents/entgraph/EntGraph/sims/newscrawl_modifiers_3_3/"; // first 500k of newsspike
+	public static String root = "/home/nick/Documents/entgraph/EntGraph/sims/newscrawl_modifiers_3_3/";
 //	public static String root = "/home/nick/Documents/datasets/entgraphs/newscrawl/";
 	public static String suffix = "_sim.txt";
 	// public static String suffix = "_tprop_lm1_.01_reg_1.5_.3.txt";

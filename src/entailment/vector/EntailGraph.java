@@ -262,28 +262,28 @@ public class EntailGraph extends SimpleEntailGraph {
 			// }
 		}
 
-		System.err.println("starting to set similar vecs!");
+		System.err.println(types + " starting to set similar vecs!");
 
 		t0 = System.currentTimeMillis();
 		setSimilarVecs();
-		System.err.println("set similar vecs: " + (System.currentTimeMillis() - t0));
+		System.err.println(types + " done setting similar vecs: " + (System.currentTimeMillis() - t0));
 
 		for (PredicateVector pvec : pvecs) {
 			pvec.clean();
 		}
 
 
-		if (ConstantsAgg.generateArgwiseGraphs) {
-			long numUnaryEdges = pvecs.stream().filter(x -> x.predicate.contains("[unary]")).mapToLong(x -> x.similarityInfos.values().size()).sum();
-			long edgeCount = EntailGraphFactoryAggregator.allEdgeCounts;
-			System.out.println("EDGES: " + (edgeCount - numUnaryEdges) + "  edgeCount=" + edgeCount + "  numUnaryEdges=" + numUnaryEdges);
-			exit(1);
-		}
+//		if (ConstantsAgg.generateArgwiseGraphs) {
+//			long numUnaryEdges = pvecs.stream().filter(x -> x.predicate.contains("[unary]")).mapToLong(x -> x.similarityInfos.values().size()).sum();
+//			long edgeCount = EntailGraphFactoryAggregator.allEdgeCounts;
+//			System.out.println("EDGES: " + (edgeCount - numUnaryEdges) + "  edgeCount=" + edgeCount + "  numUnaryEdges=" + numUnaryEdges);
+//			exit(1);
+//		}
 
 		t0 = System.currentTimeMillis();
-		System.err.println("now computing similarities");
+		System.err.println(types + " starting to compute similarities");
 		computeSimilarities();
-		System.err.println("compute dots: " + (System.currentTimeMillis() - t0));
+		System.err.println(types + " done computing similarities: " + (System.currentTimeMillis() - t0));
 		if (writeInfo) {
 			graphOp1.close();
 		}
@@ -673,6 +673,10 @@ public class EntailGraph extends SimpleEntailGraph {
 
 	void computeSimilarities() {
 		int ii = 0;
+		double stepPortion = 0.1;
+		long totalComps = unary ? pvecs.size() : pvecs.stream().filter(x -> !x.predicate.contains("[unary]")).count();
+		int stepSize = (int) (totalComps * stepPortion);
+
 		for (PredicateVector pvec : pvecs) {
 			if (ConstantsAgg.generateArgwiseGraphs) {
 				// We allow queueing B->U edges which automatically queues the reverse (U->B)
@@ -683,9 +687,11 @@ public class EntailGraph extends SimpleEntailGraph {
 				}
 			}
 
-			if (ii % 1000 == 0) {
-				System.err.println(this.types+" "+ii);
+			if (totalComps > 1000 && ii % stepSize == 0) {
+				int portionComplete = (int) Math.round((float) ii / stepSize * stepPortion * 100);
+				System.err.println(types + " computed similarities: " + portionComplete + "%");
 			}
+
 			pvec.computeSimilarities();
 			ii++;
 		}
@@ -694,8 +700,8 @@ public class EntailGraph extends SimpleEntailGraph {
 	// For each predicate, what are the predicates that we should find
 	// similarity to.
 	void setSimilarVecs() {
-		System.err.println("num of features: " + invertedIdxes.size());
-		System.err.println("num samples: " + pvecs.size());
+		System.err.println(types + " num features: " + invertedIdxes.size());
+		System.err.println(types + " num samples: " + pvecs.size());
 		long numOperations = 0;
 		int nnz = 0;
 		for (InvertedIdx invIdx : invertedIdxes) {
@@ -705,8 +711,8 @@ public class EntailGraph extends SimpleEntailGraph {
 		}
 
 		this.nnz = nnz;
-		System.err.println("num operations: " + numOperations);
-		System.err.println("nnz: " + nnz);
+		System.err.println(types + " num operations: " + numOperations);
+		System.err.println(types + " nnz: " + nnz);
 
 		// int nnz2 = 0;
 		// for (PredicateVector pvec: pvecs){
@@ -716,9 +722,13 @@ public class EntailGraph extends SimpleEntailGraph {
 		// System.out.println("nnz2: "+nnz2);
 
 		int ii = 0;
+		double stepPortion = 0.1;
+		int totalIndexSize = invertedIdxes.size();
+		int stepSize = (int) (totalIndexSize * stepPortion);
 		for (InvertedIdx invIdx : invertedIdxes) {
-			if (ii % 10000 == 0) {
-				System.err.println(ii);
+			if (totalIndexSize > 10000 && ii % stepSize == 0) {
+				int portionComplete = (int) Math.round((float) ii / stepSize * stepPortion * 100);
+				System.err.println(types + " queueing edges: " + portionComplete + "%");
 			}
 			for (int i = 0; i < invIdx.samplesIdxes.size(); i++) {
 				int pvecIdx1 = invIdx.samplesIdxes.get(i);
@@ -762,6 +772,9 @@ public class EntailGraph extends SimpleEntailGraph {
 
 					if (ConstantsAgg.generateArgwiseGraphs) {
 						// Do not queue B->B or U->U edges
+						//   We require information about both nodes to compute a directed edge's score.
+						//   So at this stage it is only safe to filter out edges which we don't need in either direction.
+						//   Further filtering can be done later in the computeSimilarities() method.
 						boolean pvec2isArgwise = pvec2.predicate.contains("[sub]") || pvec2.predicate.contains("[obj]");
 						boolean pvec2isUnary = pvec2.predicate.contains("[unary]");
 						if ((pvec1isArgwise && pvec2isArgwise) || (pvec1isUnary && pvec2isUnary)){
@@ -808,11 +821,9 @@ public class EntailGraph extends SimpleEntailGraph {
 							timePreceding2);
 
 					if (EntailGraphFactoryAggregator.allEdgeCounts % 1000000 == 0) {
-
 						int mb = 1024 * 1024;
 						long usedMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / mb;
-
-						System.err.println("alledges: " + EntailGraphFactoryAggregator.allEdgeCounts + " mb: " + usedMb);
+						System.err.println(types + " loaded undirected edges: " + EntailGraphFactoryAggregator.allEdgeCounts + " mb: " + usedMb);
 					}
 				}
 			}
