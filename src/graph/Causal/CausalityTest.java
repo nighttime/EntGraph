@@ -1,9 +1,6 @@
 package graph.Causal;
 
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Multisets;
-import com.google.common.collect.Sets;
-import com.google.common.collect.TreeMultiset;
+import com.google.common.collect.*;
 import constants.ConstantsGraphs;
 import data.Stats;
 import graph.Edge;
@@ -140,11 +137,8 @@ public class CausalityTest {
 //
 //	}
 
-	public static Map<String, Map<String, Map<Node, Map<Node, Float>>>> getEntailmentSetsForModifiers(Set<String> modifiers, PGraph graph, boolean weightConfidence) {
-		Map<String, Map<String, Map<Node, Map<Node, Float>>>> entsets = new HashMap<>();
-		for (String modifier : modifiers) {
-			entsets.put(modifier, new HashMap<>());
-		}
+	public static Map<String, Map<Node, Map<Node, Float>>> getEntailmentSetsForModifiers(Set<String> modifiers, PGraph graph, boolean weightConfidence) {
+		Map<String, Map<Node, Map<Node, Float>>> entsets = new HashMap<>();
 
 		for (String modifier : modifiers) {
 			String mod = modifier + "__";
@@ -152,7 +146,7 @@ public class CausalityTest {
 					.filter(n -> n.id.contains(mod))
 					.collect(Collectors.toMap(n -> n, n -> getEntailments(n, graph, weightConfidence)));
 
-			entsets.get(modifier).put(graph.types, ents);
+			entsets.put(modifier, ents);
 		}
 
 		return entsets;
@@ -192,7 +186,7 @@ public class CausalityTest {
 		return f1;
 	}
 
-	public static Double[] entsetJaccardSim(Map<String, Map<String, Float>> predsA, Map<String, Map<String, Float>> predsB) {
+	public static List<Double> entsetJaccardSim(Map<String, Map<String, Float>> predsA, Map<String, Map<String, Float>> predsB) {
 		List<Double> jaccards = new ArrayList<>();
 
 		for (String predA : predsA.keySet()) {
@@ -206,10 +200,12 @@ public class CausalityTest {
 			jaccards.add(j);
 		}
 
-		double mean = jaccards.stream().reduce(0., Double::sum)/jaccards.size();
-		double var = jaccards.stream().map(x -> Math.pow(x - mean, 2)).reduce(0., Double::sum)/(jaccards.size()-1);
+		return jaccards;
 
-		return new Double[]{mean, var, (double) jaccards.size()};
+//		double mean = jaccards.stream().reduce(0., Double::sum)/jaccards.size();
+//		double var = jaccards.stream().map(x -> Math.pow(x - mean, 2)).reduce(0., Double::sum)/(jaccards.size()-1);
+//
+//		return new Double[]{mean, var, (double) jaccards.size()};
 	}
 
 	public static int getConfidence(String id_ant, String id_con) {
@@ -289,8 +285,10 @@ public class CausalityTest {
 		if (weightConfidence) {
 			System.out.println("Reading occurrence files...");
 			PGraph.setPredToOcc(ConstantsGraphs.root);
+			System.out.println("Finished reading occurrence files");
 		}
-		System.out.println("Scanning graphs...");
+
+		List<Double> jaccards = new ArrayList<>();
 
 		for (PGraph graph : GraphSet.generator()) {
 			if (graph.nodes.isEmpty()) { continue; }
@@ -298,25 +296,24 @@ public class CausalityTest {
 				graph.setSortedEdges();
 			}
 
-			Map<String, Map<String, Map<Node, Map<Node, Float>>>> entNodes = getEntailmentSetsForModifiers(modifiers, graph, weightConfidence);
-			Map<String, Map<Node, Map<Node, Float>>> entNodesA = entNodes.get(modifierA);
-			Map<String, Map<Node, Map<Node, Float>>> entNodesB = entNodes.get(modifierB);
-
-			for (String type : entNodesA.keySet()) {
-				if (!entNodesB.containsKey(type)) { continue; }
-
-				Map<String, Map<String, Float>> entPredsA = entNodesToEntPreds(entNodesA.get(type), true);
-				Map<String, Map<String, Float>> entPredsB = entNodesToEntPreds(entNodesB.get(type), true);
+			// { Modifier : type : node : entailedNode : score }
+			Map<String, Map<Node, Map<Node, Float>>> entNodes = getEntailmentSetsForModifiers(modifiers, graph, weightConfidence);
+			Map<String, Map<String, Float>> entPredsA = entNodesToEntPreds(entNodes.get(modifierA), true);
+			Map<String, Map<String, Float>> entPredsB = entNodesToEntPreds(entNodes.get(modifierB), true);
 
 //				Float div = entsetDivergance(entPredsFail, entPredsTry);
 //				if (Float.isNaN(div)) { continue; }
 //				System.out.println(type + ": " + div);
 
-				Double[] sim = entsetJaccardSim(entPredsA, entPredsB);
-				if (Double.isNaN(sim[0])) { continue; }
-				System.out.println(type + ": mean=" + sim[0] + " var=" + sim[1] + " count=" + sim[2]);
-			}
+			List<Double> sims = entsetJaccardSim(entPredsA, entPredsB);
+			jaccards.addAll(sims);
+//			if (Double.isNaN(sim[0])) { continue; }
 		}
+
+		double mean = jaccards.stream().reduce(0., Double::sum)/jaccards.size();
+		double var = jaccards.stream().map(x -> Math.pow(x - mean, 2)).reduce(0., Double::sum)/(jaccards.size()-1);
+
+		System.out.println(modifierA + "@" + modifierB + " : mean=" + mean + " var=" + var + " count=" + jaccards.size());
 	}
 
 	public static void main(String[] args) throws FileNotFoundException {
@@ -327,9 +324,11 @@ public class CausalityTest {
 //		printCausalEntailments();
 //		printPredicateModifiers();
 //		printPredicatesContaining("trying__");
-		printModifierSimilarity("trying", "failed", false);
 
-
+		List<String> modifiersA = Lists.newArrayList("want", "wanted");
+		for (String modA : modifiersA) {
+			printModifierSimilarity(modA, "failed", false);
+		}
 
 		System.out.println("END");
 	}

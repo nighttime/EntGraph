@@ -1,62 +1,96 @@
 package graph;
 
-import java.io.File;
+import com.google.common.collect.Sets;
+
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.lang.System.exit;
+import static java.lang.System.setErr;
+
 // Integrates graphs of different predicate valency
 public class ValencyIntegrator {
 
     // Integrate an argwise graph and binary graph in two-typed space
-    public static void integrateBinaryGraphPair(Path pathAGraph, Path pathBGraph, Path dirDest) {
-//        List<String> linesUn;
-//        List<String> linesBi;
-//        try {
-//            linesUn = Files.readAllLines(pathUGraph);
-//        } catch (IOException e) {
-//            System.err.println("Could not read unary file: " + e.getMessage());
-//            return;
-//        }
-//        try {
-//            linesBi = Files.readAllLines(pathUGraph);
-//        } catch (IOException e) {
-//            System.err.println("Could not read binary file: " + e.getMessage());
-//            return;
-//        }
-
+    public static void integrateBinaryGraphPair(Path pathAGraph, Path pathBGraph, Path dirDest) throws IOException {
         PGraph graphA = new PGraph(pathAGraph.toString());
         PGraph graphB = new PGraph(pathBGraph.toString());
 
-        // Write file header
+        // Initialize file writer
+        PrintWriter output = new PrintWriter(new BufferedWriter(new FileWriter(dirDest.toString())));
 
-        // Start with existing nodes in the binary graph
+        // Write file header
+        output.println("types: " + graphB.types + ", num preds: " + graphB.nodes.size());
+
+        // Write out nodes from the binary graph
         for (Node node : graphB.nodes) {
             String pred = node.id;
-            // Write header for this node
 
-            // Write header for binary -> binary entailments
+            String[] argIDs = {"[arg1]", "[arg2]"};
+            String[] argwisePreds = {argIDs[0] + pred, argIDs[1] + pred};
 
-            writeEntailments(node, graphB);
-
-            // Write header for argwise -> argwise entailments
-
-            String[] argwisePreds = {"[sub]" + pred, "[obj]" + pred};
-            for (String argwisePred : argwisePreds) {
-                if (graphA.pred2node.containsKey(argwisePred)) {
-                    Node argwiseNode = graphA.pred2node.get(argwisePred);
-                    writeEntailments(argwiseNode, graphA);
-                }
+            // Determine if node has a nonzero number of edges
+            int numBinaryEntailments = node.oedges.size();
+            int numArg1Entailments = graphA.pred2node.containsKey(argwisePreds[0]) ? graphA.pred2node.get(argwisePreds[0]).oedges.size() : 0;
+            int numArg2Entailments = graphA.pred2node.containsKey(argwisePreds[1]) ? graphA.pred2node.get(argwisePreds[1]).oedges.size() : 0;
+            int totalEntailments = numBinaryEntailments + numArg1Entailments + numArg2Entailments;
+            if (totalEntailments == 0) {
+                continue;
             }
+
+            // Write node header
+            output.println("predicate: " + pred);
+            output.println("num neighbors: " + totalEntailments);
+            output.println();
+            output.println("BInc sims");
+
+            // Write B->B entailments
+            if (numBinaryEntailments > 0) {
+                writeEntailments("", "", node, graphB, output);
+            }
+
+            // Write B->U entailments (convert [sub]->[arg1], [obj]->[arg2])
+            // (in the case of type-symmetric binary graphs we need to add appropriate _1 and _2 argument labels to unaries)
+            String[] graphTypes = graphB.types.split("#");
+            boolean symmetricTypes = graphTypes[0].equals(graphTypes[1]);
+            String[] predTypes = pred.substring(pred.indexOf("#")+1).split("#");
+
+            if (numArg1Entailments > 0) {
+                Node argwiseNode = graphA.pred2node.get(argwisePreds[0]);
+                String suffix = symmetricTypes ? predTypes[0].substring(predTypes[0].indexOf("_")) : "";
+                writeEntailments(argIDs[0], suffix, argwiseNode, graphA, output);
+            }
+
+            if (numArg2Entailments > 0) {
+                Node argwiseNode = graphA.pred2node.get(argwisePreds[1]);
+                String suffix = symmetricTypes ? predTypes[1].substring(predTypes[1].indexOf("_")) : "";
+                writeEntailments(argIDs[1], suffix, argwiseNode, graphA, output);
+            }
+
+            output.println();
+            output.println();
         }
+
+        output.flush();
+        output.close();
     }
 
-    public static void writeEntailments(Node node, PGraph graph) {
+    public static void writeEntailments(String prefix, String suffix, Node node, PGraph graph, PrintWriter output) {
         for (Oedge edge : node.oedges) {
-            String entailedPred = graph.idx2node.get(edge.nIdx).id;
             float score = edge.sim;
-            // Write entailment
+            if (score < 0.001) { continue; }
+
+            String entailedPred = graph.idx2node.get(edge.nIdx).id;
+            boolean unaryPred = entailedPred.startsWith("[unary]");
+            if (unaryPred) {
+                entailedPred = entailedPred.replaceFirst("\\[unary\\]", "");
+            }
+
+//            output.println(prefix + entailedPred + suffix + " " + score);
+            output.println(entailedPred + suffix + " " + score);
         }
     }
 
@@ -66,14 +100,28 @@ public class ValencyIntegrator {
         Set<String> filenamesBinary = graphFilenamesFromDirectory(dirBinary);
 
         // Identify overlapping graphs (primary case), unary-only graphs, and binary-only graphs
-        Set<String> intersection = new HashSet<>(filenamesArgwise);
-        intersection.retainAll(filenamesBinary);
-        filenamesArgwise.removeAll(intersection);
-        filenamesBinary.removeAll(intersection);
+        Set<String> filenamesIntersection = Sets.intersection(filenamesArgwise, filenamesBinary);
+        filenamesArgwise = Sets.intersection(filenamesArgwise, filenamesIntersection);
+        filenamesBinary = Sets.intersection(filenamesBinary, filenamesIntersection);
 
-        for (String fname : intersection) {
-            fname = "organization#location_sim.txt";
-            integrateBinaryGraphPair(dirArgwise.resolve(fname), dirBinary.resolve(fname), dirDest);
+        if (filenamesIntersection.size() == 0) {
+            System.err.println("No common graphs between binary and argwise sets");
+            exit(1);
+        }
+
+        File destFolder = new File(dirDest.toString());
+        destFolder.mkdir();
+
+        for (String fname : filenamesIntersection) {
+            Path destFname = destFolder.toPath().resolve(fname);
+            try {
+                integrateBinaryGraphPair(dirArgwise.resolve(fname), dirBinary.resolve(fname), destFname);
+                System.out.println("Integrated: " + fname);
+            } catch (IOException e) {
+                System.err.println("IOException: " + fname);
+                System.err.println(e.getMessage());
+                e.printStackTrace();
+            }
         }
 
 //        for (String fname : filenamesUn) {
@@ -88,17 +136,23 @@ public class ValencyIntegrator {
     // Returns a set of filenames of each graph in the given directory
     public static Set<String> graphFilenamesFromDirectory(Path directory) {
         File[] files = directory.toFile().listFiles((dir, name) -> name.endsWith("_sim.txt"));
-        return Arrays.stream(files).map(File::getName).collect(Collectors.toSet());
+        Set<String> ret = Arrays.stream(files).map(File::getName).collect(Collectors.toSet());
+        return ret;
     }
 
     public static void main(String[] args) {
-        // EXPECTED PROGRAM ARGS
-        // 1 Destination folder for integrated graphs
-        // 2 Source folder for unary/argwise graphs
-        // 3 Source folder for binary graphs
+        // *** EXPECTED PROGRAM ARGS
+        // 0 Destination folder for integrated graphs
+        // 1 Source folder for unary/argwise graphs
+        // 2 Source folder for binary graphs
+        // *** EXPECTED CONDITIONS
+        // - only BInc scores will be written out, so no other sims scores are needed in the input
+
         if (args.length != 3) {
-            args = new String[]{"newsspike_sims/newsspike_multivalent", "newsspike_sims/newsspike_argwise_500k_argnumbers_3_3", "newsspike_sims/newsspike_argwise_500k_argnumbers_3_3"};
-            System.err.println("Using default program args: " + Arrays.toString(args));
+            args = new String[]{"newsspike_sims/multivalent", "newsspike_sims/newsspike_integrator_test_argwise", "newsspike_sims/newsspike_integrator_test_binary"};
+            System.out.println("* Using default program args: " + Arrays.toString(args));
+        } else {
+            System.out.println("* Using given program args: " + Arrays.toString(args));
         }
 
         Path dirDest = Paths.get(args[0]);

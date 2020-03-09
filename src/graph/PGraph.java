@@ -370,7 +370,7 @@ public class PGraph implements Comparable<PGraph> {
 			return true;
 		}
 		return !ConstantsAgg.generateArgwiseGraphs && isConjunction(pred);
-	} // TODO: Nick asks: why is a conjunction bad? also what is a "conjunction" not clear what this is doing
+	}
 
 	// isConjunction or a bad thing!
 	static boolean isConjunction(String pred) {

@@ -746,7 +746,7 @@ public class EntailGraph extends SimpleEntailGraph {
 
 				PredicateVector pvec1 = pvecs.get(pvecIdx1);
 
-				boolean pvec1isArgwise = pvec1.predicate.contains("[sub]") || pvec1.predicate.contains("[obj]");
+				boolean pvec1isArgwise = pvec1.predicate.contains("[arg1]") || pvec1.predicate.contains("[arg2]");
 				boolean pvec1isUnary = pvec1.predicate.contains("[unary]");
 
 				if (val1 == 0) {
@@ -775,7 +775,7 @@ public class EntailGraph extends SimpleEntailGraph {
 						//   We require information about both nodes to compute a directed edge's score.
 						//   So at this stage it is only safe to filter out edges which we don't need in either direction.
 						//   Further filtering can be done later in the computeSimilarities() method.
-						boolean pvec2isArgwise = pvec2.predicate.contains("[sub]") || pvec2.predicate.contains("[obj]");
+						boolean pvec2isArgwise = pvec2.predicate.contains("[arg1]") || pvec2.predicate.contains("[arg2]");
 						boolean pvec2isUnary = pvec2.predicate.contains("[unary]");
 						if ((pvec1isArgwise && pvec2isArgwise) || (pvec1isUnary && pvec2isUnary)){
 							continue;
@@ -937,14 +937,14 @@ public class EntailGraph extends SimpleEntailGraph {
 		String[] typeNames = pred.substring(role_idx+1).split("#");
 		String[] graphTypes = this.types.split("#");
 
-		String pred_sub = "[sub]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
-		String pred_obj = "[obj]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
+		String pred_arg1 = "[arg1]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
+		String pred_arg2 = "[arg2]" + pred; // pred.substring(0,role_idx) + "#" + typeNames[0] + "#" + typeNames[1];
 
-		String featName_sub = featNames[0] + "-" + graphTypes[0];
-		String featName_obj = featNames[1] + "-" + graphTypes[1];
+		String featName_arg1 = featNames[0] + "-" + graphTypes[0];
+		String featName_arg2 = featNames[1] + "-" + graphTypes[1];
 
-		addArgumentwisePredicate(pred_sub, featName_sub, timeInterval, count, threshold, preComputedScore);
-		addArgumentwisePredicate(pred_obj, featName_obj, timeInterval, count, threshold, preComputedScore);
+		addArgumentwisePredicate(pred_arg1, featName_arg1, timeInterval, count, threshold, preComputedScore);
+		addArgumentwisePredicate(pred_arg2, featName_arg2, timeInterval, count, threshold, preComputedScore);
 	}
 
 	void addUnaryPredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {

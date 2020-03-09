@@ -804,7 +804,12 @@ public class EntailGraphFactoryAggregator {
 		// Previous run of this program may have been terminated
 		// Remove graph types that have already been computed in results folder
 		if (resumeProgress) {
-			File[] graphFiles = new File(ConstantsAgg.simsFolder).listFiles((dir, name) -> name.endsWith("_sim.txt"));
+			File progressFolder = new File(ConstantsAgg.simsFolder);
+			if (!progressFolder.exists()) {
+				System.err.println("Progress folder does not exist.");
+				exit(1);
+			}
+			File[] graphFiles = progressFolder.listFiles((dir, name) -> name.endsWith("_sim.txt"));
 			List<String> finishedGraphNames = Arrays.stream(graphFiles)
 					.map(f -> f.getName())
 					.map(s -> s.substring(0,s.lastIndexOf("_sim")))
@@ -823,7 +828,7 @@ public class EntailGraphFactoryAggregator {
 		System.out.println("== Starting Local Graph Construction");
 
 		// Pre-allocate types for graph instantiation
-		List<String> basicGraphTypes = generateBasicGraphTypes(true);
+		List<String> basicGraphTypes = generateBasicGraphTypes(false);
 //		List<String> basicGraphTypes = Arrays.asList("person#person");
 
 		if (basicGraphTypes.isEmpty()) {
