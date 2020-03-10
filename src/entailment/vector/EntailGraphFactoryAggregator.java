@@ -27,7 +27,6 @@ import entailment.linkingTyping.DistrTyping;
 import entailment.linkingTyping.SimpleSpot;
 import entailment.linkingTyping.StanfordNERHandler;
 import entailment.randWalk.RandWalkMatrix;
-import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
 
 import static java.lang.System.exit;
 
@@ -729,7 +728,7 @@ public class EntailGraphFactoryAggregator {
 			System.out.println("adding " + t1 + " to thread " + thread);
 			entGrFacts[thread].acceptableTypes.add(t1);
 
-			if (t1.contains("#")) {
+			if (t1.contains("#") && ConstantsAgg.generateReverseTypeGraphs) {
 				String[] type_split = t1.split("#");
 				String t2 = type_split[1] + "#" + type_split[0];
 				entGrFacts[thread].acceptableTypes.add(t2);
@@ -754,7 +753,7 @@ public class EntailGraphFactoryAggregator {
 
 	// Generate all possible type-pairs of graphs (includes same-typed graphs e.g. person#person)
 	// Does NOT include type reversals (e.g. person#location & location#person), so this can be done at the thread-level more optimally
-	public static List<String> generateBasicGraphTypes(boolean resumeProgress) {
+	public static List<String> generateBasicGraphTypes() {
 		Set<String> entityTypeSet = new HashSet<>();
 
 		entityTypeSet.add("thing");
@@ -801,62 +800,104 @@ public class EntailGraphFactoryAggregator {
 			graphTypes.addAll(entityTypes);
 		}
 
-		// Previous run of this program may have been terminated
-		// Remove graph types that have already been computed in results folder
-		if (resumeProgress) {
-			File progressFolder = new File(ConstantsAgg.simsFolder);
-			if (!progressFolder.exists()) {
-				System.err.println("Progress folder does not exist.");
-				exit(1);
-			}
-			File[] graphFiles = progressFolder.listFiles((dir, name) -> name.endsWith("_sim.txt"));
-			List<String> finishedGraphNames = Arrays.stream(graphFiles)
-					.map(f -> f.getName())
-					.map(s -> s.substring(0,s.lastIndexOf("_sim")))
-					.collect(Collectors.toList());
-			if (finishedGraphNames.size() > 0) {
-				System.out.println("* Resuming progress from: " + ConstantsAgg.simsFolder);
-				graphTypes.removeAll(finishedGraphNames);
-			}
-		}
-
 		Collections.sort(graphTypes);
 		return graphTypes;
 	}
 
+	public static List<String> filterPrecomputedGraphs(List<String> proposedGraphTypes) {
+		File progressFolder = new File(ConstantsAgg.simsFolder);
+		if (!progressFolder.exists()) {
+			System.err.println("Progress folder does not exist.");
+			exit(1);
+		}
+		File[] graphFiles = progressFolder.listFiles((dir, name) -> name.endsWith("_sim.txt"));
+		List<String> finishedGraphNames = Arrays.stream(graphFiles)
+				.filter(f -> f.length() > 0)
+				.map(File::getName)
+				.map(s -> s.substring(0,s.lastIndexOf("_sim")))
+				.collect(Collectors.toList());
+
+		List<String> filteredGraphTypes = new ArrayList<>(proposedGraphTypes);
+		filteredGraphTypes.removeAll(finishedGraphNames);
+		return filteredGraphTypes;
+	}
+
+	public static List<String> extractMatchingGraphTypesFromDir() {
+		File folder = new File(ConstantsAgg.matchGraphTypesFolder);
+		if (!folder.exists()) {
+			System.err.println("Folder containing graphs with types to match does not exist.");
+			exit(1);
+		}
+		File[] graphFiles = folder.listFiles((d, name) -> name.endsWith("_sim.txt"));
+		List<String> matchedGraphTypes = Arrays.stream(graphFiles)
+				.map(File::getName)
+				.map(s -> s.substring(0,s.lastIndexOf("_sim")))
+				.collect(Collectors.toList());
+		if (matchedGraphTypes.size() == 0) {
+			System.out.println("No graphs were found for match");
+			exit(1);
+		}
+
+		Collections.sort(matchedGraphTypes);
+		return matchedGraphTypes;
+	}
+
 	public static void main(String[] args) throws InterruptedException, FileNotFoundException {
+
+		// During graph building phase, build only 1/N graphs at a time to reduce memory constraints
+		boolean resumeProgress = false;
+		int numGraphBuildingPartitions = 1;
+		int graphPartitionIndex = 0;
+		if (args.length == 3 && args[0].equals("--resume")) {
+			resumeProgress = true;
+			numGraphBuildingPartitions = Integer.parseInt(args[1]);
+			graphPartitionIndex = Integer.parseInt(args[2]);
+		} else if (args.length > 0) {
+			System.err.println("Some arguments were entered, but they do not conform to expectations and will be ignored");
+		}
+
 		System.out.println("== Starting Local Graph Construction");
 
 		// Pre-allocate types for graph instantiation
-		List<String> basicGraphTypes = generateBasicGraphTypes(false);
-//		List<String> basicGraphTypes = Arrays.asList("person#person");
-
-		if (basicGraphTypes.isEmpty()) {
-			System.out.println("This job is already finished. To start a new job, change params or rename the (completed) results folder.");
-			return;
+		List<String> graphTypes;
+		if (ConstantsAgg.matchGraphTypesFolder != null) {
+			graphTypes = extractMatchingGraphTypesFromDir();
 		} else {
-			System.out.println("Building graph types:");
-			System.out.println(basicGraphTypes);
+			graphTypes = generateBasicGraphTypes();
+		}
+
+//		List<String> graphTypes = Arrays.asList("person#person");
+
+		// Keep track of the total job size for partitioning below
+		int totalTypesInJob = graphTypes.size();
+
+		// Previous run of this program may have been terminated
+		// Remove graph types that have already been computed in results folder
+		if (resumeProgress) {
+			System.out.println("* Resuming progress from: " + ConstantsAgg.simsFolder);
+			graphTypes = filterPrecomputedGraphs(graphTypes);
+		}
+
+		if (graphTypes.isEmpty()) {
+			System.out.println("This job is already finished. To start a new job, change params or rename the (completed) results folder.");
+			exit(0);
 		}
 
 		// Randomize types to reduce likelihood of processing two large graphs at once
-		Collections.shuffle(basicGraphTypes);
+		Collections.shuffle(graphTypes);
 
 		// Partition graph type-space and build one partition at a time
-		int partitionSize = (int) Math.ceil(Double.valueOf(basicGraphTypes.size())/ConstantsAgg.numGraphBuildingPasses);
-		for (int p = 0; p < ConstantsAgg.numGraphBuildingPasses; p++) {
-			int start = p * partitionSize;
-			int end = Math.min(start + partitionSize, basicGraphTypes.size());
-			if (start > basicGraphTypes.size()) {
-				break;
-			}
+		int partitionSize = (int) Math.ceil(Double.valueOf(totalTypesInJob)/numGraphBuildingPartitions);
+		int chunkSize = Math.min(partitionSize, graphTypes.size());
+		List<String> typePartition = graphTypes.subList(0, chunkSize);
+		System.out.println("== Starting Partition: " + (graphPartitionIndex+1) + " of " + numGraphBuildingPartitions);
+//		runAggregationForTypePartition(typePartition);
 
-			List<String> typePartition = basicGraphTypes.subList(start, end);
-			System.out.println("== Starting Partition: " + (p+1) + " of " + ConstantsAgg.numGraphBuildingPasses);
-			runAggregationForTypePartition(typePartition);
+		if (graphPartitionIndex+1 == numGraphBuildingPartitions) {
+			System.out.println("== Finished Local Graph Construction");
+		} else {
+			System.out.println("== Finished Partition: " + (graphPartitionIndex+1) + " of " + numGraphBuildingPartitions);
 		}
-
-		System.out.println("== Finished Local Graph Construction");
 	}
 
 	public enum TypeScheme {

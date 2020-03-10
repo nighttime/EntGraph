@@ -89,10 +89,14 @@ public class ConstantsAgg {
 	// Generate graphs with entailments calculated for each predicate argument; also entailments with unaries
 	public static boolean generateArgwiseGraphs = true;
 	// Must have generateArgwiseGraphs = true in order to also make unary-only graphs
-	public static boolean generateUnaryOnlyGraphs = true;
+	public static boolean generateUnaryOnlyGraphs = false;
 	// Include unary predicates which are possessive e.g. "Obama's strength"
 	public static boolean keepPossessiveUnaries = false;
-	// During graph building phase, build only 1/N graphs at a time to reduce memory constraints
-	public static int numGraphBuildingPasses = 5;
+	// e.g. location#thing AND thing#location? Or without the type reversal?
+	public static boolean generateReverseTypeGraphs = false;
+	// If null, will generate graphs for a complete set of types
+	// If pointing to a folder of sims files, will generate graphs to match these graph types
+//	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
+	public static String matchGraphTypesFolder = "newsspike_sims/newsspike_argwise_argnumbers_10_10";
 
 }

@@ -2,7 +2,6 @@ package graph.Causal;
 
 import com.google.common.collect.*;
 import constants.ConstantsGraphs;
-import data.Stats;
 import graph.Edge;
 import graph.Node;
 import graph.Oedge;
