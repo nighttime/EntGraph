@@ -100,7 +100,7 @@ public class EntailGraphFactory implements Runnable {
 	}
 
 	void initializeGraphs() {
-		for (String type : acceptableTypes) {
+		for (String type : typeToOrderedType.values()) {
 			String opName = typedEntGrDir + "/" + type;
 			boolean unary = ConstantsAgg.generateArgwiseGraphs && !type.contains("#");
 			EntailGraph graph = new EntailGraph(type, opName, ConstantsAgg.minPredForArgPair, unary);

@@ -723,15 +723,30 @@ public class EntailGraphFactoryAggregator {
 		System.out.println("assigning types");
 		System.out.println("type partition size: " + types.size());
 
+		// Assign acceptable types to each thread
 		for (String t1 : types) {
 			int thread = (int) (Math.random() * ConstantsAgg.numThreads);
 			System.out.println("adding " + t1 + " to thread " + thread);
 			entGrFacts[thread].acceptableTypes.add(t1);
 
-			if (t1.contains("#") && ConstantsAgg.generateReverseTypeGraphs) {
+			if (t1.contains("#")) {
 				String[] type_split = t1.split("#");
 				String t2 = type_split[1] + "#" + type_split[0];
 				entGrFacts[thread].acceptableTypes.add(t2);
+			}
+		}
+
+		// Assign typeToOrderedType to each thread in the case we're matching an existing graph set
+		if (ConstantsAgg.matchGraphTypesFolder != null) {
+			Map<String, String> orderedTypeMap = new HashMap<>();
+			for (String t1 : types) {
+				String[] type_split = t1.split("#");
+				String t2 = type_split[1] + "#" + type_split[0];
+				orderedTypeMap.put(t1, t1);
+				orderedTypeMap.put(t2, t1);
+			}
+			for (EntailGraphFactory egf : entGrFacts) {
+				egf.typeToOrderedType = new HashMap<>(orderedTypeMap);
 			}
 		}
 
@@ -891,7 +906,7 @@ public class EntailGraphFactoryAggregator {
 		int chunkSize = Math.min(partitionSize, graphTypes.size());
 		List<String> typePartition = graphTypes.subList(0, chunkSize);
 		System.out.println("== Starting Partition: " + (graphPartitionIndex+1) + " of " + numGraphBuildingPartitions);
-//		runAggregationForTypePartition(typePartition);
+		runAggregationForTypePartition(typePartition);
 
 		if (graphPartitionIndex+1 == numGraphBuildingPartitions) {
 			System.out.println("== Finished Local Graph Construction");

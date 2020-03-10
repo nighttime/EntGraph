@@ -92,8 +92,6 @@ public class ConstantsAgg {
 	public static boolean generateUnaryOnlyGraphs = false;
 	// Include unary predicates which are possessive e.g. "Obama's strength"
 	public static boolean keepPossessiveUnaries = false;
-	// e.g. location#thing AND thing#location? Or without the type reversal?
-	public static boolean generateReverseTypeGraphs = false;
 	// If null, will generate graphs for a complete set of types
 	// If pointing to a folder of sims files, will generate graphs to match these graph types
 //	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
