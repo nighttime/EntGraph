@@ -53,15 +53,15 @@ public class ConstantsAgg {
 	public static EntailGraphFactoryAggregator.LinkPredModel linkPredModel = EntailGraphFactoryAggregator.LinkPredModel.ConvE;
 
 
-	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
-//	public static String relAddress = "news_gen_argwise/news_gen_argwise_500k.json";
+//	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
+	public static String relAddress = "news_gen_argwise/news_gen_argwise_500k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
-//	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
-	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;
+	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
+//	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;
 
 	public static String foreinTypesAddress = "data/german_types.txt";// only important if isForeign=True
 
@@ -97,6 +97,6 @@ public class ConstantsAgg {
 	// If null, will generate graphs for a complete set of types
 	// If pointing to a folder of sims files, will generate graphs to match these graph types
 //	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
-	public static String matchGraphTypesFolder = "newsspike_sims/newsspike_argwise_argnumbers_10_10";
+	public static String matchGraphTypesFolder = "newsspike_sims/newsspike_argwise_50k_3_3";
 
 }

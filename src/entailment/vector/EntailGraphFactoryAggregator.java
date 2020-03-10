@@ -807,8 +807,8 @@ public class EntailGraphFactoryAggregator {
 	public static List<String> filterPrecomputedGraphs(List<String> proposedGraphTypes) {
 		File progressFolder = new File(ConstantsAgg.simsFolder);
 		if (!progressFolder.exists()) {
-			System.err.println("Progress folder does not exist.");
-			exit(1);
+			progressFolder.mkdir();
+			return proposedGraphTypes;
 		}
 		File[] graphFiles = progressFolder.listFiles((dir, name) -> name.endsWith("_sim.txt"));
 		List<String> finishedGraphNames = Arrays.stream(graphFiles)
