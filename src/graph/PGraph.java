@@ -537,6 +537,9 @@ public class PGraph implements Comparable<PGraph> {
 					rawPred2PGraphs.put(rawPred, new HashSet<>());
 				}
 				rawPred2PGraphs.get(rawPred).add(i);
+				if (s.split("#").length == 2) {
+					System.out.println("hi");
+				}
 			}
 			System.out.println("pgraph name: " + pGraphs.get(i).name + " " + pGraphs.get(i).nodes.size());
 		}

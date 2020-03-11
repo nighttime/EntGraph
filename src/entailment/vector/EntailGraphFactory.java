@@ -814,9 +814,15 @@ public class EntailGraphFactory implements Runnable {
 		boolean inserted = false;
 		for (String t : acceptableTypes) {
 			if (!t.contains(type)) { continue; }
-			inserted = true;
 			EntailGraph graph = thisTypesToGraph.get(t);
+			if (graph == null) {
+				// Both binary type orderings will be present in acceptableTypes e.g. location#thing and thing#location.
+				// However we only have one graph for both (typeToOrderedType maps both orderings to just one of them).
+				// We need to skip the ordering which does not have its own graph so that we are inserting the unary only once.
+				continue;
+			}
 			graph.addUnaryPredicate(typedPred, arg, timeInterval, count, -1, -1);
+			inserted = true;
 			EntailGraphFactoryAggregator.inc_numUnaryNodesBroadcasted();
 		}
 		if (inserted) EntailGraphFactoryAggregator.inc_numUnaryNodes();
