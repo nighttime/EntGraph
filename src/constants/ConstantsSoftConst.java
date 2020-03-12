@@ -6,8 +6,8 @@ public class ConstantsSoftConst {
 	public static int numIters = 4;//4 for TACL experiments
 	// public static double lmbda = .001;// lmbda for L1 regularization
 	public static double lmbda = .01;// lmbda for L1 regularization //.01 for ALL TACL experiments
-	public static double lmbda2 = 1.5;//1.5 for all TACL experiments
-	public static double epsilon = .3;
+	public static double lmbda2 = 1.5;//1.5 for all TACL experiments // set=0 to skip between-graph step
+	public static double epsilon = .3;// set=1 to skip paraphrase resolution
 	public static double epsilonTrans = 1;//was .1
 	public static double lmbda3 = 0;// was .01
 

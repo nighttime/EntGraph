@@ -61,12 +61,14 @@ public class ValencyIntegrator {
             if (numArg1Entailments > 0) {
                 Node argwiseNode = graphA.pred2node.get(argwisePreds[0]);
                 String suffix = symmetricTypes ? predTypes[0].substring(predTypes[0].indexOf("_")) : "";
+                suffix += "#" + predTypes[1];
                 writeEntailments(argIDs[0], suffix, argwiseNode, graphA, output);
             }
 
             if (numArg2Entailments > 0) {
                 Node argwiseNode = graphA.pred2node.get(argwisePreds[1]);
                 String suffix = symmetricTypes ? predTypes[1].substring(predTypes[1].indexOf("_")) : "";
+                suffix += "#" + predTypes[0];
                 writeEntailments(argIDs[1], suffix, argwiseNode, graphA, output);
             }
 
@@ -81,16 +83,16 @@ public class ValencyIntegrator {
     public static void writeEntailments(String prefix, String suffix, Node node, PGraph graph, PrintWriter output) {
         for (Oedge edge : node.oedges) {
             float score = edge.sim;
-            if (score < 0.001) { continue; }
+            if (score < 0.05) { continue; }
 
-            String entailedPred = graph.idx2node.get(edge.nIdx).id;
+            String entailedPred = graph.idx2node.get(edge.nIdx).id + suffix;
             boolean unaryPred = entailedPred.startsWith("[unary]");
             if (unaryPred) {
                 entailedPred = entailedPred.replaceFirst("\\[unary\\]", "");
             }
 
-//            output.println(prefix + entailedPred + suffix + " " + score);
-            output.println(entailedPred + suffix + " " + score);
+//            output.println(prefix + entailedPred + " " + score);
+            output.println(entailedPred + " " + score);
         }
     }
 
@@ -149,7 +151,7 @@ public class ValencyIntegrator {
         // - only BInc scores will be written out, so no other sims scores are needed in the input
 
         if (args.length != 3) {
-            args = new String[]{"newsspike_sims/multivalent", "newsspike_sims/newsspike_integrator_test_argwise", "newsspike_sims/newsspike_integrator_test_binary"};
+            args = new String[]{"newsspike_sims/multivalent_dummy", "newsspike_sims/newsspike_integrator_test_argwise", "newsspike_sims/newsspike_integrator_test_binary"};
             System.out.println("* Using default program args: " + Arrays.toString(args));
         } else {
             System.out.println("* Using given program args: " + Arrays.toString(args));
