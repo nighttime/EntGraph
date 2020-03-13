@@ -83,7 +83,7 @@ public class ValencyIntegrator {
     public static void writeEntailments(String prefix, String suffix, Node node, PGraph graph, PrintWriter output) {
         for (Oedge edge : node.oedges) {
             float score = edge.sim;
-            if (score < 0.05) { continue; }
+            if (score < 0.03) { continue; }
 
             String entailedPred = graph.idx2node.get(edge.nIdx).id + suffix;
             boolean unaryPred = entailedPred.startsWith("[unary]");
@@ -96,19 +96,27 @@ public class ValencyIntegrator {
         }
     }
 
-    public static void integrateEntailmentGraphs(Path dirArgwise, Path dirBinary, Path dirDest) {
+    public static void integrateEntailmentGraphs(Path dirArgwise, Path dirBinary, Path dirDest, boolean checkOnly) {
         // Fetch filenames for each graph in the given directories
         Set<String> filenamesArgwise = graphFilenamesFromDirectory(dirArgwise);
         Set<String> filenamesBinary = graphFilenamesFromDirectory(dirBinary);
 
         // Identify overlapping graphs (primary case), unary-only graphs, and binary-only graphs
         Set<String> filenamesIntersection = Sets.intersection(filenamesArgwise, filenamesBinary);
-        filenamesArgwise = Sets.intersection(filenamesArgwise, filenamesIntersection);
-        filenamesBinary = Sets.intersection(filenamesBinary, filenamesIntersection);
+        filenamesArgwise = Sets.difference(filenamesArgwise, filenamesIntersection);
+        filenamesBinary = Sets.difference(filenamesBinary, filenamesIntersection);
 
         if (filenamesIntersection.size() == 0) {
             System.err.println("No common graphs between binary and argwise sets");
             exit(1);
+        }
+
+        System.out.println("Intersection of binary and argwise graphs: " + filenamesIntersection.size());
+        System.out.println("Argwise-only graphs: " + filenamesArgwise.size());
+        System.out.println("Binary-only graphs: " + filenamesBinary.size());
+
+        if (checkOnly) {
+            exit(0);
         }
 
         File destFolder = new File(dirDest.toString());
@@ -150,11 +158,21 @@ public class ValencyIntegrator {
         // *** EXPECTED CONDITIONS
         // - only BInc scores will be written out, so no other sims scores are needed in the input
 
-        if (args.length != 3) {
-            args = new String[]{"newsspike_sims/multivalent_dummy", "newsspike_sims/newsspike_integrator_test_argwise", "newsspike_sims/newsspike_integrator_test_binary"};
-            System.out.println("* Using default program args: " + Arrays.toString(args));
+        String[] defaultArgs = new String[]{"newsspike_sims/multivalent", "newsspike_sims/newsspike_integrator_test_argwise", "newsspike_sims/newsspike_integrator_test_binary"};
+        List<String> argList = Arrays.asList(args);
+        boolean checkOnly = false;
+
+        // Print stats on which graphs will be integrated
+        if (argList.remove("--checkOnly")) {
+            checkOnly = true;
+            System.out.print("[CHECK-ONLY] ");
+        }
+
+        if (argList.size() < 3) {
+            args = defaultArgs;
+            System.out.println("Using default program args: " + Arrays.toString(args));
         } else {
-            System.out.println("* Using given program args: " + Arrays.toString(args));
+            System.out.println("Using given program args: " + Arrays.toString(args));
         }
 
         Path dirDest = Paths.get(args[0]);
@@ -162,6 +180,6 @@ public class ValencyIntegrator {
         Path dirBinary = Paths.get(args[2]);
 
         // Integrate the graphs into one set of multi-valency graphs
-        integrateEntailmentGraphs(dirArgwise, dirBinary, dirDest);
+        integrateEntailmentGraphs(dirArgwise, dirBinary, dirDest, checkOnly);
     }
 }
