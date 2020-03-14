@@ -1,0 +1,61 @@
+=================
+| Work Timeline |
+=================
+
+
+Week of... March 9
+---------------------
+
+
+Week of... March 16
+---------------------
+
+
+Week of... March 23
+---------------------
+
+
+Week of... March 30
+---------------------
+
+
+Week of... April 6
+---------------------
+# COLING: Weds April 8
+
+
+Week of... April 13
+---------------------
+* Writeup of unaries paper: results & conclusions
+
+Week of... April 20
+---------------------
+* Writeup of unaries paper: methods
+
+Week of... April 27
+---------------------
+* Writeup of unaries paper: intro & background
+
+Week of... May 4
+---------------------
+* Revision of unaries paper
+
+Week of... May 11
+---------------------
+# EMNLP: Mon May 11
+# CogALex: Thurs May 14
+
+
+Week of... May 18
+---------------------
+# TextGraphs: Weds May 20
+# Designing Meaning Representations: Weds May 20
+
+
+Week of... May 25
+---------------------
+
+
+Week of... June 1
+---------------------
+# CoNLL: Fri June 5
