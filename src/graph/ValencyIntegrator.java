@@ -83,11 +83,11 @@ public class ValencyIntegrator {
     public static void writeEntailments(String prefix, String suffix, Node node, PGraph graph, PrintWriter output) {
         for (Oedge edge : node.oedges) {
             float score = edge.sim;
-            if (score < 0.03) { continue; }
 
             String entailedPred = graph.idx2node.get(edge.nIdx).id + suffix;
             boolean unaryPred = entailedPred.startsWith("[unary]");
             if (unaryPred) {
+                if (score < 0.02) { continue; }
                 entailedPred = entailedPred.replaceFirst("\\[unary\\]", "");
             }
 

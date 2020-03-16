@@ -2,54 +2,66 @@
 | Work Timeline |
 =================
 
-
-Week of... March 9
----------------------
+* = TODO
+# = Deadline
 
 
 Week of... March 16
 ---------------------
+* Create causal dataset for B->U entailment (a la resultative construction)
+* Work on global learning
 
 
 Week of... March 23
 ---------------------
+* Continue working on global learning
+* Build QA dataset (a la Poon&Domingos) for B->U entailment
 
 
 Week of... March 30
 ---------------------
+* Finish working on global learning
+* Evaluate B->B entailment on levy dataset
 
 
 Week of... April 6
 ---------------------
-# COLING: Weds April 8
+# COLING Due: Weds April 8
+* Evaluate on QA dataset
+* Evaluate on causal dataset
 
 
 Week of... April 13
 ---------------------
-* Writeup of unaries paper: results & conclusions
+* Write up unaries paper: results & conclusions
+
 
 Week of... April 20
 ---------------------
-* Writeup of unaries paper: methods
+* Write up unaries paper: methods
+
 
 Week of... April 27
 ---------------------
-* Writeup of unaries paper: intro & background
+* Write up unaries paper: intro & background
+* Revise unaries paper
+
 
 Week of... May 4
 ---------------------
-* Revision of unaries paper
+* Revise unaries paper
+
 
 Week of... May 11
 ---------------------
-# EMNLP: Mon May 11
-# CogALex: Thurs May 14
+# EMNLP Due: Mon May 11
+# CogALex (workshop) Due: Thurs May 14
 
 
 Week of... May 18
 ---------------------
-# TextGraphs: Weds May 20
-# Designing Meaning Representations: Weds May 20
+# TextGraphs (workshop) Due: Weds May 20
+# Designing Meaning Representations (workshop) Due: Weds May 20
 
 
 Week of... May 25
@@ -58,4 +70,4 @@ Week of... May 25
 
 Week of... June 1
 ---------------------
-# CoNLL: Fri June 5
+# CoNLL (workshop) Due: Fri June 5
