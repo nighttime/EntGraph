@@ -31,8 +31,8 @@ public class ConstantsAgg {
 	
 
 	// cutoffs
-	public static int minArgPairForPred = 3;// 100;
-	public static int minPredForArgPair = 3;// 20;// min num of unique predicates for argpair
+	public static int minArgPairForPred = 10;// 100;
+	public static int minPredForArgPair = 10;// 20;// min num of unique predicates for argpair
 	// when NS based num aps, we allow x aps for each pred, even if not in NS
 	public static int numArgPairsNSBasedAlwaysAllowed = 0;// default: 10
 	public static int numTopTypePairs = 20;// the big types, used in NSbased sizes
@@ -54,14 +54,15 @@ public class ConstantsAgg {
 
 
 	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
-//	public static String relAddress = "news_gen_argwise/news_gen_argwise_500k.json";
+//	public static String relAddress = "news_gen_argwise/news_gen_argwise_100k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
-	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;
+//	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;
+	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair + "_unary_only";
 
 	public static String foreinTypesAddress = "data/german_types.txt";// only important if isForeign=True
 
@@ -86,15 +87,21 @@ public class ConstantsAgg {
 		}
 	}
 
+	public enum GraphBuildOption {
+		ONLY,
+		ALSO,
+		NONE
+	}
+
 	// Generate graphs with entailments calculated for each predicate argument; also entailments with unaries
 	public static boolean generateArgwiseGraphs = true;
-	// Must have generateArgwiseGraphs = true in order to also make unary-only graphs
-	public static boolean generateUnaryOnlyGraphs = false;
+	// Must have generateArgwiseGraphs = true in order to also make 1-type graphs for modeling unaries. Can take several options.
+	public static GraphBuildOption generate1TypeGraphs = GraphBuildOption.ONLY;
 	// Include unary predicates which are possessive e.g. "Obama's strength"
 	public static boolean keepPossessiveUnaries = false;
 	// If null, will generate graphs for a complete set of types
 	// If pointing to a folder of sims files, will generate graphs to match these graph types
-	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
+//	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
 //	public static String matchGraphTypesFolder = "newsspike_sims/newsspike_argwise_50k_3_3";
-
+	public static String matchGraphTypesFolder = null;
 }

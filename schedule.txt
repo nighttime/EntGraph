@@ -8,19 +8,18 @@
 
 Week of... March 16
 ---------------------
-* Create causal dataset for B->U entailment (a la resultative construction)
-* Work on global learning
+* Global learning (and paraphrase collapse) unaries
+* Build QA dataset (a la Poon&Domingos) for B->U entailment
 
 
 Week of... March 23
 ---------------------
-* Continue working on global learning
-* Build QA dataset (a la Poon&Domingos) for B->U entailment
+* Global learning (para collapse binaries)
+* Finish building QA dataset (a la Poon&Domingos) for B->U entailment
 
 
 Week of... March 30
 ---------------------
-* Finish working on global learning
 * Evaluate B->B entailment on levy dataset
 
 

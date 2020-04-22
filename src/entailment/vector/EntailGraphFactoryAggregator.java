@@ -745,8 +745,16 @@ public class EntailGraphFactoryAggregator {
 				orderedTypeMap.put(t1, t1);
 				orderedTypeMap.put(t2, t1);
 			}
-			for (EntailGraphFactory egf : entGrFacts) {
-				egf.typeToOrderedType = new HashMap<>(orderedTypeMap);
+			for (EntailGraphFactory factory : entGrFacts) {
+				factory.typeToOrderedType = new HashMap<>(orderedTypeMap);
+			}
+		}
+
+		if (ConstantsAgg.generate1TypeGraphs != ConstantsAgg.GraphBuildOption.NONE) {
+			for (EntailGraphFactory factory : entGrFacts) {
+				for (String type : types) {
+					factory.typeToOrderedType.put(type, type);
+				}
 			}
 		}
 
@@ -811,8 +819,14 @@ public class EntailGraphFactoryAggregator {
 		List<String> graphTypes = new ArrayList<>(typePairs);
 
 		// Generate Unary-only one-type graphs
-		if (ConstantsAgg.generateArgwiseGraphs && ConstantsAgg.generateUnaryOnlyGraphs) {
-			graphTypes.addAll(entityTypes);
+		if (ConstantsAgg.generateArgwiseGraphs)
+			switch (ConstantsAgg.generate1TypeGraphs) {
+				case ONLY:
+					graphTypes = entityTypes;
+					break;
+				case ALSO:
+					graphTypes.addAll(entityTypes);
+					break;
 		}
 
 		Collections.sort(graphTypes);

@@ -10,6 +10,11 @@ lib_data/
 freebase_types/
 newsspike_sims/
 
+# evaluation
+evaluate/data/
+eval_data/
+*.pkl
+
 # sims
 sims/
 *_sim.txt

@@ -777,7 +777,8 @@ public class EntailGraph extends SimpleEntailGraph {
 						//   Further filtering can be done later in the computeSimilarities() method.
 						boolean pvec2isArgwise = pvec2.predicate.contains("[arg1]") || pvec2.predicate.contains("[arg2]");
 						boolean pvec2isUnary = pvec2.predicate.contains("[unary]");
-						if ((pvec1isArgwise && pvec2isArgwise) || (pvec1isUnary && pvec2isUnary)){
+						if ((pvec1isArgwise && pvec2isArgwise) ||
+								(pvec1isUnary && pvec2isUnary && ConstantsAgg.generate1TypeGraphs == ConstantsAgg.GraphBuildOption.NONE)){
 							continue;
 						}
 					}
