@@ -15,6 +15,16 @@ class Prop:
 		self.basic_types = []
 		self.entity_types = ''
 
+	@classmethod
+	def from_descriptions(cls, pred_desc, arg_desc):
+		pred_chunks = pred_desc.split('#')
+		pred, types = pred_chunks[0], pred_chunks[1:]
+		args = [a.split('#')[0] for a in arg_desc]
+		prop = Prop(pred, args)
+		prop.set_types(types)
+		prop.entity_types = None
+		return prop
+
 	def set_args(self, args: List[str]):
 		self.args = args
 

@@ -1,3 +1,8 @@
+import json
+from collections import defaultdict, Counter
+import random
+from datetime import datetime
+
 from proposition import *
 from collections import Counter
 from typing import *
@@ -8,6 +13,7 @@ class Article:
 		self.date = date
 		self.unary_props = []
 		self.binary_props = []
+		self.sents = []
 
 	def add_unary(self, unary):
 		self.unary_props.append(unary)
@@ -26,6 +32,9 @@ class Article:
 
 	def feature_counts(self) -> Counter[str]:
 		return Counter(self.named_entity_mentions())
+
+	def feature_set(self) -> Set[str]:
+		return set(self.feature_counts().keys())
 
 	def named_entity_mentions(self, typed=True) -> List[str]:
 		ents = []
@@ -51,6 +60,10 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 			if art_ID not in articles:
 				date = datetime.strptime(l['date'], '%b %d, %Y %X %p')
 				articles[art_ID] = Article(art_ID, date)
+
+			line_ID = l['lineId']
+			sent = l['s']
+			articles[art_ID].sents.append((line_ID, sent))
 
 			unaries_raw = [u['r'][1:-1] for u in l['rels_unary']]
 			for i, u in enumerate(unaries_raw):
@@ -110,5 +123,8 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 					articles[art_ID].add_binary(prop_rev)
 
 	arts = [a for artID, a in articles.items()]
+
+	for art in arts:
+		art.sents = [s for line_ID, s in sorted(art.sents)]
 
 	return arts, unary_props, binary_props

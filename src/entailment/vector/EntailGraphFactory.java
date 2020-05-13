@@ -661,6 +661,7 @@ public class EntailGraphFactory implements Runnable {
 			} catch (Exception e) {
 				System.err.println("exception for: " + line);
 				e.printStackTrace();
+				System.err.println(e.getMessage());
 			}
 			// typedOp.println();
 		}
@@ -801,6 +802,9 @@ public class EntailGraphFactory implements Runnable {
 			thisArg += "#" + datestamp;
 		}
 		EntailGraphFactoryAggregator.numAllTuplesPlusReverse++;
+		if (thisEntailGraph == null) {
+			System.err.println("OUCH");
+		}
 		thisEntailGraph.addBinaryPredicate(typedPred, thisArg, timeInterval, count, -1, -1);
 
 		EntailGraphFactoryAggregator.inc2_numBinaryArgNodes();

@@ -12,6 +12,10 @@ class EGSpace(Enum):
 	ONE_TYPE = 1
 	TWO_TYPE = 2
 
+class EGStage(Enum):
+	LOCAL = 1
+	GLOBAL = 2
+
 class Entailment:
 	def __init__(self, entailedPred, score):
 		self.pred = entailedPred
@@ -19,14 +23,25 @@ class Entailment:
 		self.score = score
 		self.direction = 'forward'
 
+	def __str__(self):
+		return '( {:.3f} {} => )'.format(self.score, self.pred)
+
+	def __repr__(self):
+		return str(self)
+
 class BackEntailment(Entailment):
 	def __init__(self, antecedentPred, score):
 		super().__init__(antecedentPred, score)
 		self.direction = 'backward'
 
+	def __str__(self):
+		return '( {:.3f} => {} )'.format(self.score, self.pred)
+
 class EntailmentGraph:
 	typing = None
 	reverse_typing = None
+	space = None
+	stage = None
 	nodes = set()
 	backmap = defaultdict(set)
 	# edges = defaultdict(list)
@@ -83,10 +98,20 @@ class EntailmentGraph:
 
 		with open(fname) as file:
 			header = file.readline()
-			if len(header) == 0 or not header.startswith('types:'):
+			if not len(header):
 				return
 
-			typing = header[header.index(':')+2:header.index(',')]
+			typing = ''
+
+			if header.startswith('types:'):
+				self.stage = EGStage.LOCAL
+				typing = header[header.index(':') + 2:header.index(',')]
+			elif 'type propagation' in header:
+				self.stage = EGStage.GLOBAL
+				typing = header[:header.index(' ')]
+			else:
+				return
+
 			if typing.count('#') == 0 or '#unary' in typing:
 				self.typing = typing.split('#')[0]
 				self.space = EGSpace.ONE_TYPE
@@ -106,7 +131,7 @@ class EntailmentGraph:
 					current_pred = self.normalize_pred(pred)
 					self.nodes.add(current_pred)
 
-				if 'BInc sims' in line:
+				if 'BInc sims' in line or 'iter 1 sims' in line:
 					line = next(file, None)
 					while line is not None:
 						line = line.strip()
@@ -144,13 +169,8 @@ def read_graphs(graph_dir: str, ext: str='sim') -> EGraphCache:
 _UU_EG_fname = 'UU_EGs.pkl'
 _BU_EG_fname = 'BU_EGs.pkl'
 
-def save_EGs(egcache: EGraphCache, dirname: str, egspace: EGSpace):
-	dirname = dirname if dirname.endswith('/') else dirname + '/'
-	if not os.path.exists(dirname):
-		os.makedirs(dirname)
-	global _UU_EG_fname, _BU_EG_fname
-	fname = _UU_EG_fname if egspace == EGSpace.ONE_TYPE else _BU_EG_fname
-	with open(dirname + fname, 'wb+') as f:
+def save_EGs(egcache: EGraphCache, fname: str, egspace: EGSpace):
+	with open(fname + '.pkl', 'wb+') as f:
 		pickle.dump(egcache, f, pickle.HIGHEST_PROTOCOL)
 
 def load_precomputed_EGs(fname: str) -> EGraphCache:
@@ -158,14 +178,15 @@ def load_precomputed_EGs(fname: str) -> EGraphCache:
 		return pickle.load(f)
 
 if __name__ == '__main__':
-	if len(sys.argv) != 4:
-		print('Cache EGraphs: <type space: 1 or 2> <graph dir> <output cache dir>')
-	egspace = {'1': EGSpace.ONE_TYPE, '2': EGSpace.TWO_TYPE}[sys.argv[1]]
-	in_dir = sys.argv[2]
-	out_dir = sys.argv[3]
+	if len(sys.argv) != 5:
+		print('Cache EGraphs: <-g|-l> <type space: 1 or 2> <graph dir> <output cache dir>')
+	graph_ext = 'binc' if sys.argv[1] == '-g' else 'sim'
+	egspace = {'1': EGSpace.ONE_TYPE, '2': EGSpace.TWO_TYPE}[sys.argv[2]]
+	in_dir = sys.argv[3]
+	out_dir = sys.argv[4]
 
 	print('Reading graphs from', in_dir)
-	egcache = read_graphs(in_dir)
+	egcache = read_graphs(in_dir, ext=graph_ext)
 	print('Writing cache to', out_dir)
 	save_EGs(egcache, out_dir, egspace)
 
