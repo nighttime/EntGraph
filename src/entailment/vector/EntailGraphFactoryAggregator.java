@@ -737,9 +737,13 @@ public class EntailGraphFactoryAggregator {
 		}
 
 		// Assign typeToOrderedType to each thread in the case we're matching an existing graph set
-		if (ConstantsAgg.matchGraphTypesFolder != null) {
+		// NMM 21/5/20: we need typeToOrderedType set before graph init ALWAYS
+//		if (ConstantsAgg.matchGraphTypesFolder != null) {
 			Map<String, String> orderedTypeMap = new HashMap<>();
 			for (String t1 : types) {
+				if (!t1.contains("#")) { // NMM same
+					continue;
+				}
 				String[] type_split = t1.split("#");
 				String t2 = type_split[1] + "#" + type_split[0];
 				orderedTypeMap.put(t1, t1);
@@ -748,12 +752,15 @@ public class EntailGraphFactoryAggregator {
 			for (EntailGraphFactory factory : entGrFacts) {
 				factory.typeToOrderedType = new HashMap<>(orderedTypeMap);
 			}
-		}
+//		}
 
+		// typeToOrderedType needs to be set in advance in order to pre-initialize the graphs
 		if (ConstantsAgg.generate1TypeGraphs != ConstantsAgg.GraphBuildOption.NONE) {
 			for (EntailGraphFactory factory : entGrFacts) {
 				for (String type : types) {
-					factory.typeToOrderedType.put(type, type);
+					if (!type.contains("#")) {
+						factory.typeToOrderedType.put(type, type);
+					}
 				}
 			}
 		}

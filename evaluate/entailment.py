@@ -48,7 +48,7 @@ class EntailmentGraph:
 	
 	def __init__(self, fname):
 		nodes, edges = self.read_graph_from_file(fname)
-		backmap = self.backmap_antecedents(edges)
+		backmap = self._backmap_antecedents(edges)
 
 		self.nodes = nodes
 		self.backmap = backmap
@@ -65,7 +65,7 @@ class EntailmentGraph:
 		else:
 			return self.backmap[pred]
 
-	def backmap_antecedents(self, edges):
+	def _backmap_antecedents(self, edges):
 		backmap = defaultdict(set)
 		for k,vlist in edges.items():
 			for v in vlist:

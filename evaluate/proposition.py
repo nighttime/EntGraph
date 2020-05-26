@@ -1,5 +1,6 @@
 import os
 import pickle
+import json
 import pdb
 from functools import lru_cache
 from typing import *
@@ -192,4 +193,11 @@ def get_type(ent, is_entity, typed=True):
 	return ent_type
 
 
+_sub_pairs_fname = 'substitution_pairs.txt'
 
+def read_substitution_pairs(dirname: str) -> Dict[str, Dict[str, Any]]:
+	dirname = dirname if dirname.endswith('/') else dirname + '/'
+	global _sub_pairs_fname
+	with open(dirname + _sub_pairs_fname) as f:
+		sub_dict = json.load(f)
+		return sub_dict

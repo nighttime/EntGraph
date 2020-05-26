@@ -9,8 +9,6 @@ import random
 from datetime import datetime
 import numpy as np
 
-ScoredSupport = namedtuple('ScoredSupport', ['score', 'prop'])
-
 from proposition import *
 from entailment import *
 from article import *
@@ -52,6 +50,8 @@ def run(questions, answers, evidence, score_text, uu_graphs=None, bu_graphs=None
 	score = eval_fun(answers, predictions)
 	print(score_text.format(score))
 	checkpoint()
+	print('NOT SAFE')
+	exit(1)
 
 
 def run_wh_sets(Q_list: List[List[str]], A_list: List[List[Set[str]]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
@@ -97,7 +97,7 @@ def main():
 	print('Running Eval')
 
 	original_types_file = 'data/freebase_types/entity2Types.txt'
-	print('* Using entity types from: ' + ARGS.entity_types)
+	print('* Using entity types and substitution pairs from: ' + ARGS.data_folder)
 
 	resources = ['literal answers']
 	if ARGS.uu_graphs is not None:
@@ -113,48 +113,45 @@ def main():
 
 	#######################################
 
+	# Read in U->U and/or B->U entailment graphs
+	def load_graphs(graph_dir, message) -> Optional[EGraphCache]:
+		if graph_dir:
+			print(message, end=' ', flush=True)
+			if ARGS.raw_EGs:
+				graph_ext = 'sim' if ARGS.local else 'binc'
+				graphs = read_graphs(graph_dir, ext=graph_ext)
+			else:
+				graphs = load_precomputed_EGs(graph_dir)
+			print('Graphs read: {}'.format(len(graphs)))
+			return graphs
+
+	uu_graphs = load_graphs(ARGS.uu_graphs, 'Reading U->U graphs...')
+	bu_graphs = load_graphs(ARGS.bu_graphs, 'Reading B->U graphs...')
+
+	checkpoint()
+	print(BAR)
+
+	# Read in entity type cache
 	print('Loading entity type cache...')
-	if not os.path.exists(ARGS.entity_types):
+	if not os.path.exists(ARGS.data_folder):
 		print('  !generating new cache...')
 		load_entity_types(original_types_file)
-		save_precomputed_entity_types(ARGS.entity_types)
-	load_precomputed_entity_types(ARGS.entity_types)
+		save_precomputed_entity_types(ARGS.data_folder)
+	load_precomputed_entity_types(ARGS.data_folder)
 
-	# Reading in news articles
+	# Read in news articles
 	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
+	negative_swaps = read_substitution_pairs(ARGS.data_folder)
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	P_list, N_list, evidence_list = generate_tf_question_sets(articles)
+	P_list, N_list, evidence_list = generate_tf_question_sets(articles, negative_swaps, uu_graphs)
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
 	num_P_Qs = sum(len(qs) for qs in P_list)
 	num_sets = len(P_list)
 	print('Generated {} questions ({:.1f}% +) from {} sets'.format(num_Qs, (num_P_Qs/num_Qs)*100, num_sets))
 
 	Q_list, A_list = format_tf_QA_sets(P_list, N_list)
-
-	uu_graphs, bu_graphs = None, None
-	graph_ext = 'sim' if ARGS.local else 'binc'
-	# Open U->U entailment graphs
-	if ARGS.uu_graphs:
-		print('Reading U->U graphs...', end=' ', flush=True)
-		if ARGS.raw_EGs:
-			uu_graphs = read_graphs(ARGS.uu_graphs, ext=graph_ext)
-		else:
-			uu_graphs = load_precomputed_EGs(ARGS.uu_graphs)
-		print('Graphs read: {}'.format(len(uu_graphs)))
-
-	# Open B->U entailment graphs
-	if ARGS.bu_graphs:
-		print('Reading B->U graphs...', end=' ', flush=True)
-		if ARGS.raw_EGs:
-			bu_graphs = read_graphs(ARGS.bu_graphs, ext=graph_ext)
-		else:
-			bu_graphs = load_precomputed_EGs(ARGS.bu_graphs)
-		print('Graphs read: {}'.format(len(bu_graphs)))
-
-	checkpoint()
-	print(BAR)
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
 	print('Predicting answers...')
@@ -191,7 +188,7 @@ def main():
 
 parser = argparse.ArgumentParser(description='Evaluate using P&D style question-generation and -answering')
 parser.add_argument('news_gen_file', help='Path to file used for partition into Question set and Answer set')
-parser.add_argument('entity_types', help='Path to freebase entity types')
+parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
 parser.add_argument('--uu-graphs', help='Path to folder of Unary->Unary entailment graphs to assist question answering')
 parser.add_argument('--bu-graphs', help='Path to folder of Binary->Unary entailment graphs to assist question answering')
 # parser.add_argument('--typed', action='store_true', help='Boolean flag toggling question typing')

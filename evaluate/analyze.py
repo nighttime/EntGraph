@@ -2,6 +2,7 @@ import numpy as np
 from sklearn import metrics
 import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
+from datetime import datetime
 from typing import *
 
 
@@ -127,6 +128,6 @@ def plot_results(true: List[List[int]], prediction_results: Dict[str, List[List[
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
 	plt.title('True-False Question Performance for Multivalent EGs')
-	plt.savefig('true-false_mveg.png')
+	now = datetime.now().strftime('%Y-%m-%d | %H:%M')
+	plt.savefig('tf_results/' + now + '.png')
 	# plt.show()
-	# print('hey')

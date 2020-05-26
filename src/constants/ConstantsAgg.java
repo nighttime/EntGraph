@@ -42,7 +42,7 @@ public class ConstantsAgg {
 	public static boolean removeGGFromTopPairs = true;// whether we should remove triples with two general entities
 														// from top pairs
 
-	public static final int numThreads = 1; //20 max?
+	public static final int numThreads = 20; //20 max?
 
 	// embedding parameters
 	public static boolean embBasedScores = false;// use sigmoid(transE score) instead of counts
@@ -54,17 +54,17 @@ public class ConstantsAgg {
 
 
 //	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
-//	public static String relAddress = "../relExtract/liane_newscrawl_bin_un/news_gen.json";
-	public static String relAddress = "news_gen_argwise/newsspike/news_gen_argwise_100k.json";
+	public static String relAddress = "../relExtract/liane_newscrawl_bin_un/news_gen.json";
+//	public static String relAddress = "news_gen_argwise/newsspike/news_gen_argwise_100k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
-	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
+//	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair + "_unary_only";
-//	public static String simsFolder = "newsspike_sims/newsspike_mv_" + minArgPairForPred + "_" + minPredForArgPair;
+	public static String simsFolder = "newsspike_sims/newsspike_mv_" + minArgPairForPred + "_" + minPredForArgPair;
 
 	public static String foreinTypesAddress = "data/german_types.txt";// only important if isForeign=True
 
@@ -103,7 +103,7 @@ public class ConstantsAgg {
 	public static boolean keepPossessiveUnaries = false;
 	// If null, will generate graphs for a complete set of types
 	// If pointing to a folder of sims files, will generate graphs to match these graph types
-//	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
+	public static String matchGraphTypesFolder = "../../jhosseini/mnt2/python/gfiles/typedEntGrDir_aida_figer_3_3_f/";
 //	public static String matchGraphTypesFolder = "newsspike_sims/newsspike_argwise_50k_3_3";
-	public static String matchGraphTypesFolder = null;
+//	public static String matchGraphTypesFolder = null;
 }

@@ -34,14 +34,17 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 	ev_un_ents = [ev for ev in evidence[0] if 'E' in ev.entity_types]
 	ev_bi_ents = [ev for ev in evidence[1] if 'E' in ev.entity_types]
 
-	def _make_prop_cache(props: List[Prop]) -> Dict[str, List[Prop]]:
+	def _make_prop_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Prop]]:
 		cache = defaultdict(list)
 		for prop in props:
 			cache[prop.pred_desc()].append(prop)
+		for r in removals:
+			if r.pred_desc() in cache and r in cache[r.pred_desc()]:
+				cache[r.pred_desc()].remove(r)
 		return cache
 
 	# Create a cached fact index of A: {pred_desc : [prop]}
-	facts_un = _make_prop_cache(ev_un_ents)
+	facts_un = _make_prop_cache(ev_un_ents, removals=claims)
 	facts_bin = _make_prop_cache(ev_bi_ents)
 
 	# Return answers to the posed questions
@@ -54,7 +57,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 
 		# Get basic factual answers from observed evidence
 		literal_support = [f for f in facts_un[q] if f.args[0] == c.args[0]]
-		if literal_support:
+		if len(literal_support) > 1:
 			score = 1
 			prediction_support[i]['literal'] = literal_support
 
