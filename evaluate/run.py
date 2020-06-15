@@ -6,9 +6,10 @@ from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
 import itertools
 import random
-from datetime import datetime
+import datetime
 import numpy as np
 
+import utils
 from proposition import *
 from entailment import *
 from article import *
@@ -45,13 +46,13 @@ def eval_tf_sets(A_list: List[List[Any]], predictions_list: List[List[Any]],
 
 
 def run(questions, answers, evidence, score_text, uu_graphs=None, bu_graphs=None, eval_fun=ans):
+	print('NOT SAFE')
+	exit(1)
 	print(bar)
 	predictions = answer_questions(questions, evidence, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
 	score = eval_fun(answers, predictions)
 	print(score_text.format(score))
-	checkpoint()
-	print('NOT SAFE')
-	exit(1)
+	utils.checkpoint()
 
 
 def run_wh_sets(Q_list: List[List[str]], A_list: List[List[Set[str]]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
@@ -62,28 +63,38 @@ def run_wh_sets(Q_list: List[List[str]], A_list: List[List[Set[str]]], evidence_
 	score = eval_wh_sets(A_list, predictions_list, eval_fun=eval_fun)
 	print(score_text)
 	print('{:.4f}'.format(score))
-	checkpoint()
+	utils.checkpoint()
 
 def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
 				score_text: str, eval_fun: Callable[[List[Any], List[Any]], float],
-				uu_graphs: EGraphCache=None, bu_graphs: EGraphCache=None) -> List[List[float]]:
+				uu_graphs: Optional[EGraphCache]=None,
+				bu_graphs: Optional[EGraphCache]=None,
+				sim_cache: Optional[EmbeddingCache]=None) -> List[List[float]]:
 	print(bar)
 	print(score_text)
-	scores_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-	predictions_list = threshold_sets(scores_list, 0)
-	p = eval_tf_sets(A_list, predictions_list, eval_fun=precision)
-	r = eval_tf_sets(A_list, predictions_list, eval_fun=recall)
-	a = eval_tf_sets(A_list, predictions_list, eval_fun=acc)
-	print('precision: {:.3f}'.format(p))
-	print('recall:    {:.3f}'.format(r))
-	print('accuracy:  {:.3f}'.format(a))
-	checkpoint()
+	scores_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, sim_cache=sim_cache)
+	scores_flat = [s for ss in scores_list for s in ss]
 
+	##################################################################
+	if not sim_cache:
+		cutoff = 0
+		predictions_list = threshold_sets(scores_list, cutoff)
+		p = eval_tf_sets(A_list, predictions_list, eval_fun=precision)
+		r = eval_tf_sets(A_list, predictions_list, eval_fun=recall)
+		a = eval_tf_sets(A_list, predictions_list, eval_fun=acc)
+		print('Measurements @{:.2f} score cutoff'.format(cutoff))
+		print('precision: {:.3f}'.format(p))
+		print('recall:    {:.3f}'.format(r))
+		# bins = np.arange(0, 1.01, 0.05)
+		# hist = np.histogram(scores_flat, bins=bins)
+		# print(hist)
+	##################################################################
+
+	num_answered = len(list(filter(None, scores_flat)))
+	print('Answered {}/{} questions ({:.1f}%)'.format(num_answered, len(scores_flat), num_answered/len(scores_flat)*100))
+
+	utils.checkpoint()
 	return scores_list
-
-
-def checkpoint():
-	print('+ Checkpoint:', datetime.now().strftime('%H:%M:%S'))
 
 
 def main():
@@ -104,11 +115,13 @@ def main():
 		resources.append('U->U graphs')
 	if ARGS.bu_graphs is not None:
 		resources.append('B->U graphs')
+	if ARGS.sim_cache is not None:
+		resources.append('Similarity cache')
 	print('* Using evidence from:', str(resources))
 
 	# print('* Evaluating with: ' + eval_fun.__name__)
 
-	checkpoint()
+	utils.checkpoint()
 	print(BAR)
 
 	#######################################
@@ -121,27 +134,34 @@ def main():
 				graph_ext = 'sim' if ARGS.local else 'binc'
 				graphs = read_graphs(graph_dir, ext=graph_ext)
 			else:
-				graphs = load_precomputed_EGs(graph_dir)
+				graphs = read_precomputed_EGs(graph_dir)
 			print('Graphs read: {}'.format(len(graphs)))
 			return graphs
 
 	uu_graphs = load_graphs(ARGS.uu_graphs, 'Reading U->U graphs...')
 	bu_graphs = load_graphs(ARGS.bu_graphs, 'Reading B->U graphs...')
 
-	checkpoint()
+	utils.checkpoint()
 	print(BAR)
 
 	# Read in entity type cache
 	print('Loading entity type cache...')
-	if not os.path.exists(ARGS.data_folder):
-		print('  !generating new cache...')
-		load_entity_types(original_types_file)
-		save_precomputed_entity_types(ARGS.data_folder)
+	# if not os.path.exists(ARGS.data_folder):
+	# 	print('  !generating new cache...')
+	# 	load_entity_types(original_types_file)
+	# 	save_precomputed_entity_types(ARGS.data_folder)
 	load_precomputed_entity_types(ARGS.data_folder)
 
+	# Read in similarity cache
+	sim_cache = None
+	if ARGS.sim_cache:
+		print('Loading similarity cache...')
+		sim_cache = load_similarity_cache(ARGS.data_folder)
+
 	# Read in news articles
+	print('Reading source & auxiliary data...')
 	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
-	negative_swaps = read_substitution_pairs(ARGS.data_folder)
+	negative_swaps = read_substitution_pairs(os.path.join(ARGS.data_folder, 'substitution_pairs.json'))
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
@@ -149,37 +169,44 @@ def main():
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
 	num_P_Qs = sum(len(qs) for qs in P_list)
 	num_sets = len(P_list)
-	print('Generated {} questions ({:.1f}% +) from {} sets'.format(num_Qs, (num_P_Qs/num_Qs)*100, num_sets))
+	pct_positive = num_P_Qs/num_Qs
+	print('Generated {} questions ({:.1f}% +) from {} sets'.format(num_Qs, pct_positive*100, num_sets))
 
 	Q_list, A_list = format_tf_QA_sets(P_list, N_list)
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
 	print('Predicting answers...')
 
-	results = {}
+	results = {'*always-true':pct_positive}
 
 	if ARGS.test_all:
-		r = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
-		results['baseline'] = r
+		results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
 
 		if uu_graphs:
-			r = run_tf_sets(Q_list, A_list, evidence_list, 'With U->U', eval_fun=eval_fun, uu_graphs=uu_graphs)
-			results['U->U'] = r
+			results['U->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U', eval_fun=eval_fun, uu_graphs=uu_graphs)
 
 		if bu_graphs:
-			r = run_tf_sets(Q_list, A_list, evidence_list, 'With B->U', eval_fun=eval_fun, bu_graphs=bu_graphs)
-			results['B->U'] = r
+			results['B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'B->U', eval_fun=eval_fun, bu_graphs=bu_graphs)
 
 		if uu_graphs and bu_graphs:
-			r = run_tf_sets(Q_list, A_list, evidence_list, 'With U->U and B->U', eval_fun=eval_fun,
+			results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
 						uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-			results['U->U and B->U'] = r
+
+		if sim_cache:
+			results['Similarity'] = run_tf_sets(Q_list, A_list, evidence_list, 'Similarity', eval_fun=eval_fun, sim_cache=sim_cache)
 
 	else:
-		run_tf_sets(Q_list, A_list, evidence_list, 'score', eval_fun=eval_fun, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+		results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
+		if sim_cache:
+			label = 'Similarity'
+			results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, sim_cache=sim_cache)
+		elif uu_graphs or bu_graphs:
+			label = ('U->U' if uu_graphs else '') + (' and ' if uu_graphs and bu_graphs else '') + ('B->U' if bu_graphs else '')
+			results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
 
 	if ARGS.plot:
-		plot_results(A_list, results)
+		print(bar)
+		plot_results(ARGS.data_folder, A_list, results)
 
 	print(BAR)
 	print()
@@ -189,8 +216,9 @@ def main():
 parser = argparse.ArgumentParser(description='Evaluate using P&D style question-generation and -answering')
 parser.add_argument('news_gen_file', help='Path to file used for partition into Question set and Answer set')
 parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
-parser.add_argument('--uu-graphs', help='Path to folder of Unary->Unary entailment graphs to assist question answering')
-parser.add_argument('--bu-graphs', help='Path to folder of Binary->Unary entailment graphs to assist question answering')
+parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
+parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
+parser.add_argument('--sim-cache', action='store_true', help='Path to folder of similarity cache files to assist question answering')
 # parser.add_argument('--typed', action='store_true', help='Boolean flag toggling question typing')
 parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
 parser.add_argument('--raw-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')

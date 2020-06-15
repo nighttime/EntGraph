@@ -1,13 +1,14 @@
 from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
-from typing import List
+import datetime
 
 from proposition import *
 from entailment import *
 from article import *
 from analyze import *
 from proposition import Prop
-from run import *
+from run import TOP_K_ENTS
+import reference
 
 from typing import *
 
@@ -28,7 +29,10 @@ def count_mentions(arg: str, props: List[Prop]) -> int:
 # Input | Q : [Prop]
 # Input | cap : int or None (for no max cap)
 # Returns questions (typed preds) and answer sets : ([str], [{str}])
-def generate_questions(Q: List[Prop], aux_Q: List[Prop], cap: Optional[int]=None, pred_cache: Optional[Set[str]]=None) -> \
+def generate_questions(Q: List[Prop], aux_Q: List[Prop],
+					   pred_cache: Optional[Set[str]],
+					   uu_graphs: Optional[EGraphCache],
+					   cap: Optional[int]=None) -> \
 		Tuple[List[str], List[Set[str]], List[Prop]]:
 	# Filter unary props down to just ones containing named entities
 	Q_ents = [p for p in Q if 'E' in p.entity_types]
@@ -69,7 +73,14 @@ def generate_questions(Q: List[Prop], aux_Q: List[Prop], cap: Optional[int]=None
 	# s = list(statements.items())
 	s = [(q, a_set, top_props[q]) for q, a_set in statements.items()]
 	random.shuffle(s)
-	questions, answers, props = [list(t) for t in tuple(zip(*s[:cap]))]
+	selected_questions = s[:cap]
+	if uu_graphs:
+		# filter out questions not answerable using the graphs, if available
+		selected_questions = [(q, a, p) for q, a, p in selected_questions if q.split('#')[1] in uu_graphs]
+	if True:
+		# filer out modals
+		selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(q.startswith(m + '.') for m in reference.AUXILIARY_VERBS)]
+	questions, answers, props = [list(t) for t in tuple(zip(*selected_questions))]
 
 	answer_choices = {q:{e for p in Q_ents for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
 
@@ -80,11 +91,11 @@ def generate_question_partitions(articles: List[Article]) -> Tuple[List[List[Art
 	pred_counter = Counter()
 	for art in articles:
 		pred_counter.update([p.pred_desc() for p in art.unary_props])
-	pred_freqs_ordered = dict((k,v) for k,v in pred_counter.most_common(5000) if not k.startswith('say'))
-	top_pred_cache = set([pred for pred, count in pred_freqs_ordered.items()])
+	top_preds = [(k, v) for k, v in pred_counter.most_common() if k.split('.')[0] not in reference.AUXILIARY_VERBS + reference.LIGHT_VERBS][:5000]
+	top_pred_cache = set([pred for pred, count in top_preds])
 
 	article_dates = sorted(set(a.date for a in articles))
-	articles_by_day = [[a for a in articles if a.date == d and len(a.named_entity_mentions())] for d in article_dates]
+	articles_by_day = {d:[a for a in articles if a.date == d and len(a.named_entity_mentions())] for d in article_dates}
 
 	# PARTITION SCHEME: Within N-day span, Articles clustered by entity overlap, Qs drawn from one and answered by the rest
 	# global ARGS
@@ -145,17 +156,33 @@ def generate_question_partitions(articles: List[Article]) -> Tuple[List[List[Art
 	# 	partitions.append(week)
 
 	day_span = 3
-	article_spans = [articles_by_day[i:i + day_span] for i in range(len(articles_by_day) - (day_span - 1))]
-	partitions = []
-	for span in article_spans:
-		p = sum(span, [])
-		random.shuffle(p)
-		partitions.append(p)
+
+	# article_spans = [articles_by_day[i:i+day_span] for i in range(0, len(articles_by_day) - (day_span - 1), day_span)]
+	# partitions = []
+	# for span in article_spans:
+	# 	p = sum(span, [])
+	# 	random.shuffle(p)
+	# 	partitions.append(p)
+
+	day_partitions = [[]]
+	last_date = article_dates[0]
+	for day in article_dates:
+		# If day is too far from the current span timeframe, start a new one
+		max_date = last_date + datetime.timedelta(days=(day_span-1))
+		if max_date < day:
+			day_partitions.append([])
+			last_date = day
+		day_partitions[-1].append(day)
+
+	partitions = [sum([articles_by_day[d] for d in span], []) for span in day_partitions]
 
 	return partitions, top_pred_cache
 
 
-def generate_positive_question_sets(partitions: List[List[Article]], pred_cache: Set[str], cap: int) -> \
+def generate_positive_question_sets(partitions: List[List[Article]],
+									pred_cache: Set[str],
+									uu_graphs: Optional[EGraphCache],
+									cap: int) -> \
 		Tuple[List[List[str]], List[List[Set[str]]], List[List[Prop]], List[Tuple[List[Prop], List[Prop]]]]:
 
 	Q_list, A_list, P_list, evidence_list = [], [], [], []
@@ -163,7 +190,7 @@ def generate_positive_question_sets(partitions: List[List[Article]], pred_cache:
 		q_unaries = sum((a.unary_props for a in partition), [])
 		q_binaries = sum((a.binary_props for a in partition), [])
 
-		q, a, props = generate_questions(q_unaries, q_binaries, cap=(cap*len(partition)), pred_cache=pred_cache)
+		q, a, props = generate_questions(q_unaries, q_binaries, pred_cache=pred_cache, uu_graphs=uu_graphs, cap=(cap*len(partition)))
 		if not q:
 			assert not a and not props
 		# for j, q_j in enumerate(q):
@@ -178,99 +205,175 @@ def generate_positive_question_sets(partitions: List[List[Article]], pred_cache:
 	return Q_list, A_list, P_list, evidence_list
 
 
-def generate_negative_question_sets(partitions: List[List[Article]],
+# def generate_negative_question_sets(partitions: List[List[Article]],
+# 									pred_cache: Set[str],
+# 									negative_swaps: Dict[str, Dict[str, Any]],
+# 									uu_graphs: EGraphCache,
+# 									cap: int) -> List[List[Prop]]:
+# 	N_list = []
+# 	num_antonyms = 0
+#
+# 	for partition in partitions:
+# 		q_unaries = sum((a.unary_props for a in partition), [])
+# 		q_binaries = sum((a.binary_props for a in partition), [])
+#
+# 		# Pick the K most frequent entities in the question set
+# 		Q_props_NE = [p for p in q_unaries if p.entity_types == 'E']
+# 		if len(Q_props_NE) == 0:
+# 			N_list.append([])
+# 			continue
+#
+# 		ents = Counter(prop.arg_desc()[0] for prop in Q_props_NE)
+# 		most_common_ent_counts = ents.most_common(TOP_K_ENTS)
+# 		most_common_ents: Set[str] = set(tuple(zip(*most_common_ent_counts))[0])
+#
+# 		# Cache the local predicates seen with each local entity
+# 		ent_pred_mentions = defaultdict(set)
+# 		for prop in q_unaries:
+# 			ent_pred_mentions[prop.arg_desc()[0]].add(prop.pred_desc())
+#
+# 		# Create a cache of all mentions of the common ents to speed up the next step
+# 		# common_ent_occurrances = defaultdict(set)
+# 		# for article in articles:
+# 		# 	for prop in article.unary_props:
+# 		# 		ent = prop.arg_desc()[0]
+# 		# 		if ent in most_common_ents:
+# 		# 			common_ent_occurrances[ent].add(prop.pred_desc())
+#
+# 		# Find predicates never seen globally with candidate ents
+# 		# nprops = []
+# 		# for ent in most_common_ents:
+# 		# 	ent_type = ent.split('#')[1]
+# 		# 	npred_candidates = list(pred_cache)
+# 		# 	random.shuffle(npred_candidates)
+# 		# 	ct = 0
+# 		# 	for npred in npred_candidates:
+# 		# 		npred_type = npred.split('#')[1]
+# 		# 		if ent_type == npred_type and npred not in common_ent_occurrances[ent]:
+# 		# 			nprops.append(Prop.from_descriptions(npred, [ent]))
+# 		# 			ct += 1
+# 		# 			if ct > 5:
+# 		# 				break
+#
+# 		# Substitute adversarial predicates as negatives
+# 		nprops = []
+# 		for ent in most_common_ents:
+# 			ct = 0
+# 			max_per_ent = 5
+# 			ent_preds = ent_pred_mentions[ent]
+# 			for pred in ent_preds:
+# 				if ct >= max_per_ent:
+# 					break
+# 				pred_type = pred.split('#')[1]
+# 				if pred_type not in uu_graphs or pred not in uu_graphs[pred_type].nodes:
+# 					continue
+# 				if pred in negative_swaps:
+# 					antonyms = negative_swaps[pred]['antonyms']
+# 					troponyms = negative_swaps[pred]['troponyms']
+# 					# pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
+# 					pred_relations = random.sample(troponyms, len(troponyms))
+# 					for i, relation in enumerate(pred_relations):
+# 						# get swapped pred
+# 						swapped_pred = swap_pred(pred, relation)
+# 						# is swap in same graph?
+# 						if swapped_pred not in uu_graphs[pred_type].nodes:
+# 							continue
+# 						# is swap mentioned at all?
+# 						if swapped_pred in ent_pred_mentions[ent]:
+# 							continue
+# 						# if exists and not mentioned, add to list
+# 						nprops.append(Prop.from_descriptions(swapped_pred, [ent]))
+# 						ct += 1
+# 						if i < len(antonyms):
+# 							num_antonyms += 1
+# 						if ct >= max_per_ent:
+# 							break
+#
+# 		random.shuffle(nprops)
+# 		N_list.append(nprops[:(cap*len(partition))])
+#
+# 	print('Found {} antonyms and {} troponyms...'.format(num_antonyms, sum(len(n) for n in N_list)-num_antonyms), end=' ', flush=True)
+# 	return N_list
+
+def generate_negative_question_sets(P_list: List[List[Prop]],
+									partitions: List[List[Article]],
 									pred_cache: Set[str],
 									negative_swaps: Dict[str, Dict[str, Any]],
-									uu_graphs: EGraphCache,
+									uu_graphs: Optional[EGraphCache],
 									cap: int) -> List[List[Prop]]:
 	N_list = []
 	num_antonyms = 0
+	rej = defaultdict(Counter)
+	swap_pairs = defaultdict(set)
 
-	for partition in partitions:
-		q_unaries = sum((a.unary_props for a in partition), [])
-		q_binaries = sum((a.binary_props for a in partition), [])
 
-		# Pick the K most frequent entities in the question set
-		Q_props_NE = [p for p in q_unaries if p.entity_types == 'E']
-		if len(Q_props_NE) == 0:
-			N_list.append([])
-			continue
-
-		ents = Counter(prop.arg_desc()[0] for prop in Q_props_NE)
-		most_common_ent_counts = ents.most_common(TOP_K_ENTS)
-		most_common_ents: Set[str] = set(tuple(zip(*most_common_ent_counts))[0])
-
+	for i, ps in enumerate(P_list):
 		# Cache the local predicates seen with each local entity
 		ent_pred_mentions = defaultdict(set)
-		for prop in q_unaries:
+		for prop in sum((article.unary_props for article in partitions[i]), []):
 			ent_pred_mentions[prop.arg_desc()[0]].add(prop.pred_desc())
 
-		# Create a cache of all mentions of the common ents to speed up the next step
-		# common_ent_occurrances = defaultdict(set)
-		# for article in articles:
-		# 	for prop in article.unary_props:
-		# 		ent = prop.arg_desc()[0]
-		# 		if ent in most_common_ents:
-		# 			common_ent_occurrances[ent].add(prop.pred_desc())
-
-		# Find predicates never seen globally with candidate ents
-		# nprops = []
-		# for ent in most_common_ents:
-		# 	ent_type = ent.split('#')[1]
-		# 	npred_candidates = list(pred_cache)
-		# 	random.shuffle(npred_candidates)
-		# 	ct = 0
-		# 	for npred in npred_candidates:
-		# 		npred_type = npred.split('#')[1]
-		# 		if ent_type == npred_type and npred not in common_ent_occurrances[ent]:
-		# 			nprops.append(Prop.from_descriptions(npred, [ent]))
-		# 			ct += 1
-		# 			if ct > 5:
-		# 				break
-
-		# Substitute adversarial predicates as negatives
 		nprops = []
-		for ent in most_common_ents:
+		max_per_positive = 5
+
+		for j, positive_prop in enumerate(ps):
 			ct = 0
-			max_per_ent = 5
-			ent_preds = ent_pred_mentions[ent]
-			for pred in ent_preds:
-				if ct >= max_per_ent:
-					break
-				pred_type = pred.split('#')[1]
-				if pred_type not in uu_graphs or pred not in uu_graphs[pred_type].nodes:
+
+			pred = positive_prop.pred_desc()
+			pred_type = pred.split('#')[1]
+			ent = positive_prop.arg_desc()[0]
+
+			if uu_graphs and pred_type not in uu_graphs:
+				rej['no graph for predicate type'][pred_type] += 1
+				continue
+
+			if pred not in uu_graphs[pred_type].nodes:
+				rej['pred not in graph'][pred] += 1
+				continue
+
+			if pred not in negative_swaps:
+				rej['predicate has no swaps'][pred] += 1
+				continue
+
+			antonyms = negative_swaps[pred]['antonyms']
+			troponyms = negative_swaps[pred]['troponyms']
+			# pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
+			pred_relations = random.sample(troponyms, len(troponyms))
+
+			confirmed_swaps = []
+			for a, relation in enumerate(pred_relations):
+				# get swapped pred
+				swapped_pred = Prop.swap_pred(pred, relation)
+
+				# is swap in same graph?
+				if uu_graphs and swapped_pred not in uu_graphs[pred_type].nodes:
+					rej['swapped pred is not in the graph'][pred + ' - ' + swapped_pred] += 1
 					continue
-				if pred in negative_swaps:
-					antonyms = negative_swaps[pred]['antonyms']
-					troponyms = negative_swaps[pred]['troponyms']
-					pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
-					for i, relation in enumerate(pred_relations):
-						# get swapped pred
-						swapped_pred = swap_pred(pred, relation)
-						# is swap in same graph?
-						if swapped_pred not in uu_graphs[pred_type].nodes:
-							continue
-						# is swap mentioned at all?
-						if swapped_pred in ent_pred_mentions[ent]:
-							continue
-						# if exists and not mentioned, add to list
-						nprops.append(Prop.from_descriptions(swapped_pred, [ent]))
-						ct += 1
-						if i < len(antonyms):
-							num_antonyms += 1
-						if ct >= max_per_ent:
-							break
+
+				# Swap pair is testable
+				swap_pairs[pred].add(swapped_pred)
+
+				# is swap mentioned at all?
+				if swapped_pred in ent_pred_mentions[ent]:
+					rej['swapped pred is actually mentioned'][swapped_pred] += 1
+					continue
+
+				# if known and not mentioned, add to list
+				confirmed_swaps.append(Prop.from_descriptions(swapped_pred, [ent]))
+				# if a < len(antonyms):
+				# 	num_antonyms += 1
+				ct += 1
+				if ct >= max_per_positive:
+					break
+
+			if confirmed_swaps:
+				nprops.extend(confirmed_swaps)
 
 		random.shuffle(nprops)
-		N_list.append(nprops[:(cap*len(partition))])
+		N_list.append(nprops[:(cap*len(partitions[i])*max_per_positive)])
 
-	print('Found {} antonyms and {} troponyms'.format(num_antonyms, sum(len(n) for n in N_list)-num_antonyms), end=' ', flush=True)
+	# print('Found {} antonyms and {} troponyms...'.format(num_antonyms, sum(len(n) for n in N_list)-num_antonyms), end=' ', flush=True)
 	return N_list
-
-def swap_pred(pred_desc: str, raw_pred: str) -> Optional[str]:
-	if pred_desc.count('.') > 1:
-		return None
-	return raw_pred + pred_desc[pred_desc.find('.'):]
 
 
 def generate_tf_question_sets(articles: List[Article], negative_swaps: Optional[Dict[str, Dict[str, Any]]], uu_graphs: Optional[EGraphCache]) -> \
@@ -279,11 +382,12 @@ def generate_tf_question_sets(articles: List[Article], negative_swaps: Optional[
 	print('Partitioning...', end=' ', flush=True)
 	partitions, top_pred_cache = generate_question_partitions(articles)
 	print('Generating positives...', end=' ', flush=True)
-	_, _, P_list, evidence_list = generate_positive_question_sets(partitions, top_pred_cache, cap=max_questions_per_article)
+	_, _, P_list, evidence_list = generate_positive_question_sets(partitions, top_pred_cache, uu_graphs, cap=max_questions_per_article)
 	print('Generating negatives...', end=' ', flush=True)
 	N_list = None
 	if negative_swaps and uu_graphs:
-		N_list = generate_negative_question_sets(partitions, top_pred_cache, negative_swaps, uu_graphs, cap=max_questions_per_article)
+		# N_list = generate_negative_question_sets(partitions, top_pred_cache, negative_swaps, uu_graphs, cap=max_questions_per_article)
+		N_list = generate_negative_question_sets(P_list, partitions, top_pred_cache, negative_swaps, uu_graphs, cap=max_questions_per_article)
 
 	return P_list, N_list, evidence_list
 

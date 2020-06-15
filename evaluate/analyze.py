@@ -2,7 +2,7 @@ import numpy as np
 from sklearn import metrics
 import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
-from datetime import datetime
+import datetime
 from typing import *
 
 
@@ -112,22 +112,33 @@ def jaccard(x: Set[Any], y: Set[Any]) -> float:
 	return len(x.intersection(y))/len(x.union(y))
 
 
-def plot_results(true: List[List[int]], prediction_results: Dict[str, List[List[float]]]):
+def plot_results(folder: str, true: List[List[int]], prediction_results: Dict[str, List[List[float]]]):
+	plt.figure(figsize=(9,7))
+
+	# Plot random-guessing baseline
+	naive_base = prediction_results['*always-true']
+	# plt.hlines(naive_base, 0, 1, colors='red', linestyles='--', label='Always True')
+
+	# Plot graph lines
 	for title, predictions in prediction_results.items():
-		if title == 'baseline':
+		if title.startswith('*'):
 			continue
 		true_flat, preds_flat = flatten_answers(true, predictions)
 		precision, recall, thresholds = metrics.precision_recall_curve(true_flat, preds_flat)
 		sns.lineplot(x=recall[1:], y=precision[1:], label=title)
 
-	true_flat, preds_flat = flatten_answers(true, prediction_results['baseline'])
+	# Plot exact-match baseline
+	true_flat, preds_flat = flatten_answers(true, prediction_results['*exact-match'])
 	precision, recall, thresholds = metrics.precision_recall_curve(true_flat, preds_flat)
-	sns.lineplot(x=[recall[1]], y=[precision[1]], marker='D', markersize=10, label='exact-match baseline')
+	sns.lineplot(x=[recall[1]], y=[precision[1]], marker='D', markersize=8, label='Exact-Match Only')
 
 	plt.legend()
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
-	plt.title('True-False Question Performance for Multivalent EGs')
-	now = datetime.now().strftime('%Y-%m-%d | %H:%M')
-	plt.savefig('tf_results/' + now + '.png')
+	plt.title('True-False Question Performance for Multivalent EGs (Person Filtered)')
+
+	now = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
+	fname = folder + ('' if folder.endswith('/') else '/') + 'tf_results/' + now + '.png'
+	plt.savefig(fname)
+	print('Results figure saved to', fname)
 	# plt.show()

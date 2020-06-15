@@ -1,11 +1,12 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 import os
 import sys
 import pickle
 import pdb
+import numpy as np
 from typing import *
-
 
 
 class EGSpace(Enum):
@@ -173,9 +174,25 @@ def save_EGs(egcache: EGraphCache, fname: str, egspace: EGSpace):
 	with open(fname + '.pkl', 'wb+') as f:
 		pickle.dump(egcache, f, pickle.HIGHEST_PROTOCOL)
 
-def load_precomputed_EGs(fname: str) -> EGraphCache:
+def read_precomputed_EGs(fname: str) -> EGraphCache:
 	with open(fname, 'rb') as f:
 		return pickle.load(f)
+
+
+@dataclass
+class EmbeddingCache:
+	cache: np.ndarray
+	id_map: Dict[str, int]
+
+def load_similarity_cache(folder: str) -> EmbeddingCache:
+	folder_name = folder if folder.endswith('/') else folder + '/'
+	cache_fname = folder_name + 'prop_embs.npy'
+	map_fname = folder_name + 'prop_emb_idx.pkl'
+	with open(map_fname, 'rb') as f:
+		cache_map = pickle.load(f)
+	cache = np.load(cache_fname)
+	return EmbeddingCache(cache, cache_map)
+
 
 if __name__ == '__main__':
 	if len(sys.argv) != 5:

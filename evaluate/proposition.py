@@ -3,10 +3,12 @@ import pickle
 import json
 import pdb
 from functools import lru_cache
+import copy
+# From (Java) entailment.Util
+import reference
 from typing import *
 
-# From (Java) entailment.Util
-MODALS = ["can", "could", "may", "might", "must", "shall", "should", "will", "would", "ought"]
+Prop_Type = TypeVar('Prop_Type', bound='Prop')
 
 class Prop:
 	def __init__(self, predicate: str, args: List[str]):
@@ -17,7 +19,7 @@ class Prop:
 		self.entity_types = ''
 
 	@classmethod
-	def from_descriptions(cls, pred_desc, arg_desc):
+	def from_descriptions(cls: type, pred_desc: str, arg_desc: List[str]) -> Prop_Type:
 		pred_chunks = pred_desc.split('#')
 		pred, types = pred_chunks[0], pred_chunks[1:]
 		args = [a.split('#')[0] for a in arg_desc]
@@ -25,6 +27,16 @@ class Prop:
 		prop.set_types(types)
 		prop.entity_types = None
 		return prop
+
+	@classmethod
+	def with_swapped_pred(cls: type, prop: Prop_Type, pred_swap: str) -> Prop_Type:
+		new_prop = copy.deepcopy(prop)
+		new_prop.pred = pred_swap + prop.pred[prop.pred.find('.'):]
+		return new_prop
+
+	@classmethod
+	def swap_pred(cls, pred_desc: str, raw_pred: str) -> str:
+		return raw_pred + pred_desc[pred_desc.find('.'):]
 
 	def set_args(self, args: List[str]):
 		self.args = args
@@ -84,7 +96,7 @@ def normalize_entity(ent: str) -> str:
 
 
 def normalize_pred_part(pp: str) -> str:
-	return '.'.join(filter(lambda x: x not in MODALS, pp.split('.')))
+	return '.'.join(filter(lambda x: x not in reference.MODAL_VERBS, pp.split('.')))
 
 
 @lru_cache(maxsize=None)
@@ -193,11 +205,13 @@ def get_type(ent, is_entity, typed=True):
 	return ent_type
 
 
-_sub_pairs_fname = 'substitution_pairs.txt'
+# _sub_pairs_fname = 'substitution_pairs.json'
+# _sub_pairs_fname = 'neg_swap_person.json'
+# _sub_pairs_fname = 'neg_swap_person_filtered.json'
 
-def read_substitution_pairs(dirname: str) -> Dict[str, Dict[str, Any]]:
-	dirname = dirname if dirname.endswith('/') else dirname + '/'
-	global _sub_pairs_fname
-	with open(dirname + _sub_pairs_fname) as f:
+def read_substitution_pairs(fname: str) -> Dict[str, Dict[str, Any]]:
+	# dirname = dirname if dirname.endswith('/') else dirname + '/'
+	# global _sub_pairs_fname
+	with open(fname) as f:
 		sub_dict = json.load(f)
 		return sub_dict

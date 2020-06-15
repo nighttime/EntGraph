@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict, Counter
 import random
-from datetime import datetime
+import datetime
 
 from proposition import *
 from collections import Counter
@@ -58,7 +58,7 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 			l = json.loads(line)
 			art_ID = int(l['articleId'])
 			if art_ID not in articles:
-				date = datetime.strptime(l['date'], '%b %d, %Y %X %p')
+				date = datetime.datetime.strptime(l['date'], '%b %d, %Y %X %p')
 				articles[art_ID] = Article(art_ID, date)
 
 			line_ID = l['lineId']
@@ -77,8 +77,8 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 				if '\'' in norm_pred:
 					continue
 
-				if 'be.' in norm_pred:
-					continue
+				# if 'be.' in norm_pred:
+				# 	continue
 				# norm_pred = norm_pred.replace('be.','')
 
 				prop = Prop(norm_pred, [norm_ent])

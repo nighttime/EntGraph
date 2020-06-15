@@ -185,7 +185,7 @@ public class Valence {
                 output.println();
                 output.println("BInc sims");
 
-                writeEntailments("", dummySuffix, node, graph, output, 0.05, topKUnaries);
+                writeEntailments("", dummySuffix, node, graph, output, 0.01, topKUnaries);
 
                 output.println();
                 output.println();
@@ -211,7 +211,7 @@ public class Valence {
 
             String entailedPred = graph.idx2node.get(edge.nIdx).id;
 
-            boolean unaryPred = !entailedPred.contains(",");
+            boolean unaryPred = (entailedPred.split("#").length == 2);
             if (unaryPred) {
                 if (score < minSim) { continue; }
                 if (topKUnaries >= 0 && ct >= topKUnaries) {
@@ -364,7 +364,7 @@ public class Valence {
 
         else if (argList.remove("--makeDummy")) {
             if (argList.size() < 2) {
-                System.out.println("Usage: Valence --makeDummy <unary-in-folder> <unary-out-folder> [keep-top-percent]");
+                System.out.println("Usage: Valence --makeDummy <unary-in-folder> <unary-out-folder> [keep-top-K]");
                 exit(1);
             }
 

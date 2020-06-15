@@ -1,0 +1,2281 @@
+{
+  "do.1#person": {
+    "query_word": "do",
+    "antonyms": [],
+    "troponyms": [
+      "exaggerate"
+    ],
+    "entails": [
+      "work"
+    ]
+  },
+  "have.1#person": {
+    "query_word": "have",
+    "antonyms": [
+      "miss",
+      "lack"
+    ],
+    "troponyms": [
+      "maintain",
+      "keep",
+      "sustain"
+    ],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "write.1#person": {
+    "query_word": "write",
+    "antonyms": [],
+    "troponyms": [
+      "draft",
+      "draw",
+      "outline",
+      "adopt",
+      "reference"
+    ],
+    "entails": [
+      "spell"
+    ]
+  },
+  "go.1#person": {
+    "query_word": "go",
+    "antonyms": [
+      "come"
+    ],
+    "troponyms": [
+      "retire",
+      "plow",
+      "back",
+      "play",
+      "pan",
+      "wheel",
+      "arise",
+      "fall",
+      "change",
+      "round",
+      "ease",
+      "advance",
+      "spread",
+      "withdraw",
+      "seek",
+      "scramble",
+      "drive",
+      "rise",
+      "blow",
+      "carry",
+      "push",
+      "swim",
+      "step",
+      "turn",
+      "follow",
+      "race",
+      "lift",
+      "err",
+      "return"
+    ],
+    "entails": [
+      "be",
+      "live"
+    ]
+  },
+  "come.1#person": {
+    "query_word": "come",
+    "antonyms": [
+      "go",
+      "depart"
+    ],
+    "troponyms": [
+      "address",
+      "near"
+    ],
+    "entails": []
+  },
+  "think.1#person": {
+    "query_word": "think",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "begin.1#person": {
+    "query_word": "begin",
+    "antonyms": [
+      "end",
+      "terminate"
+    ],
+    "troponyms": [
+      "launch",
+      "enter",
+      "fall",
+      "attack",
+      "plunge"
+    ],
+    "entails": []
+  },
+  "know.1#person": {
+    "query_word": "know",
+    "antonyms": [
+      "ignore"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "contribute.1#person": {
+    "query_word": "contribute",
+    "antonyms": [],
+    "troponyms": [
+      "factor"
+    ],
+    "entails": []
+  },
+  "help.1#person": {
+    "query_word": "help",
+    "antonyms": [],
+    "troponyms": [
+      "serve",
+      "attend",
+      "care",
+    ],
+    "entails": []
+  },
+  "add.1#person": {
+    "query_word": "add",
+    "antonyms": [],
+    "troponyms": [
+      "mix",
+      "combine",
+      "mark",
+      "qualify"
+    ],
+    "entails": []
+  },
+  "write.2#person": {
+    "query_word": "write",
+    "antonyms": [],
+    "troponyms": [
+      "draft",
+      "draw",
+      "adopt",
+      "cite",
+      "reference"
+    ],
+    "entails": [
+      "spell"
+    ]
+  },
+  "win.1#person": {
+    "query_word": "win",
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [
+      "take",
+      "sweep",
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "start.1#person": {
+    "query_word": "start",
+    "antonyms": [
+      "stop"
+    ],
+    "troponyms": [
+      "launch",
+      "enter",
+      "fall",
+      "attack",
+      "plunge"
+    ],
+    "entails": []
+  },
+  "play.1#person": {
+    "query_word": "play",
+    "antonyms": [],
+    "troponyms": [
+      "fumble",
+      "bowl",
+      "develop",
+      "die",
+      "bid",
+      "call",
+      "volley",
+      "catch",
+      "walk",
+      "gamble",
+      "quarterback",
+      "curl",
+      "complete",
+      "start"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "speak.1#person": {
+    "query_word": "speak",
+    "antonyms": [],
+    "troponyms": [
+      "deliver",
+      "present",
+      "snap",
+      "rave",
+      "bark",
+      "read",
+      "mutter",
+      "shout",
+      "snarl",
+      "cackle",
+      "begin",
+      "rant",
+      "sing"
+    ],
+    "entails": [
+      "talk"
+    ]
+  },
+  "get.1#person": {
+    "query_word": "get",
+    "antonyms": [],
+    "troponyms": [
+      "inherit",
+      "take",
+      "find",
+      "poll",
+      "recover",
+      "hire",
+      "make",
+      "turn",
+      "win",
+      "isolate",
+      "receive",
+      "realize",
+      "capture",
+      "realise"
+    ],
+    "entails": [
+      "come"
+    ]
+  },
+  "make.1#person": {
+    "query_word": "make",
+    "antonyms": [
+      "unmake",
+      "undo"
+    ],
+    "troponyms": [
+      "exaggerate"
+    ],
+    "entails": [
+      "travel",
+      "go",
+      "move",
+      "locomote"
+    ]
+  },
+  "die.1#person": {
+    "query_word": "die",
+    "antonyms": [],
+    "troponyms": [
+      "fall",
+      "drown",
+      "starve"
+    ],
+    "entails": []
+  },
+  "run.1#person": {
+    "query_word": "run",
+    "antonyms": [
+      "idle"
+    ],
+    "troponyms": [
+      "romp",
+      "rush",
+      "scamper",
+      "streak",
+      "sprint"
+    ],
+    "entails": []
+  },
+  "leave.1#person": {
+    "query_word": "leave",
+    "antonyms": [
+      "arrive",
+      "get",
+      "come"
+    ],
+    "troponyms": [
+      "escape",
+      "empty",
+      "skip",
+      "start"
+    ],
+    "entails": [
+      "die",
+      "decease",
+      "perish",
+      "go",
+      "exit",
+      "expire",
+      "pass",
+      "conk",
+      "choke",
+      "croak"
+    ]
+  },
+  "finish.1#person": {
+    "query_word": "finish",
+    "antonyms": [],
+    "troponyms": [
+      "implement",
+      "execute",
+    ],
+    "entails": []
+  },
+  "suggest.1#person": {
+    "query_word": "suggest",
+    "antonyms": [],
+    "troponyms": [
+      "advocate",
+      "urge"
+    ],
+    "entails": []
+  },
+  "score.1#person": {
+    "query_word": "score",
+    "antonyms": [],
+    "troponyms": [
+      "have",
+      "make",
+      "convert",
+      "walk"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "live.1#person": {
+    "query_word": "live",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "exist",
+      "be"
+    ]
+  },
+  "walk.1#person": {
+    "query_word": "walk",
+    "antonyms": [
+      "ride"
+    ],
+    "troponyms": [
+      "stumble",
+      "saunter",
+      "scuffle",
+      "stomp",
+      "limp",
+      "tap",
+      "hobble",
+      "flounder",
+      "march"
+    ],
+    "entails": [
+      "step"
+    ]
+  },
+  "add.2#person": {
+    "query_word": "add",
+    "antonyms": [],
+    "troponyms": [
+      "mark",
+      "combine"
+    ],
+    "entails": []
+  },
+  "recall.2#person": {
+    "query_word": "recall",
+    "antonyms": [
+      "issue",
+      "supply"
+    ],
+    "troponyms": [
+      "review"
+    ],
+    "entails": []
+  },
+  "believe.1#person": {
+    "query_word": "believe",
+    "antonyms": [
+      "disbelieve",
+      "discredit"
+    ],
+    "troponyms": [
+      "rely",
+      "understand",
+    ],
+    "entails": []
+  },
+  "ask.2#person": {
+    "query_word": "ask",
+    "antonyms": [],
+    "troponyms": [
+      "consult"
+    ],
+    "entails": []
+  },
+  "stop.1#person": {
+    "query_word": "stop",
+    "antonyms": [
+      "start",
+      "go"
+    ],
+    "troponyms": [
+      "check",
+      "stall",
+      "settle",
+    ],
+    "entails": []
+  },
+  "lead.1#person": {
+    "query_word": "lead",
+    "antonyms": [],
+    "troponyms": [
+      "usher",
+      "hand"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "take.1#person": {
+    "query_word": "take",
+    "antonyms": [
+      "give"
+    ],
+    "troponyms": [
+      "be"
+    ],
+    "entails": [
+      "come"
+    ]
+  },
+  "continue.1#person": {
+    "query_word": "continue",
+    "antonyms": [
+      "discontinue"
+    ],
+    "troponyms": [
+      "hold",
+      "ride"
+    ],
+    "entails": []
+  },
+  "explain.1#person": {
+    "query_word": "explain",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "return.1#person": {
+    "query_word": "return",
+    "antonyms": [],
+    "troponyms": [
+      "home",
+      "rise",
+      "bounce"
+    ],
+    "entails": []
+  },
+  "work.1#person": {
+    "query_word": "work",
+    "antonyms": [
+      "idle",
+      "laze",
+      "slug",
+      "stagnate"
+    ],
+    "troponyms": [
+      "wait",
+      "serve",
+      "busy",
+      "volunteer",
+      "collaborate",
+      "cooperate",
+      "assist",
+      "occupy"
+    ],
+    "entails": [
+      "reason"
+    ]
+  },
+  "acknowledge.1#person": {
+    "query_word": "acknowledge",
+    "antonyms": [],
+    "troponyms": [
+      "concede",
+      "confess"
+    ],
+    "entails": []
+  },
+  "keep.1#person": {
+    "query_word": "keep",
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [
+      "continue"
+    ],
+    "entails": []
+  },
+  "recall.1#person": {
+    "query_word": "recall",
+    "antonyms": [
+      "issue",
+      "supply"
+    ],
+    "troponyms": [
+      "recognize",
+    ],
+    "entails": []
+  },
+  "grow.1#person": {
+    "query_word": "grow",
+    "antonyms": [],
+    "troponyms": [
+      "turn"
+    ],
+    "entails": [
+      "senesce",
+      "age",
+      "mature",
+      "maturate"
+    ]
+  },
+  "look.1#person": {
+    "query_word": "look",
+    "antonyms": [],
+    "troponyms": [
+      "admire",
+      "consider",
+    ],
+    "entails": [
+      "see"
+    ]
+  },
+  "become.1#person": {
+    "query_word": "become",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "work",
+      "settle",
+      "sober",
+      "break",
+      "run"
+    ],
+    "entails": []
+  },
+  "agree.1#person": {
+    "query_word": "agree",
+    "antonyms": [
+      "disagree",
+      "differ",
+      "dissent"
+    ],
+    "troponyms": [
+      "concede",
+      "arrange",
+      "conclude"
+    ],
+    "entails": []
+  },
+  "note.1#person": {
+    "query_word": "note",
+    "antonyms": [],
+    "troponyms": [
+    ],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "retire.1#person": {
+    "query_word": "retire",
+    "antonyms": [],
+    "troponyms": [
+      "withdraw"
+    ],
+    "entails": [
+      "meet",
+      "gather",
+      "assemble",
+      "forgather",
+      "foregather"
+    ]
+  },
+  "will.1#person": {
+    "query_word": "will",
+    "antonyms": [],
+    "troponyms": [
+      "remember"
+    ],
+    "entails": []
+  },
+  "get.2#person": {
+    "query_word": "get",
+    "antonyms": [],
+    "troponyms": [
+      "accept",
+      "turn",
+      "win",
+      "receive",
+      "buy",
+      "engage",
+      "isolate",
+      "hire",
+    ],
+    "entails": [
+      "come"
+    ]
+  },
+  "bear.2#person": {
+    "query_word": "bear",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "conceive"
+    ]
+  },
+  "feel.1#person": {
+    "query_word": "feel",
+    "antonyms": [],
+    "troponyms": [
+      "suffer",
+      "entertain",
+      "die",
+      "regret",
+      "rejoice"
+    ],
+    "entails": [
+      "touch"
+    ]
+  },
+  "smile.1#person": {
+    "query_word": "smile",
+    "antonyms": [],
+    "troponyms": [
+      "sneer",
+      "smirk",
+    ],
+    "entails": []
+  },
+  "consider.1#person": {
+    "query_word": "consider",
+    "antonyms": [],
+    "troponyms": [
+      "like",
+      "identify",
+      "appreciate",
+      "favor",
+      "respect",
+      "include",
+      "expect",
+      "receive",
+      "capitalize",
+      "call"
+    ],
+    "entails": []
+  },
+  "meet.1#person": {
+    "query_word": "meet",
+    "antonyms": [],
+    "troponyms": [
+      "cross"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "talk.1#person": {
+    "query_word": "talk",
+    "antonyms": [],
+    "troponyms": [
+      "level",
+      "flirt",
+      "continue",
+      "proceed"
+    ],
+    "entails": []
+  },
+  "admit.1#person": {
+    "query_word": "admit",
+    "antonyms": [
+      "deny"
+    ],
+    "troponyms": [
+      "sustain"
+    ],
+    "entails": []
+  },
+  "reply.1#person": {
+    "query_word": "reply",
+    "antonyms": [],
+    "troponyms": [
+      "counter",
+      "retort"
+    ],
+    "entails": []
+  },
+  "have.2#person": {
+    "query_word": "have",
+    "antonyms": [
+      "miss",
+      "lack"
+    ],
+    "troponyms": [
+      "keep",
+      "maintain",
+      "carry",
+    ],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "move.1#person": {
+    "query_word": "move",
+    "antonyms": [],
+    "troponyms": [
+      "ski",
+      "cruise",
+      "pan",
+      "fall",
+      "pass",
+      "rise",
+      "float",
+      "race",
+      "ascend"
+    ],
+    "entails": [
+      "play"
+    ]
+  },
+  "watch.1#person": {
+    "query_word": "watch",
+    "antonyms": [],
+    "troponyms": [
+      "catch",
+      "witness"
+    ],
+    "entails": [
+      "look"
+    ]
+  },
+  "stay.1#person": {
+    "query_word": "stay",
+    "antonyms": [
+      "change"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "turn.1#person": {
+    "query_word": "turn",
+    "antonyms": [],
+    "troponyms": [
+      "deflect",
+      "bend",
+      "cut",
+      "toss",
+      "roll",
+      "spiral",
+    ],
+    "entails": [
+      "dig",
+      "delve"
+    ]
+  },
+  "fall.1#person": {
+    "query_word": "fall",
+    "antonyms": [
+      "rise",
+      "lift",
+      "arise",
+      "uprise"
+    ],
+    "troponyms": [
+      "slump",
+      "pounce",
+      "dive",
+      "sink",
+      "crash",
+      "settle",
+      "correct",
+      "tumble",
+      "set",
+    ],
+    "entails": [
+      "condense",
+      "distill",
+      "distil"
+    ]
+  },
+  "sit.1#person": {
+    "query_word": "sit",
+    "antonyms": [
+      "stand"
+    ],
+    "troponyms": [
+      "rest",
+      "sprawl"
+    ],
+    "entails": []
+  },
+  "support.2#person": {
+    "query_word": "support",
+    "antonyms": [],
+    "troponyms": [
+      "endorse",
+      "shop",
+      "promote",
+    ],
+    "entails": [
+      "approve",
+      "O.K.",
+      "okay",
+      "sanction"
+    ]
+  },
+  "resign.1#person": {
+    "query_word": "resign",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "find.1#person": {
+    "query_word": "find",
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "end.1#person": {
+    "query_word": "end",
+    "antonyms": [
+      "begin",
+      "start"
+    ],
+    "troponyms": [
+      "break",
+      "vanish",
+      "disappear",
+      "go",
+    ],
+    "entails": []
+  },
+  "tell.1#person": {
+    "query_word": "tell",
+    "antonyms": [],
+    "troponyms": [
+      "represent",
+      "sum",
+      "announce",
+      "declare"
+    ],
+    "entails": [
+      "compare"
+    ]
+  },
+  "hit.1#person": {
+    "query_word": "hit",
+    "antonyms": [
+      "miss"
+    ],
+    "troponyms": [
+      "foul",
+      "snap",
+      "top",
+      "shoot",
+    ],
+    "entails": [
+      "travel",
+      "go",
+      "move",
+      "locomote"
+    ]
+  },
+  "insist.1#person": {
+    "query_word": "insist",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "tell.2#person": {
+    "query_word": "tell",
+    "antonyms": [],
+    "troponyms": [
+      "give",
+      "introduce",
+      "announce",
+      "reply",
+      "explain",
+      "supply"
+    ],
+    "entails": [
+      "compare"
+    ]
+  },
+  "seem.1#person": {
+    "query_word": "seem",
+    "antonyms": [],
+    "troponyms": [
+      "make",
+      "cut",
+      "jump",
+      "loom",
+      "rise",
+      "beam",
+      "lift",
+      "shine"
+    ],
+    "entails": []
+  },
+  "respond.1#person": {
+    "query_word": "respond",
+    "antonyms": [],
+    "troponyms": [
+      "wonder",
+      "greet",
+      "explode",
+      "accept",
+    ],
+    "entails": []
+  },
+  "hit.2#person": {
+    "query_word": "hit",
+    "antonyms": [
+      "miss"
+    ],
+    "troponyms": [
+      "hook",
+      "hole",
+      "play",
+      "ground",
+      "single"
+    ],
+    "entails": [
+      "travel",
+      "go",
+      "move",
+      "locomote"
+    ]
+  },
+  "try.1#person": {
+    "query_word": "try",
+    "antonyms": [],
+    "troponyms": [
+      "fight",
+      "struggle",
+      "gamble"
+    ],
+    "entails": []
+  },
+  "point.1#person": {
+    "query_word": "point",
+    "antonyms": [],
+    "troponyms": [
+      "reflect"
+    ],
+    "entails": []
+  },
+  "beat.1#person": {
+    "query_word": "beat",
+    "antonyms": [],
+    "troponyms": [
+      "whip",
+      "bat",
+      "screw",
+      "cheat"
+    ],
+    "entails": [
+      "win"
+    ]
+  },
+  "arrive.1#person": {
+    "query_word": "arrive",
+    "antonyms": [
+      "leave"
+    ],
+    "troponyms": [
+      "hit",
+      "land",
+    ],
+    "entails": []
+  },
+  "argue.1#person": {
+    "query_word": "argue",
+    "antonyms": [],
+    "troponyms": [
+      "defend"
+    ],
+    "entails": [
+      "disagree",
+      "differ",
+      "dissent"
+    ]
+  },
+  "pitch.1#person": {
+    "query_word": "pitch",
+    "antonyms": [],
+    "troponyms": [
+      "lag"
+    ],
+    "entails": []
+  },
+  "announce.1#person": {
+    "query_word": "announce",
+    "antonyms": [],
+    "troponyms": [
+      "sound",
+      "cry",
+    ],
+    "entails": []
+  },
+  "call.1#person": {
+    "query_word": "call",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "dial"
+    ]
+  },
+  "leave.2#person": {
+    "query_word": "leave",
+    "antonyms": [
+      "arrive",
+      "get",
+      "come"
+    ],
+    "troponyms": [
+      "abandon",
+      "start",
+      "run",
+      "get",
+    ],
+    "entails": [
+      "die",
+      "decease",
+      "perish",
+      "go",
+      "exit",
+      "expire",
+      "pass",
+      "conk",
+      "choke",
+      "croak"
+    ]
+  },
+  "defeat.1#person": {
+    "query_word": "defeat",
+    "antonyms": [],
+    "troponyms": [
+      "upset",
+      "down",
+    ],
+    "entails": []
+  },
+  "propose.1#person": {
+    "query_word": "propose",
+    "antonyms": [],
+    "troponyms": [
+      "move",
+      "advocate",
+      "urge"
+    ],
+    "entails": []
+  },
+  "remember.1#person": {
+    "query_word": "remember",
+    "antonyms": [
+      "forget",
+      "block"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "perform.1#person": {
+    "query_word": "perform",
+    "antonyms": [],
+    "troponyms": [
+      "lead",
+      "cut",
+      "make",
+      "direct"
+    ],
+    "entails": []
+  },
+  "explain.2#person": {
+    "query_word": "explain",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "stand.1#person": {
+    "query_word": "stand",
+    "antonyms": [
+      "sit"
+    ],
+    "troponyms": [
+      "ramp"
+    ],
+    "entails": [
+      "arise",
+      "rise",
+      "uprise"
+    ]
+  },
+  "understand.1#person": {
+    "query_word": "understand",
+    "antonyms": [],
+    "troponyms": [
+      "work",
+      "savvy",
+      "penetrate",
+      "follow",
+      "read",
+      "touch",
+      "catch",
+    ],
+    "entails": []
+  },
+  "spend.1#person": {
+    "query_word": "spend",
+    "antonyms": [],
+    "troponyms": [
+      "serve",
+      "vacation",
+      "do"
+    ],
+    "entails": []
+  },
+  "struggle.1#person": {
+    "query_word": "struggle",
+    "antonyms": [],
+    "troponyms": [
+      "flounder",
+      "drive",
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "step.1#person": {
+    "query_word": "step",
+    "antonyms": [],
+    "troponyms": [
+      "backpedal"
+    ],
+    "entails": []
+  },
+  "decide.1#person": {
+    "query_word": "decide",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "try",
+      "govern",
+      "will",
+      "measure"
+    ],
+    "entails": [
+      "debate",
+      "deliberate"
+    ]
+  },
+  "claim.1#person": {
+    "query_word": "claim",
+    "antonyms": [
+      "disclaim"
+    ],
+    "troponyms": [
+      "charge",
+      "pretend"
+    ],
+    "entails": []
+  },
+  "call.2#person": {
+    "query_word": "call",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "dial"
+    ]
+  },
+  "avoid.1#person": {
+    "query_word": "avoid",
+    "antonyms": [
+      "confront",
+      "face"
+    ],
+    "troponyms": [
+      "escape",
+      "hedge",
+      "miss",
+      "parry"
+    ],
+    "entails": []
+  },
+  "hear.1#person": {
+    "query_word": "hear",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "realize.1#person": {
+    "query_word": "realize",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "act.1#person": {
+    "query_word": "act",
+    "antonyms": [
+      "refrain",
+      "forbear"
+    ],
+    "troponyms": [
+      "manage",
+      "wait",
+      "pull",
+      "try",
+      "create",
+      "volunteer",
+      "race",
+    ],
+    "entails": []
+  },
+  "compete.1#person": {
+    "query_word": "compete",
+    "antonyms": [],
+    "troponyms": [
+      "emulate",
+      "equal",
+      "touch",
+      "match",
+      "run"
+    ],
+    "entails": []
+  },
+  "throw.1#person": {
+    "query_word": "throw",
+    "antonyms": [],
+    "troponyms": [
+      "shy",
+      "skip",
+      "ground"
+    ],
+    "entails": []
+  },
+  "mean.1#person": {
+    "query_word": "mean",
+    "antonyms": [],
+    "troponyms": [
+      "drive",
+      "get"
+    ],
+    "entails": []
+  },
+  "release.2#person": {
+    "query_word": "release",
+    "antonyms": [],
+    "troponyms": [
+      "unleash"
+    ],
+    "entails": []
+  },
+  "drop.1#person": {
+    "query_word": "drop",
+    "antonyms": [],
+    "troponyms": [
+      "hang"
+    ],
+    "entails": []
+  },
+  "face.1#person": {
+    "query_word": "face",
+    "antonyms": [],
+    "troponyms": [
+      "tackle",
+      "undertake"
+    ],
+    "entails": []
+  },
+  "declare.1#person": {
+    "query_word": "declare",
+    "antonyms": [],
+    "troponyms": [
+      "testify",
+      "assure",
+    ],
+    "entails": []
+  },
+  "give.1#person": {
+    "query_word": "give",
+    "antonyms": [
+      "take"
+    ],
+    "troponyms": [
+      "deliver"
+    ],
+    "entails": []
+  },
+  "back.1#person": {
+    "query_word": "back",
+    "antonyms": [
+      "advance"
+    ],
+    "troponyms": [
+      "guarantee",
+    ],
+    "entails": []
+  },
+  "can.2#person": {
+    "query_word": "can",
+    "antonyms": [],
+    "troponyms": [
+      "dismiss",
+      "retire",
+      "drop"
+    ],
+    "entails": []
+  },
+  "learn.1#person": {
+    "query_word": "learn",
+    "antonyms": [],
+    "troponyms": [
+      "study"
+    ],
+    "entails": []
+  },
+  "miss.1#person": {
+    "query_word": "miss",
+    "antonyms": [
+      "attend"
+    ],
+    "troponyms": [
+      "overlook"
+    ],
+    "entails": [
+      "repent",
+      "regret",
+      "rue"
+    ]
+  },
+  "include.1#person": {
+    "query_word": "include",
+    "antonyms": [
+      "exclude"
+    ],
+    "troponyms": [
+      "cover",
+      "bear",
+      "embrace"
+    ],
+    "entails": [
+      "have",
+      "feature"
+    ]
+  },
+  "can.1#person": {
+    "query_word": "can",
+    "antonyms": [],
+    "troponyms": [
+      "dismiss",
+      "drop",
+      "retire"
+    ],
+    "entails": []
+  },
+  "elect.2#person": {
+    "query_word": "elect",
+    "antonyms": [],
+    "troponyms": [
+      "return",
+      "reelect"
+    ],
+    "entails": []
+  },
+  "want.1#person": {
+    "query_word": "want",
+    "antonyms": [],
+    "troponyms": [
+      "like",
+      "starve",
+      "care"
+    ],
+    "entails": []
+  },
+  "listen.1#person": {
+    "query_word": "listen",
+    "antonyms": [],
+    "troponyms": [
+      "attend",
+      "hang"
+    ],
+    "entails": [
+      "hear"
+    ]
+  },
+  "laugh.1#person": {
+    "query_word": "laugh",
+    "antonyms": [
+      "cry",
+      "weep"
+    ],
+    "troponyms": [
+      "cackle",
+      "roar"
+    ],
+    "entails": []
+  },
+  "hurt.2#person": {
+    "query_word": "hurt",
+    "antonyms": [],
+    "troponyms": [
+      "burn",
+      "shoot"
+    ],
+    "entails": []
+  },
+  "become.2#person": {
+    "query_word": "become",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "run",
+      "settle",
+      "break",
+      "work"
+    ],
+    "entails": []
+  },
+  "use.1#person": {
+    "query_word": "use",
+    "antonyms": [],
+    "troponyms": [
+      "work",
+      "implement",
+      "put",
+      "exploit",
+      "address",
+      "share",
+      "tap",
+      "play"
+    ],
+    "entails": [
+      "consume",
+      "eat",
+      "deplete",
+      "exhaust"
+    ]
+  },
+  "take.2#person": {
+    "query_word": "take",
+    "antonyms": [
+      "give"
+    ],
+    "troponyms": [],
+    "entails": [
+      "come"
+    ]
+  },
+  "drive.1#person": {
+    "query_word": "drive",
+    "antonyms": [],
+    "troponyms": [
+      "coach"
+    ],
+    "entails": [
+      "ride"
+    ]
+  },
+  "vote.for.2#person": {
+    "query_word": "vote",
+    "antonyms": [],
+    "troponyms": [
+      "poll"
+    ],
+    "entails": []
+  },
+  "meet.2#person": {
+    "query_word": "meet",
+    "antonyms": [],
+    "troponyms": [
+      "cross"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "find.2#person": {
+    "query_word": "find",
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "expect.2#person": {
+    "query_word": "expect",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "conceive"
+    ]
+  },
+  "replace.2#person": {
+    "query_word": "replace",
+    "antonyms": [],
+    "troponyms": [
+      "convert"
+    ],
+    "entails": []
+  },
+  "attend.1#person": {
+    "query_word": "attend",
+    "antonyms": [
+      "miss"
+    ],
+    "troponyms": [
+      "worship"
+    ],
+    "entails": []
+  },
+  "imagine.1#person": {
+    "query_word": "imagine",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "dismiss.1#person": {
+    "query_word": "dismiss",
+    "antonyms": [],
+    "troponyms": [
+      "scoff"
+    ],
+    "entails": []
+  },
+  "remain.1#person": {
+    "query_word": "remain",
+    "antonyms": [],
+    "troponyms": [
+      "stand",
+      "be"
+    ],
+    "entails": []
+  },
+  "choose.1#person": {
+    "query_word": "choose",
+    "antonyms": [],
+    "troponyms": [
+      "draw",
+      "adopt",
+      "propose",
+      "fix",
+      "go",
+      "limit"
+    ],
+    "entails": [
+      "compare"
+    ]
+  },
+  "need.1#person": {
+    "query_word": "need",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "govern",
+      "claim"
+    ],
+    "entails": []
+  },
+  "play.2#person": {
+    "query_word": "play",
+    "antonyms": [],
+    "troponyms": [
+      "start",
+      "catch",
+      "foul",
+      "walk",
+      "develop"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "reply.2#person": {
+    "query_word": "reply",
+    "antonyms": [],
+    "troponyms": [
+      "counter"
+    ],
+    "entails": []
+  },
+  "answer.1#person": {
+    "query_word": "answer",
+    "antonyms": [],
+    "troponyms": [
+      "counter",
+      "retort"
+    ],
+    "entails": []
+  },
+  "name.2#person": {
+    "query_word": "name",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "classify",
+      "class",
+      "sort",
+      "assort",
+      "separate"
+    ]
+  },
+  "like.1#person": {
+    "query_word": "like",
+    "antonyms": [
+      "dislike"
+    ],
+    "troponyms": [
+      "please"
+    ],
+    "entails": [
+      "approve"
+    ]
+  },
+  "marry.1#person": {
+    "query_word": "marry",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "open.1#person": {
+    "query_word": "open",
+    "antonyms": [
+      "close",
+      "shut"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "sell.1#person": {
+    "query_word": "sell",
+    "antonyms": [
+      "buy",
+      "purchase"
+    ],
+    "troponyms": [
+      "clear",
+      "realize",
+      "realise",
+      "sacrifice"
+    ],
+    "entails": [
+      "give"
+    ]
+  },
+  "beat.2#person": {
+    "query_word": "beat",
+    "antonyms": [],
+    "troponyms": [
+      "cheat",
+      "subdue",
+      "screw",
+      "bat"
+    ],
+    "entails": [
+      "win"
+    ]
+  },
+  "produce.2#person": {
+    "query_word": "produce",
+    "antonyms": [],
+    "troponyms": [
+      "deliver"
+    ],
+    "entails": []
+  },
+  "hold.1#person": {
+    "query_word": "hold",
+    "antonyms": [
+      "release",
+      "relinquish"
+    ],
+    "troponyms": [
+      "continue"
+    ],
+    "entails": [
+      "procure",
+      "secure"
+    ]
+  },
+  "estimate.1#person": {
+    "query_word": "estimate",
+    "antonyms": [],
+    "troponyms": [
+      "put",
+      "set",
+      "count"
+    ],
+    "entails": []
+  },
+  "hire.2#person": {
+    "query_word": "hire",
+    "antonyms": [
+      "displace",
+      "fire",
+      "can",
+      "dismiss",
+      "sack",
+      "terminate"
+    ],
+    "troponyms": [
+      "engage",
+      "fill",
+      "ship",
+      "sign"
+    ],
+    "entails": []
+  },
+  "rise.1#person": {
+    "query_word": "rise",
+    "antonyms": [
+      "descend",
+      "fall"
+    ],
+    "troponyms": [
+      "mount",
+      "steam"
+    ],
+    "entails": []
+  },
+  "hold.2#person": {
+    "query_word": "hold",
+    "antonyms": [
+      "release",
+      "relinquish"
+    ],
+    "troponyms": [
+      "preserve",
+      "continue"
+    ],
+    "entails": [
+      "procure",
+      "secure"
+    ]
+  },
+  "catch.2#person": {
+    "query_word": "catch",
+    "antonyms": [],
+    "troponyms": [
+      "stop",
+      "intercept",
+      "hook"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ]
+  },
+  "warn.1#person": {
+    "query_word": "warn",
+    "antonyms": [],
+    "troponyms": [
+      "threaten",
+      "alert",
+      "alarm"
+    ],
+    "entails": []
+  },
+  "plan.1#person": {
+    "query_word": "plan",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "complain.1#person": {
+    "query_word": "complain",
+    "antonyms": [
+      "cheer"
+    ],
+    "troponyms": [
+      "protest",
+      "report"
+    ],
+    "entails": []
+  },
+  "slide.1#person": {
+    "query_word": "slide",
+    "antonyms": [],
+    "troponyms": [
+      "skid"
+    ],
+    "entails": []
+  },
+  "hear.2#person": {
+    "query_word": "hear",
+    "antonyms": [],
+    "troponyms": [
+      "get",
+      "catch"
+    ],
+    "entails": []
+  },
+  "hire.1#person": {
+    "query_word": "hire",
+    "antonyms": [
+      "displace",
+      "fire",
+      "can",
+      "dismiss",
+      "sack",
+      "terminate"
+    ],
+    "troponyms": [
+      "sign"
+    ],
+    "entails": []
+  },
+  "succeed.1#person": {
+    "query_word": "succeed",
+    "antonyms": [
+      "fail",
+      "miscarry"
+    ],
+    "troponyms": [
+      "hit",
+      "reach"
+    ],
+    "entails": [
+      "try",
+      "seek",
+      "attempt",
+      "essay",
+      "assay"
+    ]
+  },
+  "support.1#person": {
+    "query_word": "support",
+    "antonyms": [],
+    "troponyms": [
+      "advance",
+    ],
+    "entails": [
+      "approve",
+      "O.K.",
+      "okay",
+      "sanction"
+    ]
+  },
+  "joke.1#person": {
+    "query_word": "joke",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "involve.2#person": {
+    "query_word": "involve",
+    "antonyms": [],
+    "troponyms": [
+      "implicate"
+    ],
+    "entails": []
+  },
+  "choose.2#person": {
+    "query_word": "choose",
+    "antonyms": [],
+    "troponyms": [
+      "define",
+      "assign",
+      "propose",
+      "draw",
+      "adopt",
+      "screen",
+    ],
+    "entails": [
+      "compare"
+    ]
+  },
+  "let.1#person": {
+    "query_word": "let",
+    "antonyms": [
+      "prevent",
+      "keep"
+    ],
+    "troponyms": [
+      "pass"
+    ],
+    "entails": []
+  },
+  "want.2#person": {
+    "query_word": "want",
+    "antonyms": [],
+    "troponyms": [
+      "like",
+      "miss",
+      "seek"
+    ],
+    "entails": []
+  },
+  "disappoint.1#person": {
+    "query_word": "disappoint",
+    "antonyms": [],
+    "troponyms": [
+      "fail"
+    ],
+    "entails": []
+  },
+  "shout.1#person": {
+    "query_word": "shout",
+    "antonyms": [
+      "whisper"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "create.1#person": {
+    "query_word": "create",
+    "antonyms": [],
+    "troponyms": [
+      "blast",
+      "clear",
+      "establish",
+      "organize",
+      "initiate",
+      "beat",
+      "start"
+    ],
+    "entails": []
+  },
+  "watch.2#person": {
+    "query_word": "watch",
+    "antonyms": [],
+    "troponyms": [
+      "catch",
+      "witness"
+    ],
+    "entails": [
+      "look"
+    ]
+  },
+  "decline.1#person": {
+    "query_word": "decline",
+    "antonyms": [],
+    "troponyms": [
+      "suffer",
+      "regress",
+      "slip",
+      "tumble"
+    ],
+    "entails": []
+  },
+  "reject.1#person": {
+    "query_word": "reject",
+    "antonyms": [
+      "accept"
+    ],
+    "troponyms": [
+      "ignore"
+    ],
+    "entails": []
+  },
+  "endorse.1#person": {
+    "query_word": "endorse",
+    "antonyms": [],
+    "troponyms": [
+      "guarantee",
+      "defend"
+    ],
+    "entails": []
+  },
+  "carry.1#person": {
+    "query_word": "carry",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "haul",
+      "convey",
+      "fly"
+    ],
+    "entails": [
+      "conceive"
+    ]
+  },
+  "travel.1#person": {
+    "query_word": "travel",
+    "antonyms": [],
+    "troponyms": [
+      "circulate",
+      "drive",
+      "pursue",
+      "round"
+    ],
+    "entails": []
+  },
+  "honor.1#person": {
+    "query_word": "honor",
+    "antonyms": [
+      "dishonor",
+      "disgrace",
+      "dishonour",
+      "attaint",
+      "shame"
+    ],
+    "troponyms": [
+      "drink"
+    ],
+    "entails": []
+  },
+  "notice.1#person": {
+    "query_word": "notice",
+    "antonyms": [
+      "ignore"
+    ],
+    "troponyms": [],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "give.2#person": {
+    "query_word": "give",
+    "antonyms": [
+      "take"
+    ],
+    "troponyms": [
+      "deliver",
+    ],
+    "entails": []
+  },
+  "jump.1#person": {
+    "query_word": "jump",
+    "antonyms": [],
+    "troponyms": [
+      "rebound",
+      "skip",
+      "bounce"
+    ],
+    "entails": [
+      "glide",
+      "descend",
+      "fall"
+    ]
+  },
+  "study.1#person": {
+    "query_word": "study",
+    "antonyms": [],
+    "troponyms": [
+      "compare",
+      "name"
+    ],
+    "entails": [
+      "read"
+    ]
+  },
+  "ignore.1#person": {
+    "query_word": "ignore",
+    "antonyms": [
+      "notice",
+      "mark",
+      "note"
+    ],
+    "troponyms": [
+      "scoff"
+    ],
+    "entails": []
+  },
+  "observe.2#person": {
+    "query_word": "observe",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "schedule.2#person": {
+    "query_word": "schedule",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "fail.1#person": {
+    "query_word": "fail",
+    "antonyms": [
+      "succeed",
+      "win"
+    ],
+    "troponyms": [
+      "choke",
+      "miss"
+    ],
+    "entails": []
+  },
+  "upset.1#person": {
+    "query_word": "upset",
+    "antonyms": [],
+    "troponyms": [
+      "hurt",
+      "throw"
+    ],
+    "entails": []
+  },
+  "think.of.2#person": {
+    "query_word": "think",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "fear.1#person": {
+    "query_word": "fear",
+    "antonyms": [],
+    "troponyms": [
+      "panic"
+    ],
+    "entails": []
+  },
+  "select.2#person": {
+    "query_word": "select",
+    "antonyms": [],
+    "troponyms": [
+      "define",
+      "nominate",
+      "propose",
+      "follow",
+      "adopt",
+      "screen"
+    ],
+    "entails": []
+  },
+  "race.1#person": {
+    "query_word": "race",
+    "antonyms": [],
+    "troponyms": [
+      "charge",
+      "dash",
+      "flash",
+      "tear",
+      "shoot",
+      "dart"
+    ],
+    "entails": []
+  },
+  "rank.2#person": {
+    "query_word": "rank",
+    "antonyms": [],
+    "troponyms": [
+      "place",
+      "come"
+    ],
+    "entails": []
+  },
+  "swear.1#person": {
+    "query_word": "swear",
+    "antonyms": [],
+    "troponyms": [
+      "take",
+      "protest",
+      "claim",
+      "tell"
+    ],
+    "entails": []
+  },
+  "conclude.2#person": {
+    "query_word": "conclude",
+    "antonyms": [],
+    "troponyms": [],
+    "entails": []
+  },
+  "break.2#person": {
+    "query_word": "break",
+    "antonyms": [
+      "repair",
+      "mend",
+      "fix",
+      "bushel",
+      "doctor",
+      "restore"
+    ],
+    "troponyms": [],
+    "entails": []
+  },
+  "paint.1#person": {
+    "query_word": "paint",
+    "antonyms": [],
+    "troponyms": [
+      "charge"
+    ],
+    "entails": []
+  },
+  "recount.1#person": {
+    "query_word": "recount",
+    "antonyms": [],
+    "troponyms": [
+      "crack"
+    ],
+    "entails": []
+  },
+  "record.1#person": {
+    "query_word": "record",
+    "antonyms": [
+      "erase",
+      "delete"
+    ],
+    "troponyms": [
+      "file",
+      "maintain",
+      "tally"
+    ],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ]
+  },
+  "figure.1#person": {
+    "query_word": "figure",
+    "antonyms": [],
+    "troponyms": [
+      "allow"
+    ],
+    "entails": []
+  },
+  "remind.2#person": {
+    "query_word": "remind",
+    "antonyms": [],
+    "troponyms": [
+      "record"
+    ],
+    "entails": []
+  }
+}
