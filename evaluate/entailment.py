@@ -25,7 +25,7 @@ class Entailment:
 		self.direction = 'forward'
 
 	def __str__(self):
-		return '( {:.3f} {} => )'.format(self.score, self.pred)
+		return '( {:.3f} => entailment: {} )'.format(self.score, self.pred)
 
 	def __repr__(self):
 		return str(self)
@@ -36,7 +36,7 @@ class BackEntailment(Entailment):
 		self.direction = 'backward'
 
 	def __str__(self):
-		return '( {:.3f} => {} )'.format(self.score, self.pred)
+		return '( antecedent: {} => {:.3f} )'.format(self.score, self.pred)
 
 class EntailmentGraph:
 	typing = None

@@ -8,13 +8,12 @@ from typing import *
 lemmatizer = nltk.stem.wordnet.WordNetLemmatizer()
 
 # def load_ppdb(fpath: str) -> Dict[str, Dict[str, Set[str]]]:
-def load_ppdb(fpath: str) -> Dict[str, Set[str]]:
-	file = next(f for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)) and f.startswith('ppdb-'))
-	# ppdb = defaultdict(lambda: defaultdict(set))
+def load_ppdb(fpath: str) -> Optional[Dict[str, Set[str]]]:
+	fname = next(f for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)) and f.startswith('ppdb-'))
 	ppdb = defaultdict(set)
 	pos_types = Counter()
 
-	with open(os.path.join(fpath, file)) as f:
+	with open(os.path.join(fpath, fname)) as f:
 		for line in f:
 			parts = line.split('|||')
 

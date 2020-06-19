@@ -19,8 +19,8 @@ from typing import *
 
 
 def construct_proposition(prop: Prop, arg_idx=0) -> Tuple[str, str, int]:
-	arg = prop.args[arg_idx]
 	is_unary = (len(prop.args) == 1)
+	arg = prop.args[arg_idx]
 
 	# Break down predicate into constituent parts and extract CCG arg position
 	if is_unary:
@@ -139,6 +139,11 @@ def make_emb_cache(unary_props: List[Prop], binary_props: List[Prop], neg_substi
 
 		# if prop.pred.startswith('be.'):
 		# 	continue
+
+		# Skip binaries with reverse-typing (this is an artifact due to the graphs)
+		if len(prop.types) == 2 and prop.basic_types[0] == prop.basic_types[1]:
+			if int(prop.types[0].split('_')[-1]) == 2:
+				continue
 
 		key = prop.prop_desc() + '::' + str(arg_idx)
 		if key in cache_map or key in batch_map:

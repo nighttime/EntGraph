@@ -1,3 +1,5 @@
+from proposition import *
+
 import numpy as np
 from sklearn import metrics
 import seaborn as sns; sns.set()
@@ -112,7 +114,7 @@ def jaccard(x: Set[Any], y: Set[Any]) -> float:
 	return len(x.intersection(y))/len(x.union(y))
 
 
-def plot_results(folder: str, true: List[List[int]], prediction_results: Dict[str, List[List[float]]]):
+def plot_results(folder: str, true: List[List[int]], prediction_results: Dict[str, List[List[float]]], Q_list: Optional[List[List[Prop]]] = None):
 	plt.figure(figsize=(9,7))
 
 	# Plot random-guessing baseline
@@ -125,17 +127,19 @@ def plot_results(folder: str, true: List[List[int]], prediction_results: Dict[st
 			continue
 		true_flat, preds_flat = flatten_answers(true, predictions)
 		precision, recall, thresholds = metrics.precision_recall_curve(true_flat, preds_flat)
-		sns.lineplot(x=recall[1:], y=precision[1:], label=title)
+		precision, recall = precision[1:], recall[1:]
+		sns.lineplot(x=recall, y=precision, label=title)
+		print('{} AUC = {:.3f}'.format(title, metrics.auc(recall, precision)))
 
 	# Plot exact-match baseline
-	true_flat, preds_flat = flatten_answers(true, prediction_results['*exact-match'])
-	precision, recall, thresholds = metrics.precision_recall_curve(true_flat, preds_flat)
+	true_flat, em_preds_flat = flatten_answers(true, prediction_results['*exact-match'])
+	precision, recall, thresholds = metrics.precision_recall_curve(true_flat, em_preds_flat)
 	sns.lineplot(x=[recall[1]], y=[precision[1]], marker='D', markersize=8, label='Exact-Match Only')
 
 	plt.legend()
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
-	plt.title('True-False Question Performance for Multivalent EGs (Person Filtered)')
+	plt.title('True-False Question Performance')
 
 	now = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
 	fname = folder + ('' if folder.endswith('/') else '/') + 'tf_results/' + now + '.png'

@@ -8,6 +8,7 @@ import itertools
 import random
 import datetime
 import numpy as np
+from sklearn import metrics
 
 import utils
 from proposition import *
@@ -17,6 +18,7 @@ from analyze import *
 from questions import *
 from answer_wh import *
 from answer_tf import *
+import ppdb_reader
 
 from typing import *
 
@@ -72,22 +74,21 @@ def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list
 				sim_cache: Optional[EmbeddingCache]=None) -> List[List[float]]:
 	print(bar)
 	print(score_text)
-	scores_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, sim_cache=sim_cache)
+	scores_list, supports_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, sim_cache=sim_cache)
 	scores_flat = [s for ss in scores_list for s in ss]
 
 	##################################################################
-	if not sim_cache:
-		cutoff = 0
-		predictions_list = threshold_sets(scores_list, cutoff)
-		p = eval_tf_sets(A_list, predictions_list, eval_fun=precision)
-		r = eval_tf_sets(A_list, predictions_list, eval_fun=recall)
-		a = eval_tf_sets(A_list, predictions_list, eval_fun=acc)
-		print('Measurements @{:.2f} score cutoff'.format(cutoff))
-		print('precision: {:.3f}'.format(p))
-		print('recall:    {:.3f}'.format(r))
-		# bins = np.arange(0, 1.01, 0.05)
-		# hist = np.histogram(scores_flat, bins=bins)
-		# print(hist)
+	cutoff = 0
+	predictions_list = threshold_sets(scores_list, cutoff)
+	p = eval_tf_sets(A_list, predictions_list, eval_fun=precision)
+	r = eval_tf_sets(A_list, predictions_list, eval_fun=recall)
+	a = eval_tf_sets(A_list, predictions_list, eval_fun=acc)
+	print('Measurements @{:.2f} score cutoff'.format(cutoff))
+	print('precision: {:.3f}'.format(p))
+	print('recall:    {:.3f}'.format(r))
+	# bins = np.arange(0, 1.01, 0.05)
+	# hist = np.histogram(scores_flat, bins=bins)
+	# print(hist)
 	##################################################################
 
 	num_answered = len(list(filter(None, scores_flat)))
@@ -105,7 +106,8 @@ def main():
 
 	print()
 	print(BAR)
-	print('Running Eval')
+	mode = 'local' if reference.RUNNING_LOCAL else 'server'
+	print('Running Eval ({})'.format(mode))
 
 	original_types_file = 'data/freebase_types/entity2Types.txt'
 	print('* Using entity types and substitution pairs from: ' + ARGS.data_folder)
@@ -115,7 +117,7 @@ def main():
 		resources.append('U->U graphs')
 	if ARGS.bu_graphs is not None:
 		resources.append('B->U graphs')
-	if ARGS.sim_cache is not None:
+	if ARGS.sim_cache:
 		resources.append('Similarity cache')
 	print('* Using evidence from:', str(resources))
 
@@ -139,6 +141,9 @@ def main():
 			return graphs
 
 	uu_graphs = load_graphs(ARGS.uu_graphs, 'Reading U->U graphs...')
+	if uu_graphs and len(uu_graphs) > 3 and mode != 'server':
+		print('! Mode is not set properly. Remember to turn off local mode!')
+		exit(1)
 	bu_graphs = load_graphs(ARGS.bu_graphs, 'Reading B->U graphs...')
 
 	utils.checkpoint()
@@ -159,13 +164,17 @@ def main():
 		sim_cache = load_similarity_cache(ARGS.data_folder)
 
 	# Read in news articles
-	print('Reading source & auxiliary data...')
+	print('Reading source articles & auxiliary data...')
 	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
 	negative_swaps = read_substitution_pairs(os.path.join(ARGS.data_folder, 'substitution_pairs.json'))
+	ppdb = None
+	if ARGS.filter_qs:
+		print('Reading PPDB data...')
+		ppdb = ppdb_reader.load_ppdb(ARGS.data_folder)
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	P_list, N_list, evidence_list = generate_tf_question_sets(articles, negative_swaps, uu_graphs)
+	P_list, N_list, evidence_list = generate_tf_question_sets(articles, negative_swaps=negative_swaps, uu_graphs=uu_graphs, filter_dict=ppdb)
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
 	num_P_Qs = sum(len(qs) for qs in P_list)
 	num_sets = len(P_list)
@@ -206,7 +215,7 @@ def main():
 
 	if ARGS.plot:
 		print(bar)
-		plot_results(ARGS.data_folder, A_list, results)
+		plot_results(ARGS.data_folder, A_list, results, Q_list=Q_list)
 
 	print(BAR)
 	print()
@@ -218,7 +227,8 @@ parser.add_argument('news_gen_file', help='Path to file used for partition into 
 parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
 parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
 parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
-parser.add_argument('--sim-cache', action='store_true', help='Path to folder of similarity cache files to assist question answering')
+parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to assist question answering (file must be located in data folder)')
+parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
 # parser.add_argument('--typed', action='store_true', help='Boolean flag toggling question typing')
 parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
 parser.add_argument('--raw-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')
@@ -230,46 +240,3 @@ parser.add_argument('--plot', action='store_true', help='Plot results visually')
 
 if __name__ == '__main__':
 	main()
-
-# Inefficient! Loops over forward entailments to find matches with the question
-
-# def infer_answers(question, query_type, prop_db, ent_graphs, graph_typespace):
-# 	answer = set()
-
-# 	if not any(query_type in t for t in ent_graphs.keys()):
-# 		return answer
-
-# 	typed_props = [x for x in prop_db if query_type in x.basic_types]
-
-# 	if graph_typespace == EGSpace.ONE_TYPE:
-# 		if query_type in ent_graphs:
-# 			for prop in typed_props:
-# 				ordered_ents = ent_graphs[query_type].get_entailments(prop.pred_desc())
-# 				ent_set = {ent.pred for ent in ordered_ents}
-# 				if question in ent_set:
-# 					answer.add(prop.ARGS[0])
-
-# 	elif graph_typespace == EGSpace.TWO_TYPE:
-# 		for prop in typed_props:
-# 			graph_type = prop.type_desc()
-
-# 			if graph_type not in ent_graphs:
-# 				continue
-
-# 			type_symmetric = prop.basic_types[0] == prop.basic_types[1]
-
-# 			ordered_ents = ent_graphs[graph_type].get_entailments(prop.pred_desc())
-# 			rev = False
-# 			if not ordered_ents and type_symmetric:
-# 				ordered_ents = ent_graphs[graph_type].get_entailments(prop.pred_desc(reverse=True))
-# 				rev = True
-
-# 			for x in ordered_ents:
-# 				if x.basic_pred == question:
-# 					if rev:
-# 						pdb.set_trace()
-# 					arg_idx = prop.types.index(x.pred.split('#')[1])
-
-# 					answer.add(prop.ARGS[arg_idx])
-
-# 	return answer

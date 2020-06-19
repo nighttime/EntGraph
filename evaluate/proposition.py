@@ -43,7 +43,7 @@ class Prop:
 
 	def set_types(self, types: List[str]):
 		self.types = types
-		self.basic_types = [t.split('_')[0] for t in self.types]
+		self.basic_types = [t.replace('_1', '').replace('_2', '') for t in self.types]
 
 	def set_entity_types(self, entity_types: str):
 		self.entity_types = entity_types

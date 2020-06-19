@@ -17,7 +17,7 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 				   uu_graphs: Optional[EGraphCache]=None,
 				   bu_graphs: Optional[EGraphCache]=None,
 				   sim_cache: Optional[EmbeddingCache]=None,
-				   A_list: Optional[List[List[bool]]]=None) -> List[List[float]]:
+				   A_list: Optional[List[List[bool]]]=None) -> Tuple[List[List[float]], List[List[Dict[str, List[BackEntailment]]]]]:
 	predictions = []
 	supports = []
 	for i, cs in enumerate(claims_list):
@@ -31,7 +31,7 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 		computed_questions = H_TOTAL - H_NF - H_NAN
 		print('Computed similarities for {}/{} comparisons ({:.1f}%)'.format(computed_comparisons, P_TOTAL, computed_comparisons/P_TOTAL * 100))
 		print('Computed answers to {}/{} questions ({:.1f}%)'.format(computed_questions, H_TOTAL, computed_questions / H_TOTAL * 100))
-	return predictions
+	return predictions, supports
 
 
 # Input | questions : [str]
@@ -45,7 +45,6 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 			  sim_cache: Optional[EmbeddingCache]=None,
 			  answers: Optional[List[Set[str]]]=None) -> Tuple[List[float], List[Dict[str, List[BackEntailment]]]]:
 	# Keep props containing a named entity
-	# ev_un_ents, ev_bi_ents = tuple(list(filter(lambda x: 'E' in x.entity_types, evidence)) for i in range(2))
 	ev_un_ents = [ev for ev in evidence[0] if 'E' in ev.entity_types]
 	ev_bi_ents = [ev for ev in evidence[1] if 'E' in ev.entity_types]
 
@@ -91,7 +90,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 		# Get basic factual answers from observed evidence
 		if not sim_cache:
 			literal_support = [f for f in prop_facts_un[q] if f.args[0] == c.args[0]]
-			if len(literal_support) > 1:
+			if len(literal_support) > 0:
 				score = 1
 				prediction_support[i]['literal'] = literal_support
 
@@ -143,6 +142,7 @@ def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 
 	support.sort(key=lambda ant: ant.score, reverse=True)
 
+	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
 
 def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
@@ -180,6 +180,7 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 
 	support.sort(key=lambda ant: ant.score, reverse=True)
 
+	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
 
 P_TOTAL = 0
@@ -206,27 +207,50 @@ def infer_claim_sim(claim: Prop,
 	if hypothesis not in sim_cache.id_map:
 		H_NF += 1
 		return score, support
+
 	h_vec = sim_cache.cache[sim_cache.id_map[hypothesis]]
 	if any(np.isnan(h_vec)):
 		H_NAN += 1
 		return score, support
+
 	h_vecn = h_vec / np.linalg.norm(h_vec)
 
 	for p, arg_idx in un_arg_cache[arg] + bi_arg_cache[arg]:
 		if reference.RUNNING_LOCAL and 'person' not in p.types:
 			continue
+
+		# Skip binaries with reverse-typing (this is an artifact due to the graphs)
+		if len(p.types) == 2 and p.basic_types[0] == p.basic_types[1]:
+			if len(p.types[0].split('_')) < 2:
+				print('Mismatch of types and basic types: {} / {}'.format(p, p.basic_types))
+				continue
+			if int(p.types[0].split('_')[-1]) == 2:
+				continue
+
 		premise = p.prop_desc() + '::' + str(arg_idx)
+
 		P_TOTAL += 1
 		if premise not in sim_cache.id_map:
 			P_NF += 1
 			continue
+
 		p_vec = sim_cache.cache[sim_cache.id_map[premise]]
 		if any(np.isnan(p_vec)):
 			P_NAN += 1
 			continue
+
 		p_vecn = p_vec / np.linalg.norm(p_vec)
 		new_score = np.dot(h_vecn, p_vecn)
-		assert -0.05 <= new_score <= 1.05
+
+		# if premise == hypothesis:
+		# 	print('prem/hyp: {} == {} ; sim = {:.3f}'.format(premise, hypothesis, new_score))
+
+		try:
+			assert -0.05 <= new_score <= 1.05
+		except:
+			print('! failed assertion: embedding similarity score out of bounds: {:.5f} (skipping this)'.format(new_score))
+			# exit(1)
+			continue
 		if new_score > score:
 			score = new_score
 			support = premise

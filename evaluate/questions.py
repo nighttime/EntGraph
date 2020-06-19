@@ -1,6 +1,7 @@
 from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
 import datetime
+import re
 
 from proposition import *
 from entailment import *
@@ -74,12 +75,17 @@ def generate_questions(Q: List[Prop], aux_Q: List[Prop],
 	s = [(q, a_set, top_props[q]) for q, a_set in statements.items()]
 	random.shuffle(s)
 	selected_questions = s[:cap]
+
 	if uu_graphs:
-		# filter out questions not answerable using the graphs, if available
+		# Filter out questions not answerable using the graphs, if available
 		selected_questions = [(q, a, p) for q, a, p in selected_questions if q.split('#')[1] in uu_graphs]
-	if True:
-		# filer out modals
-		selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(q.startswith(m + '.') for m in reference.AUXILIARY_VERBS)]
+
+	# Filer out modals
+	selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(q.startswith(m + '.') for m in reference.AUXILIARY_VERBS)]
+	# Filter out oversimplified predicates
+	simples = [re.compile(s) for s in [r'be\.\d#', r'do\.\d#']]
+	selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(r.match(q) for r in simples)]
+
 	questions, answers, props = [list(t) for t in tuple(zip(*selected_questions))]
 
 	answer_choices = {q:{e for p in Q_ents for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
@@ -300,6 +306,7 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 									pred_cache: Set[str],
 									negative_swaps: Dict[str, Dict[str, Any]],
 									uu_graphs: Optional[EGraphCache],
+									filter_dict: Optional[Dict[str, Set[str]]],
 									cap: int) -> List[List[Prop]]:
 	N_list = []
 	num_antonyms = 0
@@ -312,6 +319,13 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 		ent_pred_mentions = defaultdict(set)
 		for prop in sum((article.unary_props for article in partitions[i]), []):
 			ent_pred_mentions[prop.arg_desc()[0]].add(prop.pred_desc())
+		for prop in sum((article.binary_props for article in partitions[i]), []):
+			# Cut binary into two "unaries"
+			binary_pred_halves = prop.pred[prop.pred.find('(') + 1:prop.pred.find(')')].split(',')
+			u0 = binary_pred_halves[0] + '#' + prop.basic_types[0]
+			u1 = binary_pred_halves[1] + '#' + prop.basic_types[1]
+			ent_pred_mentions[prop.arg_desc()[0]].add(u0)
+			ent_pred_mentions[prop.arg_desc()[1]].add(u1)
 
 		nprops = []
 		max_per_positive = 5
@@ -337,8 +351,14 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 
 			antonyms = negative_swaps[pred]['antonyms']
 			troponyms = negative_swaps[pred]['troponyms']
+			query_word = negative_swaps[pred]['query_word']
 			# pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
 			pred_relations = random.sample(troponyms, len(troponyms))
+
+			# Filter potential relations
+			if filter_dict and query_word in filter_dict:
+				filter_out = filter_dict[query_word]
+				pred_relations = [p for p in pred_relations if p not in filter_out]
 
 			confirmed_swaps = []
 			for a, relation in enumerate(pred_relations):
@@ -376,7 +396,10 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 	return N_list
 
 
-def generate_tf_question_sets(articles: List[Article], negative_swaps: Optional[Dict[str, Dict[str, Any]]], uu_graphs: Optional[EGraphCache]) -> \
+def generate_tf_question_sets(articles: List[Article],
+							  negative_swaps: Optional[Dict[str, Dict[str, Any]]] = None,
+							  uu_graphs: Optional[EGraphCache] = None,
+							  filter_dict: Optional[Dict[str, Set[str]]] = None) -> \
 		Tuple[List[List[Prop]], Optional[List[List[Prop]]], List[Tuple[List[Prop], List[Prop]]]]:
 	max_questions_per_article = 3
 	print('Partitioning...', end=' ', flush=True)
@@ -386,8 +409,7 @@ def generate_tf_question_sets(articles: List[Article], negative_swaps: Optional[
 	print('Generating negatives...', end=' ', flush=True)
 	N_list = None
 	if negative_swaps and uu_graphs:
-		# N_list = generate_negative_question_sets(partitions, top_pred_cache, negative_swaps, uu_graphs, cap=max_questions_per_article)
-		N_list = generate_negative_question_sets(P_list, partitions, top_pred_cache, negative_swaps, uu_graphs, cap=max_questions_per_article)
+		N_list = generate_negative_question_sets(P_list, partitions, top_pred_cache, negative_swaps, uu_graphs, filter_dict=filter_dict, cap=max_questions_per_article)
 
 	return P_list, N_list, evidence_list
 
