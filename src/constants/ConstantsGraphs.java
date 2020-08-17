@@ -10,7 +10,8 @@ public class ConstantsGraphs {
 //	public static String root = "/home/nick/Documents/entgraph/EntGraph/sims/newscrawl_modifiers_3_3/";
 //	public static String root = "newsspike_sims/newsspike_mv_uu_dummy_3_3_top100U/";
 //	public static String root = "newsspike_sims/newsspike_mv_bu_localmerged_3_3_top100U_sample/";
-	public static String root = "newsspike_sims/newsspike_mv_uu_dummy_10_10_top100U/";
+//	public static String root = "newsspike_sims/newsspike_mv_bu_localmerged_3_3_top100U_allnodes/"; // week of Jun22 2020
+	public static String root = "newsspike_sims/newsspike_mv_uu_dummy_6_6_top100U/";
 	public static String suffix = "_sim.txt";
 	// public static String suffix = "_tprop_lm1_.01_reg_1.5_.3.txt";
 	// public static String suffix = "_binc_lm1_.001_reg_1.5_1_.2_.01_i20.txt";

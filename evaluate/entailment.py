@@ -36,7 +36,10 @@ class BackEntailment(Entailment):
 		self.direction = 'backward'
 
 	def __str__(self):
-		return '( antecedent: {} => {:.3f} )'.format(self.score, self.pred)
+		return '( antecedent: {} => {:.3f} )'.format(self.pred, self.score)
+
+	def __repr__(self):
+		return str(self)
 
 class EntailmentGraph:
 	typing = None
@@ -100,7 +103,7 @@ class EntailmentGraph:
 		with open(fname) as file:
 			header = file.readline()
 			if not len(header):
-				return
+				return nodes, edges
 
 			typing = ''
 
@@ -111,7 +114,7 @@ class EntailmentGraph:
 				self.stage = EGStage.GLOBAL
 				typing = header[:header.index(' ')]
 			else:
-				return
+				return nodes, edges
 
 			if typing.count('#') == 0 or '#unary' in typing:
 				self.typing = typing.split('#')[0]
@@ -161,7 +164,7 @@ EGraphCache = Dict[str, EntailmentGraph]
 def read_graphs(graph_dir: str, ext: str='sim') -> EGraphCache:
 	(_, _, filenames) = next(os.walk(graph_dir))
 	graph_fpaths = [os.path.join(graph_dir, fname) for fname in filenames if fname.endswith('_' + ext + '.txt')]
-	graphs = [EntailmentGraph(g) for g in graph_fpaths]
+	graphs = list(filter(lambda x: x.typing is not None, [EntailmentGraph(g) for g in graph_fpaths]))
 	g_forward = {g.typing: g for g in graphs}
 	g_reverse = {g.reverse_typing: g for g in graphs}
 	return {**g_forward, **g_reverse}

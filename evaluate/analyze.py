@@ -5,6 +5,11 @@ from sklearn import metrics
 import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
 import datetime
+from collections import defaultdict, OrderedDict
+import os
+import json
+import random
+
 from typing import *
 
 
@@ -22,11 +27,14 @@ def flatten_answers(A_list: List[List[Any]], predictions_list: List[List[Any]]):
 
 	return A_list_flat, Prediction_list_flat
 
-def threshold_sets(predictions: List[List[float]], thresh: float) -> List[List[int]]:
-	return [threshold(ps, thresh) for ps in predictions]
+def threshold_sets(predictions: List[List[float]], thresh: float, strict:bool=False) -> List[List[int]]:
+	return [threshold(ps, thresh, strict=strict) for ps in predictions]
 
-def threshold(predictions: List[float], thresh: float) -> List[int]:
-	return [1 if p > thresh else 0 for p in predictions]
+def threshold(predictions: List[float], thresh: float, strict:bool=False) -> List[int]:
+	if strict:
+		return [1 if p > thresh else 0 for p in predictions]
+	else:
+		return [1 if p >= thresh else 0 for p in predictions]
 
 def acc(true: List[int], predicted: List[int]) -> float:
 	assert len(true) == len(predicted)
@@ -49,11 +57,11 @@ def answer_distribution(true: List[int], predicted: List[int]) -> Tuple[int, int
 				tn += 1
 	return tp, fp, tn, fn
 
-def precision(true: List[int], predicted: List[int]) -> float:
+def calc_precision(true: List[int], predicted: List[int]) -> float:
 	tp, fp, tn, fn = answer_distribution(true, predicted)
 	return tp / (tp + fp)
 
-def recall(true: List[int], predicted: List[int]) -> float:
+def calc_recall(true: List[int], predicted: List[int]) -> float:
 	tp, fp, tn, fn = answer_distribution(true, predicted)
 	return tp / (tp + fn)
 
@@ -113,36 +121,239 @@ def MRR(true: List[Set[str]], predicted: List[List[str]], limit: int=10) -> floa
 def jaccard(x: Set[Any], y: Set[Any]) -> float:
 	return len(x.intersection(y))/len(x.union(y))
 
+def calc_adjusted_auc(precision, recall, recall_thresh):
+	auc = metrics.auc(recall, precision)
+	adjusted_auc = (auc - recall_thresh)
+	normalized_adjusted_auc = adjusted_auc / (1 - recall_thresh)
+	return adjusted_auc, normalized_adjusted_auc
 
-def plot_results(folder: str, true: List[List[int]], prediction_results: Dict[str, List[List[float]]], Q_list: Optional[List[List[Prop]]] = None):
+def plot_results(folder: str,
+				 A_list: List[List[int]],
+				 prediction_results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]],
+				 sample: bool = False,
+				 Q_list: Optional[List[List[Prop]]] = None,
+				 save_thresh: bool = False):
 	plt.figure(figsize=(9,7))
+	plt.ylim(0.0, 1.05)
+	plt.xlim(0.0, 1.05)
+	# plt.ylim(0.3, 1.05)
+	# plt.xlim(0.2, 1.05)
+	# plt.margins(0.1)
 
 	# Plot random-guessing baseline
 	naive_base = prediction_results['*always-true']
 	# plt.hlines(naive_base, 0, 1, colors='red', linestyles='--', label='Always True')
 
+	# Save information for analysis
+	test_precision = 0.8
+	cutoffs = {}
+	thresholds = {}
+	precisions = {}
+	recalls = {}
+
+	# Calculate exact-match baseline
+	true_flat, em_preds_flat = flatten_answers(A_list, prediction_results['*exact-match'][0])
+	precision, recall, threshold = metrics.precision_recall_curve(true_flat, em_preds_flat)
+	em_precision, em_recall = precision[1], recall[1]
+
 	# Plot graph lines
-	for title, predictions in prediction_results.items():
+	for title, (predictions, support) in prediction_results.items():
 		if title.startswith('*'):
 			continue
-		true_flat, preds_flat = flatten_answers(true, predictions)
-		precision, recall, thresholds = metrics.precision_recall_curve(true_flat, preds_flat)
+		true_flat, preds_flat = flatten_answers(A_list, predictions)
+		precision, recall, threshold = metrics.precision_recall_curve(true_flat, preds_flat)
 		precision, recall = precision[1:], recall[1:]
+		# sns.lineplot(x=recall[:-1], y=threshold[:-1], label=title)
 		sns.lineplot(x=recall, y=precision, label=title)
-		print('{} AUC = {:.3f}'.format(title, metrics.auc(recall, precision)))
+
+		adjusted_auc, normalized_adjusted_auc = calc_adjusted_auc(precision, recall, em_recall)
+		print('{} adjusted AUC = {:.3f} ({:.3f} normalized)'.format(title, adjusted_auc, normalized_adjusted_auc))
+
+		prec_score_thresh_idx = np.abs(precision - test_precision).argmin()
+		prec_score_thresh = threshold[prec_score_thresh_idx]
+		cutoffs[title] = prec_score_thresh
+		thresholds[title] = threshold
+		precisions[title] = precision
+		recalls[title] = recall
+
+	# Generate unions
+	if 'U->U' in prediction_results and 'B->U' in prediction_results:
+		num_steps = 1000
+		print('Generating union results from {} sample points'.format(num_steps))
+		optimistic_union = np.zeros([2, num_steps])
+		pessimistic_union = np.zeros([2, num_steps])
+		stop_pes = 0
+		for i,prec in enumerate(np.arange(1.0, 0, -1/num_steps)):
+			# print('Computing r={:.3f}'.format(r))
+			uu_thresh = thresholds['U->U'][np.abs(precisions['U->U'] - prec).argmin()]
+			bu_thresh = thresholds['B->U'][np.abs(precisions['B->U'] - prec).argmin()]
+
+			uu_classifications = [c for cs in threshold_sets(prediction_results['U->U'][0], uu_thresh) for c in cs]
+			bu_classifications = [c for cs in threshold_sets(prediction_results['B->U'][0], bu_thresh) for c in cs]
+
+			# Optimistic
+			optim_union_classifications = [1 if (uu == 1 or bu == 1) else 0 for uu, bu in zip(uu_classifications, bu_classifications)]
+			optimistic_union[0][i] = calc_precision(true_flat, optim_union_classifications)
+			optimistic_union[1][i] = calc_recall(true_flat, optim_union_classifications)
+
+			# Pessimistic
+			if uu_thresh > 0 and bu_thresh > 0:
+				pessim_union_classifications = [1 if (uu == 1 and bu == 1) else 0 for uu, bu in zip(uu_classifications, bu_classifications)]
+				pessimistic_union[0][i] = calc_precision(true_flat, pessim_union_classifications)
+				pessimistic_union[1][i] = calc_recall(true_flat, pessim_union_classifications)
+				stop_pes = i
+
+		opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
+		if np.where(pessimistic_union[1] == 1)[0]:
+			pes_first_recall_1_ind = np.where(pessimistic_union[1] == 1)[0][0]
+		else:
+			pes_first_recall_1_ind = len(pessimistic_union[1])
+
+		# Cut off points before the dead drop to 1.0 recall
+		optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
+		pessimistic_union = pessimistic_union[:, :min(pes_first_recall_1_ind, stop_pes+1)]
+
+		# Add dead mass so we can correct it later in the same way as the component models
+		optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
+		pessimistic_union = np.insert(pessimistic_union, 0, [1, 0], axis=1)
+
+		sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label='Optimistic Union')
+		sns.lineplot(x=pessimistic_union[1], y=pessimistic_union[0], label='Pessimistic Union')
+
+		# opt_adjusted_auc, opt_normalized_adjusted_auc = calc_adjusted_auc(optimistic_union[0], optimistic_union[1], em_recall)
+		# pes_adjusted_auc, pes_normalized_adjusted_auc = calc_adjusted_auc(pessimistic_union[0], pessimistic_union[1], em_recall)
+		# print('Optimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(opt_adjusted_auc, opt_normalized_adjusted_auc))
+		# print('Pessimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(pes_adjusted_auc, pes_normalized_adjusted_auc))
 
 	# Plot exact-match baseline
-	true_flat, em_preds_flat = flatten_answers(true, prediction_results['*exact-match'])
-	precision, recall, thresholds = metrics.precision_recall_curve(true_flat, em_preds_flat)
-	sns.lineplot(x=[recall[1]], y=[precision[1]], marker='D', markersize=8, label='Exact-Match Only')
+	sns.lineplot(x=[em_recall], y=[em_precision], marker='D', markersize=8, label='Exact-Match Only')
 
 	plt.legend()
+
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
 	plt.title('True-False Question Performance')
+	# plt.ylabel('Threshold')
+	# plt.title('Threshold Levels for P-R Curve')
 
 	now = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
-	fname = folder + ('' if folder.endswith('/') else '/') + 'tf_results/' + now + '.png'
-	plt.savefig(fname)
-	print('Results figure saved to', fname)
+	fname = 'tf_results/' + now + '.png'
+	fpath_results = os.path.join(folder, fname)
+	plt.savefig(fpath_results)
+	print('Results figure saved to', fpath_results)
 	# plt.show()
+
+	if save_thresh:
+		fname = 'tf_results/{}-PREC{:.2f}_thresholds.pkl'.format(now, test_precision)
+		fpath_thresh = os.path.join(folder, fname)
+		ob = {'precisions': precisions, 'thresholds': thresholds}
+		with open(fpath_thresh, 'wb+') as f:
+			pickle.dump(ob, f, pickle.HIGHEST_PROTOCOL)
+			print('Results thresholds saved to', fpath_thresh)
+
+	# Analyze results for specified precision level
+	if sample:
+		uu_preds = prediction_results['U->U'][0]
+		bu_preds = prediction_results['B->U'][0]
+		# uu_bu_preds = prediction_results['U->U and B->U'][0]
+		uu_bu_adj_preds = prediction_results['U->U and B->U (Adj)'][0]
+		# sim_preds = prediction_results['Similarity'][0]
+
+		uu_class = threshold_sets(uu_preds, cutoffs['U->U'])
+		bu_class = threshold_sets(bu_preds, cutoffs['B->U'])
+		# uu_bu_class = threshold_sets(uu_bu_preds, cutoffs['U->U and B->U'])
+		uu_bu_adj_class = threshold_sets(uu_bu_adj_preds, cutoffs['U->U and B->U (Adj)'])
+		# sim_class = threshold_sets(sim_preds, cutoffs['Similarity'])
+
+		# uu_dist = answer_distribution(true_flat, [x for xs in uu_class for x in xs])
+		# bu_dist = answer_distribution(true_flat, [x for xs in bu_class for x in xs])
+
+		result_infos = []
+		ans = 1
+		total_disagreements = 0
+		# correct_union = 0
+		adj_correct_union = 0
+		for i, qs in enumerate(Q_list):
+			# save question if it meets criteria
+			for j, q in enumerate(qs):
+				# if sim_preds[i][j] > 0.99 and not prediction_results['*exact-match'][0][i][j]:
+				# 	sim_support = prediction_results['Similarity'][1][i][j] or '-'
+				# 	result_infos.append({
+				# 			'question': str(q),
+				# 			'answer': ans,
+				# 			'sim': '{:.2f} ({})'.format(sim_preds[i][j], sim_class[i][j]),
+				# 			'sim support': str(sim_support)
+				# 	})
+
+				agreement = uu_class[i][j] == bu_class[i][j]
+				correct_union_adj = uu_bu_adj_class[i][j] == ans
+
+				if A_list[i][j] == ans:
+					if not agreement:
+						total_disagreements += 1
+						if correct_union_adj:
+							adj_correct_union += 1
+						# if uu_bu_class[i][j] == ans:
+						# 	correct_union += 1
+
+					uu_support = prediction_results['U->U'][1][i][j] or '-'
+					bu_support = prediction_results['B->U'][1][i][j] or '-'
+					result_infos.append({
+							'question': str(q),
+							'answer': ans,
+							'agreement': str(agreement),
+							'correct_union': str(uu_bu_adj_class[i][j] == ans),
+							'UU': '{:.2f} ({})'.format(uu_preds[i][j], uu_class[i][j]),
+							'BU': '{:.2f} ({})'.format(bu_preds[i][j], bu_class[i][j]),
+							# 'UU+BU': '{:.2f} ({})'.format(uu_bu_preds[i][j], uu_bu_class[i][j]),
+							'UU+BU (A)': '{:.2f} ({})'.format(uu_bu_adj_preds[i][j], uu_bu_adj_class[i][j]),
+							'UU support': str(uu_support),
+							'BU support': str(bu_support)
+					})
+
+
+		fname = 'tf_results/{}_sample-PREC{:.2f}_UU{:.2f}_BU{:.2f}_UU+BU{:.2f}.txt'.format(now, test_precision, cutoffs['U->U'], cutoffs['B->U'], cutoffs['U->U and B->U (Adj)'])
+		fpath_analysis = os.path.join(folder, fname)
+
+		num_uu_class_1 = len([c for cs in uu_class for c in cs if c == 1])
+		num_uu_answered = len([p for ps in uu_preds for p in ps if p > 0])
+
+		num_bu_class_1 = len([c for cs in bu_class for c in cs if c == 1])
+		num_bu_answered = len([p for ps in bu_preds for p in ps if p > 0])
+
+		# num_uu_bu_class_1 = len([c for cs in uu_bu_class for c in cs if c == 1])
+		# num_uu_bu_answered = len([p for ps in uu_bu_preds for p in ps if p > 0])
+
+		num_uu_bu_adj_class_1 = len([c for cs in uu_bu_adj_class for c in cs if c == 1])
+		num_uu_bu_adj_answered = len([p for ps in uu_bu_adj_preds for p in ps if p > 0])
+
+		num_questions = len([q for qs in Q_list for q in qs])
+
+		with open(fpath_analysis, 'w+') as f:
+			f.write('PREC{:.2f}, {} total questions\n'.format(test_precision, num_questions))
+			f.write('\n')
+
+			f.write('=== Model Confidence ===\n')
+			f.write('{}/{} UU answers above {:.2f} cutoff\n'.format(num_uu_class_1, num_uu_answered, cutoffs['U->U']))
+			f.write('{}/{} BU answers above {:.2f} cutoff\n'.format(num_bu_class_1, num_bu_answered, cutoffs['B->U']))
+			# f.write('{}/{} UU+BU answers above {:.2f} cutoff\n'.format(num_uu_bu_class_1, num_uu_bu_answered, cutoffs['U->U and B->U']))
+			f.write('{}/{} UU+BU (A) answers above {:.2f} cutoff\n'.format(num_uu_bu_adj_class_1, num_uu_bu_adj_answered, cutoffs['U->U and B->U (Adj)']))
+			f.write('\n')
+			# f.write('{}/{} ({:.2f}%) correct union taken in disagreement cases\n'.format(correct_union, total_disagreements, correct_union/total_disagreements*100))
+
+			f.write('=== Model Coverage ===\n')
+			for name, classifications in [('UU', uu_class), ('BU', bu_class), ('UU+BU (A)', uu_bu_adj_class)]:
+				tp, fp, tn, fn = answer_distribution(*flatten_answers(A_list, classifications))
+				f.write(name + ':\t{} tp\t{} fp\t{} fn\n'.format(tp, fp, fn))
+			f.write('\n')
+			f.write('{}/{} ({:.2f}%) (Adj) correct union taken in disagreement cases\n'.format(adj_correct_union, total_disagreements, adj_correct_union/total_disagreements * 100))
+			f.write('\n')
+
+			sample_size = 500
+			f.write('=== Sample (n={}) ===\n'.format(sample_size))
+			result_sample = random.sample(result_infos, sample_size)
+			for s in result_sample:
+				f.write(json.dumps(s, indent=2))
+				f.write('\n\n')
+
+		print('Results analysis saved to', fpath_analysis)

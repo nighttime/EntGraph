@@ -77,6 +77,9 @@ class Prop:
 	def __repr__(self):
 		return str(self)
 
+	def __hash__(self):
+		return hash(str(self))
+
 
 
 def entity_is_only_NE(ent: str) -> bool:

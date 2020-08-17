@@ -1,4 +1,5 @@
 import json
+import re
 from collections import defaultdict, Counter
 import random
 import datetime
@@ -48,6 +49,42 @@ class Article:
 		for p in props:
 			self.unary_props.remove(p)
 
+simples = [re.compile(s) for s in [r'be\.\d', r'do\.\d']]
+
+def reject_unary(pred: str) -> bool:
+	if '#' in pred:
+		pred = pred.split('#')[0]
+
+	if any(c in pred for c in ['\'', '`']):
+		return True
+
+	if any(pred.startswith(v + '.') for v in reference.AUXILIARY_VERBS):
+		return True
+
+	global simples
+	if any(r.match(pred) for r in simples):
+		return True
+
+	return False
+
+def reject_binary(pred: str) -> bool:
+	if pred.find('(') != 0 or pred.count(',') != 1:
+		return True
+
+	pred = pred[1:pred.find(')')]
+	parts = pred.split(',')
+
+	if any(any(c in p for c in ['\'', '`']) for p in parts):
+		return True
+
+	if any(any(p.startswith(v + '.') for v in reference.AUXILIARY_VERBS) for p in parts):
+		return True
+
+	global simples
+	if all(any(r.match(p) for r in simples) for p in parts):
+		return True
+
+	return False
 
 def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List[Prop]]:
 	articles = {}
@@ -70,16 +107,12 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 				parts = u.split('::')
 
 				norm_pred, _ = normalize_predicate(parts[0])
+				if reject_unary(norm_pred):
+					continue
+
 				norm_ent = normalize_entity(parts[1])
 				entity_type = parts[2]
 				typing = get_type(norm_ent, 'E' in entity_type)
-
-				if '\'' in norm_pred:
-					continue
-
-				# if 'be.' in norm_pred:
-				# 	continue
-				# norm_pred = norm_pred.replace('be.','')
 
 				prop = Prop(norm_pred, [norm_ent])
 				prop.set_entity_types(entity_type)
@@ -93,6 +126,9 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 				parts = b.split('::')
 
 				norm_pred, reversed_pred = normalize_predicate(parts[0])
+				if reject_binary(norm_pred):
+					continue
+
 				norm_ents = [normalize_entity(e) for e in parts[1:3]]
 				entity_types = parts[3]
 				typing = [get_type(norm_ents[i], 'E' in entity_types[i]) for i in range(2)]

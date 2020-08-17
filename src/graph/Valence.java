@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.System.exit;
-import static java.lang.System.out;
+//import static java.lang.System.out;
 
 // Integrates graphs of different predicate valency
 public class Valence {
@@ -50,10 +50,13 @@ public class Valence {
 
         // Write file header
         output.println("types: " + graphB.types + ", num preds: " + graphB.nodes.size());
+
+        // Initialize metadata structures
         String[] graphTypes = graphB.types.split("#");
         Map<String, String> typeToOtherType = new HashMap<>();
         typeToOtherType.put(graphTypes[0], graphTypes[1]);
         typeToOtherType.put(graphTypes[1], graphTypes[0]);
+        Set<String> entailedUnaries = new HashSet<>();
 
         // Write out nodes from the binary graph
         for (Node node : graphB.nodes) {
@@ -67,9 +70,9 @@ public class Valence {
             int numArg1Entailments = graphA.pred2node.containsKey(argwisePreds[0]) ? graphA.pred2node.get(argwisePreds[0]).oedges.size() : 0;
             int numArg2Entailments = graphA.pred2node.containsKey(argwisePreds[1]) ? graphA.pred2node.get(argwisePreds[1]).oedges.size() : 0;
             int totalEntailments = numBinaryEntailments + numArg1Entailments + numArg2Entailments;
-            if (totalEntailments == 0) {
-                continue;
-            }
+//            if (totalEntailments == 0) {
+//                continue;
+//            }
 
             // Write node header
             output.println("predicate: " + pred);
@@ -83,66 +86,52 @@ public class Valence {
             }
 
             // Write B->U entailments (convert [sub]->[arg1], [obj]->[arg2])
-            // (in the case of type-symmetric binary graphs we need to add appropriate _1 and _2 argument labels to unaries)
-            String[] predTypes = pred.substring(pred.indexOf("#")+1).split("#");
-            boolean symmetricGraphTyping = graphTypes[0].equals(graphTypes[1]);
-            String[] symmetricTypeIDs = {"", ""};
-            if (symmetricGraphTyping) {
-                symmetricTypeIDs = new String[]{"_" + predTypes[0].split("_")[1], "_" + predTypes[1].split("_")[1]};
-            }
+            if (numArg1Entailments > 0 || numArg2Entailments > 0) {
 
-            double minSim = 0.02;
-
-            for (int i : new Integer[]{0, 1}) {
-                String argwisePred = argwisePreds[i];
-                Node argwiseNode = graphA.pred2node.get(argwisePred);
-                if (argwiseNode == null) { continue; }
-
-                String unaryType = argwisePred.split("#")[i+1];
-                String basicType = unaryType.split("_")[0];
-                String typeSuffix = typeToOtherType.get(basicType);
-                typeSuffix = symmetricTypeIDs[i] + "#" + typeSuffix + symmetricTypeIDs[(i+1)%2];
-                String argIDTag;// = (basicType + typeSuffix).split("#")[0];
+                // (in the case of type-symmetric binary graphs we need to add appropriate _1 and _2 argument labels to unaries)
+                String[] predTypes = pred.substring(pred.indexOf("#")+1).split("#");
+                boolean symmetricGraphTyping = graphTypes[0].equals(graphTypes[1]);
+                String[] symmetricTypeIDs = {"", ""};
                 if (symmetricGraphTyping) {
-                    argIDTag = unaryType.split("_")[1];
-                } else {
-                    int typeIndex = Arrays.asList(graphTypes).indexOf(basicType)+1;
-                    argIDTag = Integer.toString(typeIndex);
+                    symmetricTypeIDs = new String[]{
+                            "_" + predTypes[0].substring(predTypes[0].length() - 1),
+                            "_" + predTypes[1].substring(predTypes[1].length() - 1)
+                    };
                 }
-                String prefixTag = "[gtype" + argIDTag + "]";
-//                if (symmetricGraphTyping  && argwisePred.contains("(kill.1,kill.2)"))
-                writeEntailments(prefixTag, typeSuffix, argwiseNode, graphA, output, minSim, topKUnaries);
+
+                double minSim = 0.02;
+
+                for (int i : new Integer[]{0, 1}) {
+                    String argwisePred = argwisePreds[i];
+                    Node argwiseNode = graphA.pred2node.get(argwisePred);
+                    if (argwiseNode == null) { continue; }
+                    List<String> entailedPreds = argwiseNode.oedges.stream().map(e -> graphA.idx2node.get(e.nIdx).id).collect(Collectors.toList());
+                    entailedUnaries.addAll(entailedPreds);
+
+                    String unaryType = argwisePred.split("#")[i+1];
+                    String basicType = symmetricGraphTyping ? unaryType.substring(0, unaryType.length() - 2) : unaryType;
+                    String typeSuffix = typeToOtherType.get(basicType);
+                    typeSuffix = symmetricTypeIDs[i] + "#" + typeSuffix + symmetricTypeIDs[(i+1)%2];
+                    String argIDTag;
+                    if (symmetricGraphTyping) {
+                        argIDTag = unaryType.substring(unaryType.length() - 1);
+                    } else {
+                        int typeIndex = Arrays.asList(graphTypes).indexOf(basicType)+1;
+                        argIDTag = Integer.toString(typeIndex);
+                    }
+                    String prefixTag = "[gtype" + argIDTag + "]";
+                    writeEntailments(prefixTag, typeSuffix, argwiseNode, graphA, output, minSim, topKUnaries);
+                }
             }
 
-//            for (int i : new Integer[]{0, 1}) {
-//                String argwisePred = argwisePreds[i];
-//                Node argwiseNode = graphA.pred2node.get(argwisePred);
-//                if (argwiseNode == null) { continue; }
-//
-//                String unaryType = argwisePred.split("#")[1];
-//                String typeSuffix = typeToOtherType.get(unaryType);
-//                if (i == 0) {
-//                    typeSuffix = symmetricTypeIDs[0] + "#" + typeSuffix + symmetricTypeIDs[1];
-//                } else {
-//                    typeSuffix = symmetricTypeIDs[1] + "#" + typeSuffix + symmetricTypeIDs[0];
-//                }
-//                writeEntailments(typeSuffix, argwiseNode, graphA, output, minSim, topKUnaries);
-//            }
+            output.println();
+            output.println();
+        }
 
-//            if (numArg1Entailments > 0) {
-//                Node argwiseNode = graphA.pred2node.get(argwisePreds[0]);
-//                String suffix = symmetricGraphTyping ? predTypes[0].substring(predTypes[0].indexOf("_")) : "";
-//                suffix += "#" + (reversedPredTyping ? predTypes[1] : predTypes[0]);
-//                writeEntailments(suffix, argwiseNode, graphA, output, minSim, topKUnaries);
-//            }
-//
-//            if (numArg2Entailments > 0) {
-//                Node argwiseNode = graphA.pred2node.get(argwisePreds[1]);
-//                String suffix = symmetricGraphTyping ? predTypes[1].substring(predTypes[1].indexOf("_")) : "";
-//                suffix += "#" + (reversedPredTyping ? predTypes[0] : predTypes[1]);
-//                writeEntailments(suffix, argwiseNode, graphA, output, minSim, topKUnaries);
-//            }
-
+        for (String entailedUnary : entailedUnaries) {
+            // Write node header
+            output.println("predicate: " + entailedUnary);
+            output.println("num neighbors: " + 0);
             output.println();
             output.println();
         }
@@ -186,6 +175,11 @@ public class Valence {
                 output.println("BInc sims");
 
                 writeEntailments("", dummySuffix, node, graph, output, 0.01, topKUnaries);
+
+//                if (node.oedges.size() == 0) {
+//                    System.out.println(String.format("GOOD! pred (%s) has no edges but we wrote it in graph nodes", node.id));
+//                    exit(1);
+//                }
 
                 output.println();
                 output.println();
@@ -325,7 +319,6 @@ public class Valence {
         // 2 Source folder for binary graphs
         // *** EXPECTED CONDITIONS
         // - only BInc scores will be written out, so no other sims scores are needed in the input
-
         List<String> argList = new ArrayList<>(Arrays.asList(args));
 
         // Print stats on which graphs will be integrated
@@ -355,7 +348,7 @@ public class Valence {
                     System.err.println("Given topKUnaries: " + topKUnaries + ". Parameter must be an even number as it is divided evenly between arg1 and arg2.");
                     exit(1);
                 }
-                out.println("* integrating with top " + topKUnaries + " unaries");
+                System.out.println("* integrating with top " + topKUnaries + " unaries");
             }
 
             // Integrate the graphs into one set of multi-valency graphs

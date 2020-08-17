@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 from collections import defaultdict
+import utils
 from typing import *
 
 def clean(pred: str) -> str:
@@ -14,7 +15,12 @@ def process_infile(infile: str, outfile: str):
 	with open(infile) as file:
 		words = defaultdict(dict)
 		backward_entailments = defaultdict(set)
-		for pred in file:
+		preds = file.readlines()
+
+		print('Querying WordNet...')
+		total = len(preds)
+		ct = 0
+		for pred in preds:
 			pred = pred.strip()
 			word = clean(pred)
 
@@ -32,7 +38,10 @@ def process_infile(infile: str, outfile: str):
 						   'antonyms': ants,
 						   'troponyms': trops,
 						   'entails': forw_ents}
+			ct += 1
+			utils.print_progress(ct/total)
 
+		print('Computing backward entailments...')
 		for cons, ante_set in backward_entailments.items():
 			if cons in words:
 				words[cons]['entailed_by'] = list(ante_set)
@@ -97,9 +106,9 @@ def main():
 		print('Usage: wordnet.py <infile> <outfile>')
 		exit(1)
 
-	print('Compiling WordNet data...')
+	print('Compiling WordNet data from {} ...'.format(sys.argv[1]))
 	process_infile(sys.argv[1], sys.argv[2])
-	print('done')
+	print('Done')
 
 if __name__ == '__main__':
 	main()

@@ -31,7 +31,7 @@ bar = '-' * BAR_LEN
 # Program Hyperparameters
 # Fraction of props partitioned into Q
 QA_SPLIT = 0.5
-TOP_K_ENTS = 100
+# TOP_K_ENTS = 100
 
 ARGS = None
 
@@ -71,7 +71,7 @@ def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list
 				score_text: str, eval_fun: Callable[[List[Any], List[Any]], float],
 				uu_graphs: Optional[EGraphCache]=None,
 				bu_graphs: Optional[EGraphCache]=None,
-				sim_cache: Optional[EmbeddingCache]=None) -> List[List[float]]:
+				sim_cache: Optional[EmbeddingCache]=None) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
 	print(bar)
 	print(score_text)
 	scores_list, supports_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, sim_cache=sim_cache)
@@ -79,9 +79,9 @@ def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list
 
 	##################################################################
 	cutoff = 0
-	predictions_list = threshold_sets(scores_list, cutoff)
-	p = eval_tf_sets(A_list, predictions_list, eval_fun=precision)
-	r = eval_tf_sets(A_list, predictions_list, eval_fun=recall)
+	predictions_list = threshold_sets(scores_list, cutoff, strict=True)
+	p = eval_tf_sets(A_list, predictions_list, eval_fun=calc_precision)
+	r = eval_tf_sets(A_list, predictions_list, eval_fun=calc_recall)
 	a = eval_tf_sets(A_list, predictions_list, eval_fun=acc)
 	print('Measurements @{:.2f} score cutoff'.format(cutoff))
 	print('precision: {:.3f}'.format(p))
@@ -91,11 +91,59 @@ def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list
 	# print(hist)
 	##################################################################
 
-	num_answered = len(list(filter(None, scores_flat)))
-	print('Answered {}/{} questions ({:.1f}%)'.format(num_answered, len(scores_flat), num_answered/len(scores_flat)*100))
+	# num_answered = len(list(filter(None, scores_flat)))
+	# print('Answered {}/{} questions ({:.1f}%)'.format(num_answered, len(scores_flat), num_answered/len(scores_flat)*100))
 
 	utils.checkpoint()
-	return scores_list
+	return scores_list, supports_list
+
+
+
+def composite_results(results_UU: Tuple[List[List[float]], List[List[Dict[str, Prop]]]],
+					  results_BU: Tuple[List[List[float]], List[List[Dict[str, Prop]]]],
+					  adjust_UU: Optional[str],
+					  A_list: List[List[int]]) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
+	scores = []
+	supports = []
+
+	UU_only = 0
+	BU_only = 0
+	both = 0
+	total = 0
+
+	for i,q_set in enumerate(results_UU[0]):
+		scores.append([])
+		supports.append([])
+		for j,q in enumerate(q_set):
+			score_UU = results_UU[0][i][j]
+			if not reference.RUNNING_LOCAL and adjust_UU is not None:
+				# Remap score based on linear regression to BU model
+				if adjust_UU =='linear':
+					score_UU = 2.880 * score_UU - 0.056
+				if adjust_UU == '3rd':
+					# score_UU = max(score_UU, 2.880 * score_UU - 0.056)
+					score_UU = -1.523 * (score_UU) + 42.139 * (score_UU * score_UU) - 91.058 * (score_UU * score_UU * score_UU) - 0.017
+			score_BU = results_BU[0][i][j]
+			score = max(score_UU, score_BU)
+			scores[-1].append(score)
+
+			support_UU = results_UU[1][i][j]
+			support_BU = results_BU[1][i][j]
+			support = {**support_UU, **support_BU}
+			supports[-1].append(support)
+
+			if A_list[i][j] == 1:
+				total += 1
+				if score_UU > 0 and score_BU > 0:
+					both += 1
+				elif score_UU > 0:
+					UU_only += 1
+				elif score_BU > 0:
+					BU_only += 1
+
+	answered = UU_only + BU_only + both
+	print('* Score compositing: {} UU-only, {} BU-only, {} overlap : Answered {}/{} questions ({:.1f}%)'.format(UU_only, BU_only, both, answered, total, answered/total*100))
+	return scores, supports
 
 
 def main():
@@ -121,8 +169,6 @@ def main():
 		resources.append('Similarity cache')
 	print('* Using evidence from:', str(resources))
 
-	# print('* Evaluating with: ' + eval_fun.__name__)
-
 	utils.checkpoint()
 	print(BAR)
 
@@ -132,7 +178,7 @@ def main():
 	def load_graphs(graph_dir, message) -> Optional[EGraphCache]:
 		if graph_dir:
 			print(message, end=' ', flush=True)
-			if ARGS.raw_EGs:
+			if ARGS.text_EGs:
 				graph_ext = 'sim' if ARGS.local else 'binc'
 				graphs = read_graphs(graph_dir, ext=graph_ext)
 			else:
@@ -174,19 +220,32 @@ def main():
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	P_list, N_list, evidence_list = generate_tf_question_sets(articles, negative_swaps=negative_swaps, uu_graphs=uu_graphs, filter_dict=ppdb)
+	P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, negative_swaps=negative_swaps, uu_graphs=uu_graphs, filter_dict=ppdb)
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
 	num_P_Qs = sum(len(qs) for qs in P_list)
 	num_sets = len(P_list)
+	num_articles = len(articles)
 	pct_positive = num_P_Qs/num_Qs
-	print('Generated {} questions ({:.1f}% +) from {} sets'.format(num_Qs, pct_positive*100, num_sets))
+	print('Generated {} questions ({:.1f}% +) from {} sets ({} articles)'.format(num_Qs, pct_positive*100, num_sets, num_articles))
+
+	if ARGS.save_qs:
+		utils.write_questions_to_file(P_list, N_list)
+
+	if ARGS.save_preds:
+		utils.write_pred_cache_to_file(top_pred_cache)
 
 	Q_list, A_list = format_tf_QA_sets(P_list, N_list)
+
+	if ARGS.no_answer:
+		print('Quitting before answering phase.')
+		utils.checkpoint()
+		print(BAR)
+		exit(0)
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
 	print('Predicting answers...')
 
-	results = {'*always-true':pct_positive}
+	results = {'*always-true':(pct_positive, None)}
 
 	if ARGS.test_all:
 		results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
@@ -198,8 +257,14 @@ def main():
 			results['B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'B->U', eval_fun=eval_fun, bu_graphs=bu_graphs)
 
 		if uu_graphs and bu_graphs:
-			results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
-						uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+			# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
+			# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+			print(bar)
+			print('U->U and B->U')
+			# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
+			# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
+			# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
+			utils.checkpoint()
 
 		if sim_cache:
 			results['Similarity'] = run_tf_sets(Q_list, A_list, evidence_list, 'Similarity', eval_fun=eval_fun, sim_cache=sim_cache)
@@ -215,8 +280,9 @@ def main():
 
 	if ARGS.plot:
 		print(bar)
-		plot_results(ARGS.data_folder, A_list, results, Q_list=Q_list)
+		plot_results(ARGS.data_folder, A_list, results, sample=ARGS.sample, Q_list=Q_list, save_thresh=ARGS.save_thresh)
 
+	utils.checkpoint()
 	print(BAR)
 	print()
 
@@ -229,14 +295,19 @@ parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs 
 parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
 parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to assist question answering (file must be located in data folder)')
 parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
-# parser.add_argument('--typed', action='store_true', help='Boolean flag toggling question typing')
 parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
-parser.add_argument('--raw-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')
+parser.add_argument('--text-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')
 parser.add_argument('--local', action='store_true', help='Read in local entailment graphs (default is global)')
 parser.add_argument('--eval-fun', default='acc', help='Evaluate results using the specified test function')
-# parser.add_argument('--eval-param', type=int, help='Test all variations of the given configuration')
 parser.add_argument('--day-range', type=int, default=0, help='Evidence window around the day questions are drawn from (extends # days in both directions)')
 parser.add_argument('--plot', action='store_true', help='Plot results visually')
+parser.add_argument('--sample', action='store_true', help='Sample results at specified precision cutoff')
+
+parser.add_argument('--save-thresh', action='store_true', help='Save precision-level cutoffs for entailment graphs')
+parser.add_argument('--save-qs', action='store_true', help='Save generated questions to file')
+parser.add_argument('--save-preds', action='store_true', help='Save top predicates to file')
+
+parser.add_argument('--no-answer', action='store_true', help='Stop execution before answering questions')
 
 if __name__ == '__main__':
 	main()

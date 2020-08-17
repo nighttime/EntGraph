@@ -72,9 +72,6 @@ def construct_sentence(prop: Prop) -> Tuple[List[str], List[int]]:
 		if len(pred_parts) > 1 and pred_parts[0] == 'be' and ccg_arg_position == 2:
 			pred_parts = pred_parts[1:-1] + [pred_parts[0], pred_parts[-1]]
 
-		if 'be' in pred_parts:
-			pred_parts = ['is' if p == 'be' else p for p in pred_parts]
-
 		predicate = ' '.join(pred_parts[:-1])
 		arg = prop.args[0]
 		sent_parts = [arg, predicate] if ccg_arg_position == 1 else [predicate, arg]
@@ -84,16 +81,9 @@ def construct_sentence(prop: Prop) -> Tuple[List[str], List[int]]:
 		binary_pred_halves = prop.pred[prop.pred.find('(')+1:prop.pred.find(')')].split(',')
 		pred_parts_l, pred_parts_r = binary_pred_halves[0].split('.'), binary_pred_halves[1].split('.')
 
-		if 'be' in pred_parts_l:
-			pred_parts_l = ['is' if p == 'be' else p for p in pred_parts_l]
-
-		if 'be' in pred_parts_r:
-			pred_parts_r = ['is' if p == 'be' else p for p in pred_parts_r]
-
 		ccg_arg_position_l = int(pred_parts_l[-1])
 
 		pred_l, pred_r = pred_deoverlap(pred_parts_l[:-1], pred_parts_r[:-1])
-		assert len(pred_l) > 0
 
 		sent_parts = []
 		pred_idx = []
@@ -101,19 +91,22 @@ def construct_sentence(prop: Prop) -> Tuple[List[str], List[int]]:
 			sent_parts.append(prop.args[0])
 			pred_idx.append(0)
 		else:
-			sent_parts.append(' '.join(pred_l))
+			sent_parts.append(pred_l)
 			sent_parts.append(prop.args[0])
 			pred_idx.append(1)
 			pred_idx.append(0)
 
 		if pred_r:
-			sent_parts.append(' '.join(pred_r))
+			sent_parts.append(pred_r)
 			pred_idx.append(1)
 
 		sent_parts.append(prop.args[1])
 		pred_idx.append(0)
 
-	assert len(sent_parts) == len(pred_idx)
+		assert len(sent_parts) == len(pred_idx)
+
+	if 'be' in sent_parts:
+		sent_parts = ['is' if p == 'be' else p for p in sent_parts]
 
 	return sent_parts, pred_idx
 
@@ -137,35 +130,22 @@ def find_subsequence(needle: List[Any], haystack: List[Any]) -> Tuple[int, int]:
 		if haystack[start:end] == needle:
 			return start, end
 
-def encode_batch(batch: List[Tuple[Any, List[str], List[int]]], model: BertModel, tokenizer: BertTokenizer, cache_map: Dict[Any, int], cache: np.ndarray, map_idx: int):
-	_, sent_part_list, pred_idx_list = tuple(zip(*batch))
-	batch_size = len(sent_part_list)
+def encode_batch(batch: List[Tuple[Any, str, str]], model: BertModel, tokenizer: BertTokenizer, cache_map: Dict[Any, int], cache: np.ndarray, map_idx: int):
+	_, sents, preds = tuple(zip(*batch))
+	batch_size = len(sents)
 
-	# sent_tokens = tokenizer.batch_encode_plus(sent_part_list, pad_to_max_length=True)['input_ids']
-	# pred_tokens = tokenizer.batch_encode_plus(pred_idx_list, add_special_tokens=False)['input_ids']
-	# pred_bounds = [find_subsequence(pred_tokens[i], sent_tokens[i]) for i in range(batch_size)]
-
-	# sent_tokens = tokenizer.batch_encode_plus(sent_part_list, pad_to_max_length=True)['input_ids']
-	sent_tokens = tokenizer.batch_encode_plus([' '.join(ps) for ps in sent_part_list], pad_to_max_length=True)['input_ids']
+	sent_tokens = tokenizer.batch_encode_plus(sents, pad_to_max_length=True)['input_ids']
+	pred_tokens = tokenizer.batch_encode_plus(preds, add_special_tokens=False)['input_ids']
+	pred_bounds = [find_subsequence(pred_tokens[i], sent_tokens[i]) for i in range(batch_size)]
 
 	input_ids = torch.tensor(sent_tokens)
 	model_outputs = model(input_ids)
 	hidden_states = model_outputs[0].squeeze()  # model outputs
 
-	for i, (key, sent_parts, pred_idx) in enumerate(batch):
-		start = 1
-		ct = 0
-		partial_embs = np.zeros(hidden_states[i][0].shape)
-		for j, pred_val in enumerate(pred_idx):
-			toks = tokenizer.encode(sent_parts[j], add_special_tokens=False)
-			num_toks = len(toks)
-			if pred_val == 1:
-				partial_embs += torch.sum(hidden_states[i][start:start+num_toks], dim=0).detach().numpy()
-				ct += num_toks
-			start += num_toks
-
-		# emb = np.average(partial_embs.detach().numpy(), axis=0)
-		emb = partial_embs / ct
+	for i, (key, _, _) in enumerate(batch):
+		bounds = pred_bounds[i]
+		partial_embs = hidden_states[i,bounds[0]:bounds[1]]
+		emb = np.average(partial_embs.detach().numpy(), axis=0)
 
 		cache_map[key] = map_idx
 		cache[map_idx] = emb
@@ -192,14 +172,16 @@ def make_emb_cache(unary_props: List[Prop], binary_props: List[Prop], neg_substi
 
 	# Initialize function outputs
 	print('Initializing cache...', flush=True, end=' ')
-	max_props = len(unary_props) + len(unary_swaps) + len(binary_props)
+	max_props = len(unary_props) + len(unary_swaps) + len(binary_props) * 2
 	cache = np.zeros([max_props, 768])
 	cache_map = {}
 
 	# Queue up all proposition fragments to be encoded
-	all_prop_frags = chain(unary_props,
-						   unary_swaps,
-						   binary_props)
+	all_prop_frags = chain(
+			((u, 0) for u in unary_props),
+			((u, 0) for u in unary_swaps),
+			((b, 0) for b in binary_props),
+			((b, 1) for b in binary_props))
 
 	# Embed propositions and save them in the cache
 	print('Caching proposition encodings...')
@@ -210,7 +192,7 @@ def make_emb_cache(unary_props: List[Prop], binary_props: List[Prop], neg_substi
 	batch_size = 512
 	batch_map = {}
 
-	for i, prop in enumerate(all_prop_frags):
+	for i, (prop, arg_idx) in enumerate(all_prop_frags):
 		if 'E' not in prop.entity_types:
 			continue
 
@@ -225,20 +207,20 @@ def make_emb_cache(unary_props: List[Prop], binary_props: List[Prop], neg_substi
 			if int(prop.types[0].split('_')[-1]) == 2:
 				continue
 
-		key = prop.prop_desc()
+		key = prop.prop_desc() + '::' + str(arg_idx)
 		if key in cache_map or key in batch_map:
 			continue
 
 		try:
-			sent_parts, pred_idx = construct_sentence(prop)
+			sent, pred, ccg_arg_position = construct_proposition(prop, arg_idx=arg_idx)
 		except:
 			errors += 1
 			continue
 
-		batch_map[key] = (sent_parts, pred_idx)
+		batch_map[key] = (sent, pred)
 
 		if len(batch_map) == batch_size:
-			batch = [(key, s, p) for key, (s,p) in batch_map.items()]
+			batch = [(key, sent, pred) for key, (sent,pred) in batch_map.items()]
 			encode_batch(batch, bert_model, bert_tokenizer, cache_map, cache, map_idx=completed)
 			batch_map = {}
 			completed += batch_size
@@ -250,7 +232,7 @@ def make_emb_cache(unary_props: List[Prop], binary_props: List[Prop], neg_substi
 def write_cache(prop_idx: Dict[Any, int], prop_embeddings: np.ndarray):
 	global ARGS
 	dest_folder = (lambda x: x if x.endswith('/') else x + '/')(ARGS.data_folder)
-	with open(dest_folder + 'test_prop_emb_idx.pkl', 'wb+') as f:
+	with open(dest_folder + 'prop_emb_idx.pkl', 'wb+') as f:
 		pickle.dump(prop_idx, f, pickle.HIGHEST_PROTOCOL)
 	np.save(dest_folder + 'prop_embs', prop_embeddings)
 

@@ -6,3 +6,6 @@ MODAL_VERBS = ['can', 'may', 'must', 'could', 'would', 'should', 'might', 'shall
 AUXILIARY_VERBS = ['do', 'have'] + MODAL_VERBS # also 'be' but we like the linking verb!
 LIGHT_VERBS = ['take', 'make']
 REPORTING_VERBS = ['say']
+
+K_ENT_MENTIONS = 10
+K_UNARY_PRED_MENTIONS = 10

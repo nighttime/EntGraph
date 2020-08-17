@@ -17,7 +17,7 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 				   uu_graphs: Optional[EGraphCache]=None,
 				   bu_graphs: Optional[EGraphCache]=None,
 				   sim_cache: Optional[EmbeddingCache]=None,
-				   A_list: Optional[List[List[bool]]]=None) -> Tuple[List[List[float]], List[List[Dict[str, List[BackEntailment]]]]]:
+				   A_list: Optional[List[List[bool]]]=None) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
 	predictions = []
 	supports = []
 	for i, cs in enumerate(claims_list):
@@ -43,7 +43,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 			  uu_graphs: Optional[EGraphCache] = None,
 			  bu_graphs: Optional[EGraphCache] = None,
 			  sim_cache: Optional[EmbeddingCache]=None,
-			  answers: Optional[List[Set[str]]]=None) -> Tuple[List[float], List[Dict[str, List[BackEntailment]]]]:
+			  answers: Optional[List[Set[str]]]=None) -> Tuple[List[float], List[Dict[str, Prop]]]:
 	# Keep props containing a named entity
 	ev_un_ents = [ev for ev in evidence[0] if 'E' in ev.entity_types]
 	ev_bi_ents = [ev for ev in evidence[1] if 'E' in ev.entity_types]
@@ -97,14 +97,14 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 		# Get inferred answers from U->U graph
 		if uu_graphs:
 			uu_score, uu_support = infer_claim_UU(c, prop_facts_un, uu_graphs)
-			if len(uu_support) > 0:
+			if uu_support:
 				score = max(score, uu_score)
 				prediction_support[i]['unary'] = uu_support
 
 		# Get inferred answers from B->U graph
 		if bu_graphs:
 			bu_score, bu_support = infer_claim_BU(c, prop_facts_bi, bu_graphs)
-			if len(bu_support) > 0:
+			if bu_support:
 				score = max(score, bu_score)
 				prediction_support[i]['binary'] = bu_support
 
@@ -121,10 +121,10 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 
 
 def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
-		Tuple[float, List[BackEntailment]]:
+		Tuple[float, Optional[Prop]]:
 
 	score = 0
-	support: List[BackEntailment] = []
+	support = None
 
 	question = claim.pred_desc()
 	query_type = claim.types[0]
@@ -136,20 +136,18 @@ def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 		antecedents = ent_graphs[query_type].get_antecedents(question)
 		for ant in antecedents:
 			ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc()[0] == claim.arg_desc()[0]), None)
-			if ant_support:
-				score = max(score, ant.score)
-				support.append(ant)
-
-	support.sort(key=lambda ant: ant.score, reverse=True)
+			if ant_support and ant.score > score:
+				score = ant.score
+				support = ant_support
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
 
 def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
-		Tuple[float, List[BackEntailment]]:
+		Tuple[float, Optional[Prop]]:
 
 	score = 0
-	support: List[BackEntailment] = []
+	support = None
 
 	question = claim.pred_desc()
 	query_type = claim.types[0]
@@ -174,11 +172,10 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 				for prop in prop_cache[ant.pred]:
 					arg_idx = prop.types.index(qualified_question_type)
 					if prop.arg_desc()[arg_idx] == claim.arg_desc()[0]:
-						score = max(score, ant.score)
-						support.append(ant)
-						break
-
-	support.sort(key=lambda ant: ant.score, reverse=True)
+						if ant.score > score:
+							score = max(score, ant.score)
+							support = prop
+							break
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
@@ -192,7 +189,7 @@ H_NAN = 0
 def infer_claim_sim(claim: Prop,
 					un_arg_cache: Dict[str, List[Tuple[Prop, int]]],
 					bi_arg_cache: Dict[str, List[Tuple[Prop, int]]],
-					sim_cache: EmbeddingCache) -> Tuple[float, Optional[str]]:
+					sim_cache: EmbeddingCache) -> Tuple[float, Optional[Prop]]:
 
 	score = 0
 	support = None
@@ -203,7 +200,7 @@ def infer_claim_sim(claim: Prop,
 		return score, support
 
 	H_TOTAL += 1
-	hypothesis = claim.prop_desc() + '::0'
+	hypothesis = claim.prop_desc() # + '::0'
 	if hypothesis not in sim_cache.id_map:
 		H_NF += 1
 		return score, support
@@ -227,7 +224,10 @@ def infer_claim_sim(claim: Prop,
 			if int(p.types[0].split('_')[-1]) == 2:
 				continue
 
-		premise = p.prop_desc() + '::' + str(arg_idx)
+		premise = p.prop_desc() # + '::' + str(arg_idx)
+
+		if premise == hypothesis:
+			return 1.0, p
 
 		P_TOTAL += 1
 		if premise not in sim_cache.id_map:
@@ -248,12 +248,12 @@ def infer_claim_sim(claim: Prop,
 		try:
 			assert -0.05 <= new_score <= 1.05
 		except:
-			print('! failed assertion: embedding similarity score out of bounds: {:.5f} (skipping this)'.format(new_score))
+			print('! failed assertion: embedding similarity score out of bounds: {:.5f} (clamping this value)'.format(new_score))
 			# exit(1)
-			continue
+			# continue
 		if new_score > score:
 			score = new_score
-			support = premise
+			support = p
 	# pdb.set_trace()
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
