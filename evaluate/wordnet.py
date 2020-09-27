@@ -13,17 +13,15 @@ def clean(pred: str) -> str:
 
 def process_infile(infile: str, outfile: str):
 	with open(infile) as file:
-		words = defaultdict(dict)
+		output = defaultdict(dict)
 		backward_entailments = defaultdict(set)
 		preds = file.readlines()
+		words = list(set(clean(p.strip()) for p in preds))
 
-		print('Querying WordNet...')
-		total = len(preds)
+		total = len(words)
 		ct = 0
-		for pred in preds:
-			pred = pred.strip()
-			word = clean(pred)
-
+		print('Querying WordNet for {} words...'.format(total))
+		for word in words:
 			trops = get_troponyms(word)
 			forw_ents = get_entailments(word)
 			ants = get_antonyms(word)
@@ -34,8 +32,7 @@ def process_infile(infile: str, outfile: str):
 			for cons in forw_ents:
 				backward_entailments[cons].add(word)
 
-			words[pred] = {'query_word': word,
-						   'antonyms': ants,
+			output[word] = {'antonyms': ants,
 						   'troponyms': trops,
 						   'entails': forw_ents}
 			ct += 1
@@ -44,10 +41,10 @@ def process_infile(infile: str, outfile: str):
 		print('Computing backward entailments...')
 		for cons, ante_set in backward_entailments.items():
 			if cons in words:
-				words[cons]['entailed_by'] = list(ante_set)
+				output[cons]['entailed_by'] = list(ante_set)
 
 	with open(outfile, 'w+') as file:
-		json.dump(words, file, indent=2)
+		json.dump(output, file, indent=2)
 
 
 def get_antonyms(word: str) -> List[str]:

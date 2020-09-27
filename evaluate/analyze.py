@@ -1,4 +1,5 @@
 from proposition import *
+import utils
 
 import numpy as np
 from sklearn import metrics
@@ -9,6 +10,8 @@ from collections import defaultdict, OrderedDict
 import os
 import json
 import random
+import argparse
+import sys
 
 from typing import *
 
@@ -128,10 +131,10 @@ def calc_adjusted_auc(precision, recall, recall_thresh):
 	return adjusted_auc, normalized_adjusted_auc
 
 def plot_results(folder: str,
+				 Q_list: List[List[Prop]],
 				 A_list: List[List[int]],
 				 prediction_results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]],
 				 sample: bool = False,
-				 Q_list: Optional[List[List[Prop]]] = None,
 				 save_thresh: bool = False):
 	plt.figure(figsize=(9,7))
 	plt.ylim(0.0, 1.05)
@@ -141,7 +144,7 @@ def plot_results(folder: str,
 	# plt.margins(0.1)
 
 	# Plot random-guessing baseline
-	naive_base = prediction_results['*always-true']
+	# naive_base = prediction_results['*always-true']
 	# plt.hlines(naive_base, 0, 1, colors='red', linestyles='--', label='Always True')
 
 	# Save information for analysis
@@ -152,9 +155,9 @@ def plot_results(folder: str,
 	recalls = {}
 
 	# Calculate exact-match baseline
-	true_flat, em_preds_flat = flatten_answers(A_list, prediction_results['*exact-match'][0])
-	precision, recall, threshold = metrics.precision_recall_curve(true_flat, em_preds_flat)
-	em_precision, em_recall = precision[1], recall[1]
+	# true_flat, em_preds_flat = flatten_answers(A_list, prediction_results['*exact-match U'][0])
+	# precision, recall, threshold = metrics.precision_recall_curve(true_flat, em_preds_flat)
+	# em_precision, em_recall = precision[1], recall[1]
 
 	# Plot graph lines
 	for title, (predictions, support) in prediction_results.items():
@@ -166,8 +169,8 @@ def plot_results(folder: str,
 		# sns.lineplot(x=recall[:-1], y=threshold[:-1], label=title)
 		sns.lineplot(x=recall, y=precision, label=title)
 
-		adjusted_auc, normalized_adjusted_auc = calc_adjusted_auc(precision, recall, em_recall)
-		print('{} adjusted AUC = {:.3f} ({:.3f} normalized)'.format(title, adjusted_auc, normalized_adjusted_auc))
+		# adjusted_auc, normalized_adjusted_auc = calc_adjusted_auc(precision, recall, em_recall)
+		# print('{} adjusted AUC = {:.3f} ({:.3f} normalized)'.format(title, adjusted_auc, normalized_adjusted_auc))
 
 		prec_score_thresh_idx = np.abs(precision - test_precision).argmin()
 		prec_score_thresh = threshold[prec_score_thresh_idx]
@@ -177,56 +180,62 @@ def plot_results(folder: str,
 		recalls[title] = recall
 
 	# Generate unions
-	if 'U->U' in prediction_results and 'B->U' in prediction_results:
+	comp_types = ['BB', 'UU', 'BU']
+	comp_labels = [c for c in comp_types if c in prediction_results]
+	# comp_labels, components = tuple(zip(*((k,v[0]) for k,v in prediction_results.items() if k in comp_types)))
+	components = [prediction_results[label][0] for label in comp_labels]
+	for ind in range(2, len(comp_labels)+1):
 		num_steps = 1000
-		print('Generating union results from {} sample points'.format(num_steps))
+		union_labels = comp_labels[:ind]
+		union_models = components[:ind]
+		print('Generating union results for {} from {} sample points'.format(union_labels, num_steps))
+
+		# Preallocate space for precision, recall
 		optimistic_union = np.zeros([2, num_steps])
-		pessimistic_union = np.zeros([2, num_steps])
-		stop_pes = 0
+
 		for i,prec in enumerate(np.arange(1.0, 0, -1/num_steps)):
-			# print('Computing r={:.3f}'.format(r))
-			uu_thresh = thresholds['U->U'][np.abs(precisions['U->U'] - prec).argmin()]
-			bu_thresh = thresholds['B->U'][np.abs(precisions['B->U'] - prec).argmin()]
+			threshes = [thresholds[l][np.abs(precisions[l] - prec).argmin()] for l in union_labels]
+			threshed_classifications = np.array([[c for cs in threshold_sets(comp, thresh) for c in cs] for comp,thresh in zip(union_models, threshes)])
+			optim_union_classifications: List[int] = np.any(threshed_classifications, axis=0).astype(int).tolist()
 
-			uu_classifications = [c for cs in threshold_sets(prediction_results['U->U'][0], uu_thresh) for c in cs]
-			bu_classifications = [c for cs in threshold_sets(prediction_results['B->U'][0], bu_thresh) for c in cs]
-
-			# Optimistic
-			optim_union_classifications = [1 if (uu == 1 or bu == 1) else 0 for uu, bu in zip(uu_classifications, bu_classifications)]
 			optimistic_union[0][i] = calc_precision(true_flat, optim_union_classifications)
 			optimistic_union[1][i] = calc_recall(true_flat, optim_union_classifications)
 
-			# Pessimistic
-			if uu_thresh > 0 and bu_thresh > 0:
-				pessim_union_classifications = [1 if (uu == 1 and bu == 1) else 0 for uu, bu in zip(uu_classifications, bu_classifications)]
-				pessimistic_union[0][i] = calc_precision(true_flat, pessim_union_classifications)
-				pessimistic_union[1][i] = calc_recall(true_flat, pessim_union_classifications)
-				stop_pes = i
-
-		opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
-		if np.where(pessimistic_union[1] == 1)[0]:
-			pes_first_recall_1_ind = np.where(pessimistic_union[1] == 1)[0][0]
-		else:
-			pes_first_recall_1_ind = len(pessimistic_union[1])
-
 		# Cut off points before the dead drop to 1.0 recall
-		optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
-		pessimistic_union = pessimistic_union[:, :min(pes_first_recall_1_ind, stop_pes+1)]
+		try:
+			opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
+			optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
+		except:
+			print('recall in union != 1 anywhere?')
 
-		# Add dead mass so we can correct it later in the same way as the component models
+		# Add initial point in line with the component models
 		optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
-		pessimistic_union = np.insert(pessimistic_union, 0, [1, 0], axis=1)
 
-		sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label='Optimistic Union')
-		sns.lineplot(x=pessimistic_union[1], y=pessimistic_union[0], label='Pessimistic Union')
+		sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label=' + '.join(union_labels))
 
 		# opt_adjusted_auc, opt_normalized_adjusted_auc = calc_adjusted_auc(optimistic_union[0], optimistic_union[1], em_recall)
-		# pes_adjusted_auc, pes_normalized_adjusted_auc = calc_adjusted_auc(pessimistic_union[0], pessimistic_union[1], em_recall)
 		# print('Optimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(opt_adjusted_auc, opt_normalized_adjusted_auc))
-		# print('Pessimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(pes_adjusted_auc, pes_normalized_adjusted_auc))
 
 	# Plot exact-match baseline
-	sns.lineplot(x=[em_recall], y=[em_precision], marker='D', markersize=8, label='Exact-Match Only')
+	if '*exact-match U' in prediction_results:
+		true_flat, em_u_preds_flat = flatten_answers(A_list, prediction_results['*exact-match U'][0])
+		precision_u, recall_u, _ = metrics.precision_recall_curve(true_flat, em_u_preds_flat)
+		em_u_precision, em_u_recall = precision_u[1], recall_u[1]
+		sns.lineplot(x=[em_u_recall], y=[em_u_precision], marker='D', markersize=5, label='Exact-Match U')
+
+	if '*exact-match B' in prediction_results:
+		true_flat, em_b_preds_flat = flatten_answers(A_list, prediction_results['*exact-match B'][0])
+		precision_b, recall_b, _ = metrics.precision_recall_curve(true_flat, em_b_preds_flat)
+		em_b_precision, em_b_recall = precision_b[1], recall_b[1]
+		sns.lineplot(x=[em_b_recall], y=[em_b_precision], marker='D', markersize=5, label='Exact-Match B')
+
+	if '*exact-match U' in prediction_results and '*exact-match B' in prediction_results:
+		true_flat, em_u_preds_flat = flatten_answers(A_list, prediction_results['*exact-match U'][0])
+		true_flat, em_b_preds_flat = flatten_answers(A_list, prediction_results['*exact-match B'][0])
+		em_ub_preds_flat = [1 if (u == 1 or b == 1) else 0 for u,b in zip(em_u_preds_flat, em_b_preds_flat)]
+		precision_ub, recall_ub, _ = metrics.precision_recall_curve(true_flat, em_ub_preds_flat)
+		em_ub_precision, em_ub_recall = precision_ub[1], recall_ub[1]
+		sns.lineplot(x=[em_ub_recall], y=[em_ub_precision], marker='D', markersize=5, label='Exact-Match U+B')
 
 	plt.legend()
 
@@ -237,7 +246,8 @@ def plot_results(folder: str,
 	# plt.title('Threshold Levels for P-R Curve')
 
 	now = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
-	fname = 'tf_results/' + now + '.png'
+	location = 'local' if reference.RUNNING_LOCAL else 'server'
+	fname = 'tf_results/' + now + '_' + location + '.png'
 	fpath_results = os.path.join(folder, fname)
 	plt.savefig(fpath_results)
 	print('Results figure saved to', fpath_results)
@@ -357,3 +367,27 @@ def plot_results(folder: str,
 				f.write('\n\n')
 
 		print('Results analysis saved to', fpath_analysis)
+
+
+
+def run():
+	# global ARGS
+	ARGS = parser.parse_args()
+	data_folder = ARGS.data_folder
+	print('Reading in results for analysis...')
+	Q_List, A_List, results = utils.read_results_on_file(data_folder)
+	print('Results read for {}'.format(list(results.keys())))
+	if ARGS.plot:
+		print('Performing analysis...')
+		plot_results(data_folder, Q_List, A_List, results)
+
+	print('Done')
+	return Q_List, A_List, results
+
+
+parser = argparse.ArgumentParser(description='Analyze data left in the data folder')
+parser.add_argument('data_folder', help='Path to data folder including last results')
+parser.add_argument('--plot', help='Run plotting procedure')
+
+if __name__ == '__main__':
+	Q, A, results = run()

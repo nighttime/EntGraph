@@ -31,12 +31,21 @@ class Prop:
 	@classmethod
 	def with_swapped_pred(cls: type, prop: Prop_Type, pred_swap: str) -> Prop_Type:
 		new_prop = copy.deepcopy(prop)
-		new_prop.pred = pred_swap + prop.pred[prop.pred.find('.'):]
+		# new_prop.pred = pred_swap + prop.pred[prop.pred.find('.'):]
+		new_prop.pred = Prop.swap_pred(new_prop.pred, pred_swap)
 		return new_prop
 
+	# Input: predicate OR predicate description
+	# Output: the same, but with the base word replaced with the new word
 	@classmethod
-	def swap_pred(cls, pred_desc: str, raw_pred: str) -> str:
-		return raw_pred + pred_desc[pred_desc.find('.'):]
+	def swap_pred(cls, pred_desc: str, replacement_word: str) -> str:
+		base_word = extract_predicate_base_term(pred_desc)
+		return pred_desc.replace(base_word, replacement_word)
+		# if pred_desc.startswith('('):
+		# 	base_word = extract_predicate_base_term(pred_desc)
+		# 	return pred_desc.replace(base_word, replacement_word)
+		# else:
+		# 	return replacement_word + pred_desc[pred_desc.find('.'):]
 
 	def set_args(self, args: List[str]):
 		self.args = args
@@ -81,6 +90,27 @@ class Prop:
 		return hash(str(self))
 
 
+def decompose_binary_pred(prop: Prop) -> Tuple[str, str]:
+	assert len(prop.args) == 2
+	binary_pred_halves = prop.pred[prop.pred.find('(') + 1:prop.pred.find(')')].split(',')
+	return binary_pred_halves[0], binary_pred_halves[1]
+
+def binary_pred_root(prop: Prop) -> str:
+	assert len(prop.args) == 2
+	left, right = decompose_binary_pred(prop)
+	pred_parts_l, pred_parts_r = left.split('.'), right.split('.')
+
+	i = 0
+	while i < len(pred_parts_l) and i < len(pred_parts_r) and pred_parts_l[i] == pred_parts_r[i]:
+		i += 1
+
+	return '.'.join(pred_parts_l[:i])
+
+def extract_predicate_base_term(pred: str) -> str:
+	root = pred.split('.')[0]
+	if pred.startswith('('):
+		root = root[1:]
+	return root
 
 def entity_is_only_NE(ent: str) -> bool:
 	if len(ent) < 2:
@@ -212,7 +242,7 @@ def get_type(ent, is_entity, typed=True):
 # _sub_pairs_fname = 'neg_swap_person.json'
 # _sub_pairs_fname = 'neg_swap_person_filtered.json'
 
-def read_substitution_pairs(fname: str) -> Dict[str, Dict[str, Any]]:
+def read_substitution_pairs(fname: str) -> Dict[str, Dict[str, List[str]]]:
 	# dirname = dirname if dirname.endswith('/') else dirname + '/'
 	# global _sub_pairs_fname
 	with open(fname) as f:

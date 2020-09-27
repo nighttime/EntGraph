@@ -14,6 +14,7 @@ class Article:
 		self.date = date
 		self.unary_props = []
 		self.binary_props = []
+		self.selected_binary_props = []
 		self.sents = []
 
 	def add_unary(self, unary):
@@ -21,6 +22,9 @@ class Article:
 
 	def add_binary(self, binary):
 		self.binary_props.append(binary)
+
+	def add_selected_binary(self, binary):
+		self.selected_binary_props.append(binary)
 
 	def remove_qa_pair(self, q, a):
 		for i,u in enumerate(self.unary_props):
@@ -74,6 +78,11 @@ def reject_binary(pred: str) -> bool:
 	pred = pred[1:pred.find(')')]
 	parts = pred.split(',')
 
+	# filter out malformed extractions e.g. (1,with.2)#person#thing
+	if any(len(p.split('.')) < 2 for p in parts):
+		return True
+
+	# filter out malformed extractions e.g. (``, ...
 	if any(any(c in p for c in ['\'', '`']) for p in parts):
 		return True
 
@@ -147,6 +156,7 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 				prop.set_types(typing)
 				binary_props.append(prop)
 				articles[art_ID].add_binary(prop)
+				articles[art_ID].add_selected_binary(prop)
 
 				if type_symmetric:
 					norm_ents = list(reversed(norm_ents))

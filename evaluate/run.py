@@ -67,14 +67,22 @@ def run_wh_sets(Q_list: List[List[str]], A_list: List[List[Set[str]]], evidence_
 	print('{:.4f}'.format(score))
 	utils.checkpoint()
 
-def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
+# def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
+# 				score_text: str, eval_fun: Callable[[List[Any], List[Any]], float],
+# 				uu_graphs: Optional[EGraphCache]=None,
+# 				bu_graphs: Optional[EGraphCache]=None,
+# 				sim_cache: Optional[EmbeddingCache]=None) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
+def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]],
+				evidence_list: List[Tuple[List[Prop], List[Prop]]],
 				score_text: str, eval_fun: Callable[[List[Any], List[Any]], float],
-				uu_graphs: Optional[EGraphCache]=None,
-				bu_graphs: Optional[EGraphCache]=None,
-				sim_cache: Optional[EmbeddingCache]=None) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
+				models: Dict[str, Any],
+				answer_modes: Set[str]) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
 	print(bar)
 	print(score_text)
-	scores_list, supports_list = answer_tf_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, sim_cache=sim_cache)
+	global ARGS
+	scores_list, supports_list, error_cases = answer_tf_sets(Q_list, evidence_list, models, answer_modes)
+	if ARGS.save_errors:
+		utils.save_props_on_file(error_cases, ARGS.data_folder, 'sim_hypo_NaN')
 	scores_flat = [s for ss in scores_list for s in ss]
 
 	##################################################################
@@ -146,7 +154,11 @@ def composite_results(results_UU: Tuple[List[List[float]], List[List[Dict[str, P
 	return scores, supports
 
 
-def main():
+def run_evaluate() -> Tuple[List[List[Article]],
+							List[List[Prop]],
+							List[List[int]],
+							List[Tuple[List[Prop], List[Prop]]],
+							Optional[Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]]]]:
 	global ARGS
 	ARGS = parser.parse_args()
 
@@ -155,7 +167,10 @@ def main():
 	print()
 	print(BAR)
 	mode = 'local' if reference.RUNNING_LOCAL else 'server'
-	print('Running Eval ({})'.format(mode))
+	title = 'Running Eval ({})'.format(mode)
+	if ARGS.quick:
+		title += ' (quick mode)'
+	print(title)
 
 	original_types_file = 'data/freebase_types/entity2Types.txt'
 	print('* Using entity types and substitution pairs from: ' + ARGS.data_folder)
@@ -173,6 +188,8 @@ def main():
 	print(BAR)
 
 	#######################################
+
+	models = {}
 
 	# Read in U->U and/or B->U entailment graphs
 	def load_graphs(graph_dir, message) -> Optional[EGraphCache]:
@@ -192,6 +209,11 @@ def main():
 		exit(1)
 	bu_graphs = load_graphs(ARGS.bu_graphs, 'Reading B->U graphs...')
 
+	if uu_graphs:
+		models['UU'] = uu_graphs
+	if bu_graphs:
+		models['BU'] = bu_graphs
+
 	utils.checkpoint()
 	print(BAR)
 
@@ -208,6 +230,7 @@ def main():
 	if ARGS.sim_cache:
 		print('Loading similarity cache...')
 		sim_cache = load_similarity_cache(ARGS.data_folder)
+		models['Sim'] = sim_cache
 
 	# Read in news articles
 	print('Reading source articles & auxiliary data...')
@@ -220,71 +243,114 @@ def main():
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, negative_swaps=negative_swaps, uu_graphs=uu_graphs, filter_dict=ppdb)
+	question_modes = set()
+	question_modes |= {'unary'}
+	# question_modes |= {'binary'}
+
+	partitions, P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, question_modes, negative_swaps=negative_swaps, uu_graphs=uu_graphs, bu_graphs=bu_graphs, filter_dict=ppdb)
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
-	num_P_Qs = sum(len(qs) for qs in P_list)
+	num_unary_Qs = len([q for qs in P_list + N_list for q in qs if len(q.args) == 1])
+	num_binary_Qs = num_Qs - num_unary_Qs
+	# num_P_Qs = sum(len(qs) for qs in P_list)
+	num_P_unary_Qs = len([q for qs in P_list for q in qs if len(q.args) == 1])
+	num_P_binary_Qs = len([q for qs in P_list for q in qs if len(q.args) == 2])
 	num_sets = len(P_list)
 	num_articles = len(articles)
-	pct_positive = num_P_Qs/num_Qs
-	print('Generated {} questions ({:.1f}% +) from {} sets ({} articles)'.format(num_Qs, pct_positive*100, num_sets, num_articles))
+	pct_positive = (num_P_unary_Qs + num_P_binary_Qs) / num_Qs
+	pct_positive_u = num_P_unary_Qs / num_unary_Qs if num_unary_Qs else 0
+	pct_positive_b = num_P_binary_Qs / num_binary_Qs if num_binary_Qs else 0
+	print('Generated {} questions ({:.1f}% +) from {} sets: {} unary questions ({:.1f}% +) and {} binary questions ({:.1f}% +)'.format(num_Qs, pct_positive*100, num_sets, num_unary_Qs, pct_positive_u*100, num_binary_Qs, pct_positive_b*100))
 
+	known_u_qs = [p for ps in P_list for p in ps if len(p.args) == 1 and uu_graphs and p.pred_desc() in uu_graphs[p.types[0]].nodes]
+	known_b_qs = [p for ps in P_list for p in ps if len(p.args) == 2 and bu_graphs and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
+
+	pct_known_u = len(known_u_qs)/num_P_unary_Qs if num_P_unary_Qs else 0
+	pct_known_b = len(known_b_qs)/num_P_binary_Qs if num_P_binary_Qs else 0
+
+	print('Positive questions recognized in graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_u*100, pct_known_b*100))
+
+	# if reference.RUNNING_LOCAL:
+	# 	print('(IGNORE positivity rate for local question generation; filtering is done based on available graphs)')
 	if ARGS.save_qs:
 		utils.write_questions_to_file(P_list, N_list)
+		print('Questions written to file.')
 
 	if ARGS.save_preds:
 		utils.write_pred_cache_to_file(top_pred_cache)
+		print('Pred cache written to file.')
 
 	Q_list, A_list = format_tf_QA_sets(P_list, N_list)
 
 	if ARGS.no_answer:
-		print('Quitting before answering phase.')
+		print('Quitting before the answering phase.')
 		utils.checkpoint()
 		print(BAR)
-		exit(0)
+		return partitions, Q_list, A_list, evidence_list, None
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
 	print('Predicting answers...')
 
-	results = {'*always-true':(pct_positive, None)}
+	# results = {'*always-true':(pct_positive, None)}
+	results = {}
+	answer_modes = {}
 
-	if ARGS.test_all:
-		results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
+	# if ARGS.test_all:
+	# results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun, models, answer_modes)
+	if 'unary' in question_modes:
+		answer_modes = {'Literal U'}
+		results['*exact-match U'] = run_tf_sets(Q_list, A_list, evidence_list, 'Literal U', eval_fun, models, answer_modes)
 
-		if uu_graphs:
-			results['U->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U', eval_fun=eval_fun, uu_graphs=uu_graphs)
+	if 'binary' in question_modes:
+		answer_modes = {'Literal B'}
+		results['*exact-match B'] = run_tf_sets(Q_list, A_list, evidence_list, 'Literal B', eval_fun, models, answer_modes)
 
-		if bu_graphs:
-			results['B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'B->U', eval_fun=eval_fun, bu_graphs=bu_graphs)
+	if uu_graphs and 'unary' in question_modes:
+		answer_modes = {'UU', 'Literal U'}
+		results['UU'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU', eval_fun, models, answer_modes)
 
-		if uu_graphs and bu_graphs:
-			# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
-			# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-			print(bar)
-			print('U->U and B->U')
-			# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
-			# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
-			# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
-			utils.checkpoint()
+	if bu_graphs:
+		if 'binary' in question_modes:
+			answer_modes = {'BB', 'Literal B'}
+			results['BB'] = run_tf_sets(Q_list, A_list, evidence_list, 'BB', eval_fun, models, answer_modes)
+		if not ARGS.quick and 'unary' in question_modes:
+			answer_modes = {'BU', 'Literal U'}
+			results['BU'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU', eval_fun, models, answer_modes)
 
-		if sim_cache:
-			results['Similarity'] = run_tf_sets(Q_list, A_list, evidence_list, 'Similarity', eval_fun=eval_fun, sim_cache=sim_cache)
+	# if uu_graphs and bu_graphs:
+		# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
+		# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+		# print(bar)
+		# print('U->U and B->U')
+		# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
+		# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
+		# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
+		# utils.checkpoint()
 
-	else:
-		results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun=eval_fun)
-		if sim_cache:
-			label = 'Similarity'
-			results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, sim_cache=sim_cache)
-		elif uu_graphs or bu_graphs:
-			label = ('U->U' if uu_graphs else '') + (' and ' if uu_graphs and bu_graphs else '') + ('B->U' if bu_graphs else '')
-			results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+	if sim_cache:
+		answer_modes = {'Sim'}
+		results['Similarity'] = run_tf_sets(Q_list, A_list, evidence_list, 'Similarity', eval_fun, models, answer_modes)
+
+	# else:
+	# 	results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun, models, answer_modes)
+	# 	if sim_cache:
+	# 		label = 'Similarity'
+	# 		results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, sim_cache=sim_cache)
+	# 	elif uu_graphs or bu_graphs:
+	# 		label = ('U->U' if uu_graphs else '') + (' and ' if uu_graphs and bu_graphs else '') + ('B->U' if bu_graphs else '')
+	# 		results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+
+	if ARGS.save_results:
+		utils.save_results_on_file(ARGS.data_folder, Q_list, A_list, results)
 
 	if ARGS.plot:
 		print(bar)
-		plot_results(ARGS.data_folder, A_list, results, sample=ARGS.sample, Q_list=Q_list, save_thresh=ARGS.save_thresh)
+		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh)
 
 	utils.checkpoint()
 	print(BAR)
 	print()
+
+	return partitions, Q_list, A_list, evidence_list, results
 
 
 
@@ -295,19 +361,23 @@ parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs 
 parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
 parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to assist question answering (file must be located in data folder)')
 parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
-parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
+# parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
 parser.add_argument('--text-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')
 parser.add_argument('--local', action='store_true', help='Read in local entailment graphs (default is global)')
 parser.add_argument('--eval-fun', default='acc', help='Evaluate results using the specified test function')
-parser.add_argument('--day-range', type=int, default=0, help='Evidence window around the day questions are drawn from (extends # days in both directions)')
+# parser.add_argument('--day-range', type=int, default=0, help='Evidence window around the day questions are drawn from (extends # days in both directions)')
+
+parser.add_argument('--save-results', action='store_true', help='Plot results visually')
 parser.add_argument('--plot', action='store_true', help='Plot results visually')
 parser.add_argument('--sample', action='store_true', help='Sample results at specified precision cutoff')
 
 parser.add_argument('--save-thresh', action='store_true', help='Save precision-level cutoffs for entailment graphs')
 parser.add_argument('--save-qs', action='store_true', help='Save generated questions to file')
 parser.add_argument('--save-preds', action='store_true', help='Save top predicates to file')
+parser.add_argument('--save-errors', action='store_true', help='Save erroneous propositions to file')
 
 parser.add_argument('--no-answer', action='store_true', help='Stop execution before answering questions')
+parser.add_argument('--quick', action='store_true', help='Skip long-running optional work (e.g. computing B->U)')
 
 if __name__ == '__main__':
-	main()
+	partitions, Q, A, E, results = run_evaluate()

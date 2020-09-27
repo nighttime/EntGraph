@@ -10,6 +10,10 @@ lib_data/
 freebase_types/
 newsspike_sims/
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
 # evaluation
 evaluate/data/
 eval_data/
