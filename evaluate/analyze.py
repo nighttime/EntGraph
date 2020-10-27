@@ -130,12 +130,30 @@ def calc_adjusted_auc(precision, recall, recall_thresh):
 	normalized_adjusted_auc = adjusted_auc / (1 - recall_thresh)
 	return adjusted_auc, normalized_adjusted_auc
 
+# Take values corresponding to the mask if True and filter out if False
+def filter_2D_data(data, mask):
+	return [[data[i][j] for j in range(len(data[i])) if mask[i][j]] for i in range(len(data))]
+
 def plot_results(folder: str,
 				 Q_list: List[List[Prop]],
 				 A_list: List[List[int]],
 				 prediction_results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]],
 				 sample: bool = False,
-				 save_thresh: bool = False):
+				 save_thresh: bool = False,
+				 subset: Optional[str] = None):
+	comp_types = ['BB', 'UU', 'BU']
+
+	if subset is not None:
+		arg_target = 1 if subset == 'unary' else 2
+		mask = [[True if len(q.args) == arg_target else False for q in qs] for qs in Q_list]
+		Q_list = filter_2D_data(Q_list, mask)
+		A_list = filter_2D_data(A_list, mask)
+		prediction_results = {title:(filter_2D_data(ps, mask), filter_2D_data(ss, mask)) for title,(ps,ss) in prediction_results.items()}
+
+		skip = ['BB'] if subset == 'unary' else ['UU', 'BU']
+		prediction_results = {title:preds for title,preds in prediction_results.items() if title not in skip}
+		print('Analyzing with {} subset only...'.format(subset))
+
 	plt.figure(figsize=(9,7))
 	plt.ylim(0.0, 1.05)
 	plt.xlim(0.0, 1.05)
@@ -160,14 +178,21 @@ def plot_results(folder: str,
 	# em_precision, em_recall = precision[1], recall[1]
 
 	# Plot graph lines
+	true_flat = [ans for anss in A_list for ans in anss]
 	for title, (predictions, support) in prediction_results.items():
 		if title.startswith('*'):
 			continue
-		true_flat, preds_flat = flatten_answers(A_list, predictions)
+
+		preds_flat = [p for ps in predictions for p in ps]
 		precision, recall, threshold = metrics.precision_recall_curve(true_flat, preds_flat)
 		precision, recall = precision[1:], recall[1:]
 		# sns.lineplot(x=recall[:-1], y=threshold[:-1], label=title)
-		sns.lineplot(x=recall, y=precision, label=title)
+		if title in comp_types:
+			sns.lineplot(x=recall, y=precision, label=title, alpha=0.3)
+		elif title in ['BERT', 'RoBERTa']:
+			sns.lineplot(x=recall, y=precision, label=title)
+		else:
+			sns.lineplot(x=recall, y=precision, label=title)
 
 		# adjusted_auc, normalized_adjusted_auc = calc_adjusted_auc(precision, recall, em_recall)
 		# print('{} adjusted AUC = {:.3f} ({:.3f} normalized)'.format(title, adjusted_auc, normalized_adjusted_auc))
@@ -180,7 +205,6 @@ def plot_results(folder: str,
 		recalls[title] = recall
 
 	# Generate unions
-	comp_types = ['BB', 'UU', 'BU']
 	comp_labels = [c for c in comp_types if c in prediction_results]
 	# comp_labels, components = tuple(zip(*((k,v[0]) for k,v in prediction_results.items() if k in comp_types)))
 	components = [prediction_results[label][0] for label in comp_labels]
@@ -217,19 +241,19 @@ def plot_results(folder: str,
 		# print('Optimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(opt_adjusted_auc, opt_normalized_adjusted_auc))
 
 	# Plot exact-match baseline
-	if '*exact-match U' in prediction_results:
+	if '*exact-match U' in prediction_results and subset != 'binary':
 		true_flat, em_u_preds_flat = flatten_answers(A_list, prediction_results['*exact-match U'][0])
 		precision_u, recall_u, _ = metrics.precision_recall_curve(true_flat, em_u_preds_flat)
 		em_u_precision, em_u_recall = precision_u[1], recall_u[1]
 		sns.lineplot(x=[em_u_recall], y=[em_u_precision], marker='D', markersize=5, label='Exact-Match U')
 
-	if '*exact-match B' in prediction_results:
+	if '*exact-match B' in prediction_results and subset != 'unary':
 		true_flat, em_b_preds_flat = flatten_answers(A_list, prediction_results['*exact-match B'][0])
 		precision_b, recall_b, _ = metrics.precision_recall_curve(true_flat, em_b_preds_flat)
 		em_b_precision, em_b_recall = precision_b[1], recall_b[1]
 		sns.lineplot(x=[em_b_recall], y=[em_b_precision], marker='D', markersize=5, label='Exact-Match B')
 
-	if '*exact-match U' in prediction_results and '*exact-match B' in prediction_results:
+	if '*exact-match U' in prediction_results and '*exact-match B' in prediction_results and subset is None:
 		true_flat, em_u_preds_flat = flatten_answers(A_list, prediction_results['*exact-match U'][0])
 		true_flat, em_b_preds_flat = flatten_answers(A_list, prediction_results['*exact-match B'][0])
 		em_ub_preds_flat = [1 if (u == 1 or b == 1) else 0 for u,b in zip(em_u_preds_flat, em_b_preds_flat)]
@@ -241,13 +265,17 @@ def plot_results(folder: str,
 
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
-	plt.title('True-False Question Performance')
+	if subset is not None:
+		plt.title('True-False Question Performance ({} Only)'.format(subset.title()))
+	else:
+		plt.title('True-False Question Performance')
 	# plt.ylabel('Threshold')
 	# plt.title('Threshold Levels for P-R Curve')
 
 	now = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
-	location = 'local' if reference.RUNNING_LOCAL else 'server'
-	fname = 'tf_results/' + now + '_' + location + '.png'
+	location = '_local' if reference.RUNNING_LOCAL else '_server'
+	subset_name = '_' + subset if subset is not None else ''
+	fname = 'tf_results/' + now + subset_name + location + '.png'
 	fpath_results = os.path.join(folder, fname)
 	plt.savefig(fpath_results)
 	print('Results figure saved to', fpath_results)
@@ -387,7 +415,7 @@ def run():
 
 parser = argparse.ArgumentParser(description='Analyze data left in the data folder')
 parser.add_argument('data_folder', help='Path to data folder including last results')
-parser.add_argument('--plot', help='Run plotting procedure')
+parser.add_argument('--plot', action='store_true', help='Run plotting procedure')
 
 if __name__ == '__main__':
 	Q, A, results = run()

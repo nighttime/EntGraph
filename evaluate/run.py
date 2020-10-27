@@ -244,17 +244,23 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	# Read in similarity cache
 	if ARGS.sim_cache:
 		print('Loading similarity cache...', end=' ', flush=True)
+		found = False
 		try:
 			sim_cache_bert = load_similarity_cache(ARGS.data_folder, 'bert')
 			models['BERT'] = sim_cache_bert
+			found = True
 			print('Loaded BERT...', end=' ', flush=True)
 		except: pass
 		try:
 			sim_cache_roberta = load_similarity_cache(ARGS.data_folder, 'roberta')
 			models['RoBERTa'] = sim_cache_roberta
+			found = True
 			print('Loaded RoBERTa...', end=' ', flush=True)
 		except: pass
 		print()
+		if not found:
+			print('! No cached model data was found. Quitting.')
+			exit(1)
 
 
 	# Read in news articles
@@ -354,6 +360,8 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	if ARGS.plot:
 		print(bar)
 		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh)
+		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, subset='unary')
+		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, subset='binary')
 
 	utils.checkpoint()
 	print(BAR)
