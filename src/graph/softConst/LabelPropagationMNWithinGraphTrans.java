@@ -146,7 +146,7 @@ public class LabelPropagationMNWithinGraphTrans implements Runnable {
 			if (k % numThreads != threadIdx) {
 				continue;
 			}
-			if ((k % numThreads) % 100 == 0) {
+			if ((k % numThreads) % 10000 == 0) { // % 100
 				System.out.println("C k: " + k + " " + pgraph.name);
 			}
 

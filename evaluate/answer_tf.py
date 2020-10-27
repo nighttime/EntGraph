@@ -145,11 +145,16 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 				prediction_support[-1]['BB'] = bb_support
 
 		# Get inferred answers from similarity scores
-		if 'Sim' in answer_modes:
-			sim_score, sim_support = infer_claim_sim(c, arg_facts_u, arg_facts_b, models['Sim'])
+		if 'BERT' in answer_modes:
+			sim_score, sim_support = infer_claim_sim(c, arg_facts_u, arg_facts_b, models['BERT'])
 			if sim_support:
 				score = max(score, sim_score)
-				prediction_support[-1]['Similarity'] = sim_support
+				prediction_support[-1]['BERT'] = sim_support
+		if 'RoBERTa' in answer_modes:
+			sim_score, sim_support = infer_claim_sim(c, arg_facts_u, arg_facts_b, models['RoBERTa'])
+			if sim_support:
+				score = max(score, sim_score)
+				prediction_support[-1]['RoBERTa'] = sim_support
 
 		predictions.append(score)
 
@@ -267,7 +272,7 @@ def infer_claim_sim(claim: Prop,
 	if hypothesis not in sim_cache.id_map:
 		H_NF += 1
 		H_FETCH_ERR += 1
-		if H_NF < 50:
+		if H_NF < 10:
 			print('H NF:', hypothesis)
 		return score, support
 
@@ -322,7 +327,9 @@ def infer_claim_sim(claim: Prop,
 			continue
 
 		p_vecn = p_vec / np.linalg.norm(p_vec)
-		new_score = np.dot(h_vecn, p_vecn)
+		cos_score = np.dot(h_vecn, p_vecn)
+
+		new_score = (1 + cos_score) / 2
 
 		# if premise == hypothesis:
 		# 	print('prem/hyp: {} == {} ; sim = {:.3f}'.format(premise, hypothesis, new_score))

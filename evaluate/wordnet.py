@@ -8,7 +8,11 @@ from typing import *
 
 def clean(pred: str) -> str:
 	pred_str = pred.split('#')[0]
-	word = pred_str.split('.')[0]
+	words = pred_str.split('.')
+	if pred_str.startswith('be.'):
+		word = '.'.join(words[:2])
+	else:
+		word = pred_str.split('.')[0]
 	return word
 
 def process_infile(infile: str, outfile: str):
@@ -22,19 +26,28 @@ def process_infile(infile: str, outfile: str):
 		ct = 0
 		print('Querying WordNet for {} words...'.format(total))
 		for word in words:
-			trops = get_troponyms(word)
-			forw_ents = get_entailments(word)
-			ants = get_antonyms(word)
-			# hyps = get_hypernyms(word)
-			# for h in hyps:
-			# 	ants.extend(get_antonyms(h))
+			output[word] = {}
 
-			for cons in forw_ents:
-				backward_entailments[cons].add(word)
+			if word.startswith('be.'):
+				query = word[len('be.'):]
+				hypos = get_hyponyms(query)
+				hypo_preds = ['be.' + h for h in hypos]
+				output[word]['hyponyms'] = hypo_preds
 
-			output[word] = {'antonyms': ants,
-						   'troponyms': trops,
-						   'entails': forw_ents}
+			else:
+				trops = get_troponyms(word)
+				forw_ents = get_entailments(word)
+				ants = get_antonyms(word)
+				# hyps = get_hypernyms(word)
+				# for h in hyps:
+				# 	ants.extend(get_antonyms(h))
+
+				for cons in forw_ents:
+					backward_entailments[cons].add(word)
+
+				output[word] = {'antonyms': ants,
+							   'troponyms': trops,
+							   'entails': forw_ents}
 			ct += 1
 			utils.print_progress(ct/total)
 
@@ -58,6 +71,9 @@ def get_hypernyms(word: str) -> List[str]:
 
 def get_entailments(word: str) -> List[str]:
 	return query_wordnet(word, 'entav')
+
+def get_hyponyms(word: str) -> List[str]:
+	return query_wordnet(word, 'hypon')
 
 def query_wordnet(word, mode) -> List[str]:
 	query = '/usr/local/WordNet-3.0/bin/wn {} -{}'.format(word, mode)
@@ -85,7 +101,8 @@ def process_wn_out(output: str) -> List[str]:
 	# Accept only the first sense returned by WordNet (most commonly used)
 	accepting_sense_data = True
 	for line in output.split('\n'):
-		if '=>' in line:
+		# if '=>' in line:
+		if line.strip().startswith('=>'):
 			accepting_sense_data = False
 			term_block = line[line.find('=>')+2:].split(',')
 			# Keep only one-word terms (no phrases)
@@ -99,6 +116,12 @@ def process_wn_out(output: str) -> List[str]:
 	return words
 
 def main():
+	# print('Running test...')
+	# import pprint
+	# pprint.pprint(query_wordnet('successes', 'hypon'))
+	# pprint.pprint(query_wordnet('writer', 'hypov'))
+	# exit(0)
+
 	if len(sys.argv) != 3:
 		print('Usage: wordnet.py <infile> <outfile>')
 		exit(1)

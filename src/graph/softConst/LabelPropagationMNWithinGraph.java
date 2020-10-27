@@ -172,7 +172,7 @@ public class LabelPropagationMNWithinGraph implements Runnable {
 			if (k % numThreads != threadIdx) {
 				continue;
 			}
-			if ((k % numThreads) % 100 == 0) {
+			if ((k % numThreads) % 10000 == 0) { // % 100
 				System.out.println("1,2 k: " + k + " " + pgraph.name);
 			}
 			// Find k's out \\intersection k's in
@@ -306,11 +306,15 @@ public class LabelPropagationMNWithinGraph implements Runnable {
 
 					w = 0;
 					if (pgraph.g0.containsEdge(i, j)) {
-						// DefaultWeightedEdge e0 = pgraph.g0.getEdge(i, j);
-						// w = pgraph.g0.getEdgeWeight(e0);
+						DefaultWeightedEdge e0 = pgraph.g0.getEdge(i, j);
+						w = pgraph.g0.getEdgeWeight(e0);
 
 						System.err.println("g0 has the edge, but it hasn't been propagated!!!");
-						// System.exit(1);
+						System.err.println("Edge: " + e0 + " weight: " + w);
+						System.err.println("i: " + i + " pred: " + pgraph.idx2node.get(i).id);
+						System.err.println("j: " + j + " pred: " + pgraph.idx2node.get(j).id);
+						System.err.println("-------");
+						 System.exit(1);
 					}
 					gMN.setEdgeWeight(ee, w);
 					TypePropagateMN.allPropEdges++;

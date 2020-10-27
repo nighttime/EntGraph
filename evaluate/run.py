@@ -184,6 +184,22 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		resources.append('Similarity cache')
 	print('* Using evidence from:', str(resources))
 
+	question_modes = set()
+	question_modes |= {'unary'}
+	question_modes |= {'binary'}
+
+	print('* Question modes:', question_modes)
+
+	answer_modes = set()
+	if 'unary' in question_modes:
+		answer_modes.add('UU')
+	if 'binary' in question_modes:
+		answer_modes.add('BB')
+		if not ARGS.quick:
+			answer_modes.add('BU')
+
+	print('* Answer modes:', answer_modes)
+
 	utils.checkpoint()
 	print(BAR)
 
@@ -196,8 +212,8 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		if graph_dir:
 			print(message, end=' ', flush=True)
 			if ARGS.text_EGs:
-				graph_ext = 'sim' if ARGS.local else 'binc'
-				graphs = read_graphs(graph_dir, ext=graph_ext)
+				stage = EGStage.LOCAL if ARGS.local else EGStage.GLOBAL
+				graphs = read_graphs(graph_dir, stage)
 			else:
 				graphs = read_precomputed_EGs(graph_dir)
 			print('Graphs read: {}'.format(len(graphs)))
@@ -226,11 +242,20 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	load_precomputed_entity_types(ARGS.data_folder)
 
 	# Read in similarity cache
-	sim_cache = None
 	if ARGS.sim_cache:
-		print('Loading similarity cache...')
-		sim_cache = load_similarity_cache(ARGS.data_folder)
-		models['Sim'] = sim_cache
+		print('Loading similarity cache...', end=' ', flush=True)
+		try:
+			sim_cache_bert = load_similarity_cache(ARGS.data_folder, 'bert')
+			models['BERT'] = sim_cache_bert
+			print('Loaded BERT...', end=' ', flush=True)
+		except: pass
+		try:
+			sim_cache_roberta = load_similarity_cache(ARGS.data_folder, 'roberta')
+			models['RoBERTa'] = sim_cache_roberta
+			print('Loaded RoBERTa...', end=' ', flush=True)
+		except: pass
+		print()
+
 
 	# Read in news articles
 	print('Reading source articles & auxiliary data...')
@@ -243,31 +268,12 @@ def run_evaluate() -> Tuple[List[List[Article]],
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	question_modes = set()
-	question_modes |= {'unary'}
-	# question_modes |= {'binary'}
-
 	partitions, P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, question_modes, negative_swaps=negative_swaps, uu_graphs=uu_graphs, bu_graphs=bu_graphs, filter_dict=ppdb)
-	num_Qs = sum(len(qs) for qs in P_list + N_list)
-	num_unary_Qs = len([q for qs in P_list + N_list for q in qs if len(q.args) == 1])
-	num_binary_Qs = num_Qs - num_unary_Qs
-	# num_P_Qs = sum(len(qs) for qs in P_list)
-	num_P_unary_Qs = len([q for qs in P_list for q in qs if len(q.args) == 1])
-	num_P_binary_Qs = len([q for qs in P_list for q in qs if len(q.args) == 2])
-	num_sets = len(P_list)
-	num_articles = len(articles)
-	pct_positive = (num_P_unary_Qs + num_P_binary_Qs) / num_Qs
-	pct_positive_u = num_P_unary_Qs / num_unary_Qs if num_unary_Qs else 0
-	pct_positive_b = num_P_binary_Qs / num_binary_Qs if num_binary_Qs else 0
-	print('Generated {} questions ({:.1f}% +) from {} sets: {} unary questions ({:.1f}% +) and {} binary questions ({:.1f}% +)'.format(num_Qs, pct_positive*100, num_sets, num_unary_Qs, pct_positive_u*100, num_binary_Qs, pct_positive_b*100))
+	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
 
-	known_u_qs = [p for ps in P_list for p in ps if len(p.args) == 1 and uu_graphs and p.pred_desc() in uu_graphs[p.types[0]].nodes]
-	known_b_qs = [p for ps in P_list for p in ps if len(p.args) == 2 and bu_graphs and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
-
-	pct_known_u = len(known_u_qs)/num_P_unary_Qs if num_P_unary_Qs else 0
-	pct_known_b = len(known_b_qs)/num_P_binary_Qs if num_P_binary_Qs else 0
-
-	print('Positive questions recognized in graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_u*100, pct_known_b*100))
+	print('Subsampling questions...')
+	P_list, N_list = rebalance_qs(P_list, N_list, pct_unary=0.5, pct_pos=0.5)
+	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
 
 	# if reference.RUNNING_LOCAL:
 	# 	print('(IGNORE positivity rate for local question generation; filtering is done based on available graphs)')
@@ -292,7 +298,6 @@ def run_evaluate() -> Tuple[List[List[Article]],
 
 	# results = {'*always-true':(pct_positive, None)}
 	results = {}
-	answer_modes = {}
 
 	# if ARGS.test_all:
 	# results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun, models, answer_modes)
@@ -326,9 +331,13 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
 		# utils.checkpoint()
 
-	if sim_cache:
-		answer_modes = {'Sim'}
-		results['Similarity'] = run_tf_sets(Q_list, A_list, evidence_list, 'Similarity', eval_fun, models, answer_modes)
+	if ARGS.sim_cache:
+		if 'BERT' in models:
+			answer_modes = {'BERT'}
+			results['BERT'] = run_tf_sets(Q_list, A_list, evidence_list, 'BERT', eval_fun, models, answer_modes)
+		if 'RoBERTa' in models:
+			answer_modes = {'RoBERTa'}
+			results['RoBERTa'] = run_tf_sets(Q_list, A_list, evidence_list, 'RoBERTa', eval_fun, models, answer_modes)
 
 	# else:
 	# 	results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun, models, answer_modes)

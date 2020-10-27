@@ -6,11 +6,11 @@ try:
 except:
 	RUNNING_LOCAL = bool(int(open('../RUNNING_LOCAL').readline()))
 
-K_UNARY_ENT_MENTIONS = 5
-K_BINARY_ENT_MENTIONS = 5
+K_UNARY_ENT_MENTIONS = 6
+K_BINARY_ENT_MENTIONS = 6
 
-K_UNARY_PRED_MENTIONS = 3
-K_BINARY_PRED_MENTIONS = 3
+K_UNARY_PRED_MENTIONS = 5
+K_BINARY_PRED_MENTIONS = 5
 
 MODAL_VERBS = {'can', 'may', 'must', 'could', 'would', 'should', 'might', 'shall', 'will', 'ought'}
 AUXILIARY_VERBS = {'do', 'have'} | MODAL_VERBS # also 'be' but we like the linking verb!

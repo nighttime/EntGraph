@@ -99,7 +99,7 @@ public class LabelPropagateMN implements Runnable {
 			// because we didn't know which numerators are zero
 			// until now
 			for (int i = 0; i < pgraph.gMN.vertexSet().size(); i++) {
-				if (i % 100 == 0) {
+				if (i % 10000 == 0) { // i % 100
 					System.out.println("1,2 k: " + i + " " + pgraph.name);
 				}
 				for (DefaultWeightedEdge e : pgraph.gMN.outgoingEdgesOf(i)) {
@@ -175,7 +175,7 @@ public class LabelPropagateMN implements Runnable {
 			// because we didn't know which numerators are zero
 			// until now
 			for (int i = 0; i < pgraph.gMN.vertexSet().size(); i++) {
-				if (i % 100 == 0) {
+				if (i % 10000 == 0) { // i % 100
 					System.out.println("1,2 k: " + i + " " + pgraph.name);
 				}
 				for (DefaultWeightedEdge e : pgraph.gMN.outgoingEdgesOf(i)) {

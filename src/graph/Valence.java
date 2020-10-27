@@ -194,6 +194,44 @@ public class Valence {
         System.out.println();
     }
 
+    public static void transitivelyCompleteDualGraph(PGraph graphD, PGraph graphM1, PGraph graphM2, Path destFname, int topKUnaries) throws IOException {
+        // For each node N in D...
+        //  For each entailment of N to U1
+        //      For each entailment U2 of U1
+        //          Create new score table for N->U2
+        //  Write N
+
+        // Initialize file writer
+        PrintWriter output = new PrintWriter(new BufferedWriter(new FileWriter(destFname.toString())));
+
+        // Write file header
+        output.println("types: " + graphD.types + ", num preds: " + graphD.nodes.size());
+
+        // Initialize metadata structures
+        String[] graphTypes = graphD.types.split("#");
+        Map<String, String> typeToOtherType = new HashMap<>();
+        typeToOtherType.put(graphTypes[0], graphTypes[1]);
+        typeToOtherType.put(graphTypes[1], graphTypes[0]);
+        Set<String> entailedUnaries = new HashSet<>();
+
+        // Write out nodes from the binary graph
+        for (Node node : graphD.nodes) {
+            String pred = node.id;
+
+
+            // Write node header
+            output.println("predicate: " + pred);
+//            output.println("num neighbors: " + totalEntailments);
+            output.println();
+            output.println("BInc sims");
+
+            // Write B->B entailments
+//            if (numBinaryEntailments > 0) {
+//                writeEntailments("", "", node, graphB, output);
+//            }
+        }
+    }
+
     private static String removeUnaryTag(String pred) {
         return pred.replaceFirst("\\[.*?\\]", "");
     }
@@ -305,6 +343,54 @@ public class Valence {
 //        }
     }
 
+    public static void completeEntailmentGraphs(Path dirMono, Path dirDual, Path dirDest, boolean checkOnly, int topKUnaries) {
+        // Fetch filenames for each graph in the given directories
+        Set<String> filenamesMono = filenamesFromDirectory(dirMono, ".*_binc\\.txt");
+        System.out.println("found globalized mono graphs: " + dirMono.toString());
+        Set<String> filenamesDual = filenamesFromDirectory(dirDual, ".*_sim\\.txt");
+        System.out.println("found binary graphs: " + dirDual.toString());
+
+        if (checkOnly) {
+            exit(0);
+        }
+
+        File destFolder = new File(dirDest.toString());
+        if (!destFolder.exists()) {
+            destFolder.mkdir();
+        }
+
+        int progress = 0;
+        int dGraphsSkipped = 0;
+
+        for (String fname : filenamesDual) {
+            printProgress(progress, filenamesDual.size(), fname);
+            progress++;
+            Path destFname = destFolder.toPath().resolve(fname);
+
+            String[] monoTypes = fname.substring(0,fname.indexOf("_binc")).split("#");
+            String[] monoFnames = {monoTypes[0] + "_sim.txt", monoTypes[1] + "_sim.txt"};
+
+            PGraph graphD = new PGraph(dirDual.resolve(fname).toString());
+            PGraph graphM1 = new PGraph(dirMono.resolve(monoFnames[0]).toString());
+            PGraph graphM2 = null;
+            if (!monoTypes[0].equals(monoTypes[1])) {
+                graphM2 = new PGraph(dirMono.resolve(monoFnames[0]).toString());
+            }
+            if (graphD.name == null) {
+//                    System.err.println("Empty graphA: " + fname);
+                dGraphsSkipped++;
+            }
+            try {
+                transitivelyCompleteDualGraph(graphD, graphM1, graphM2, destFname, topKUnaries);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        printProgress(filenamesDual.size(), filenamesDual.size(), "done");
+        System.out.println();
+    }
+
     // Returns a set of filenames of each graph in the given directory
     public static Set<String> filenamesFromDirectory(Path directory, String matchRex) {
         File[] files = directory.toFile().listFiles((dir, name) -> name.matches(matchRex));
@@ -313,6 +399,12 @@ public class Valence {
     }
 
     public static void main(String[] args) throws IOException {
+
+//        PGraph g = new PGraph("newsspike_sims/argwise_sample/person#person_sim.txt");
+        PGraph g = new PGraph("newsspike_sims/UU_10_10/person#unary_binc.txt");
+        System.out.println(g.types);
+        System.out.println("num nodes: " + g.nodes.size());
+
         // *** EXPECTED PROGRAM ARGS
         // 0 Destination folder for integrated graphs
         // 1 Source folder for unary/argwise graphs
@@ -321,20 +413,19 @@ public class Valence {
         // - only BInc scores will be written out, so no other sims scores are needed in the input
         List<String> argList = new ArrayList<>(Arrays.asList(args));
 
+        boolean checkOnly = argList.remove("--check");
+
         // Print stats on which graphs will be integrated
         if (argList.remove("--merge")) {
-            boolean checkOnly = false;
-            if (argList.remove("--check")) {
-                checkOnly = true;
-                System.out.print("[CHECK-ONLY] ");
-            }
-
             if (argList.size() < 3) {
                 System.out.println("Usage: --merge [--check] <destination-folder> <argwise-folder> <binary-folder> [topKUnaries]");
                 exit(1);
             }
 
             System.out.println("Valence: MERGE ARGWISE AND BINARY GRAPHS");
+            if (checkOnly) {
+                System.out.print("[CHECK-ONLY] ");
+            }
 
             Path dirDest = Paths.get(argList.get(0));
             Path dirArgwise = Paths.get(argList.get(1));
@@ -369,6 +460,36 @@ public class Valence {
             int topKUnaries = argList.size() == 3 ? Integer.parseInt(argList.get(2)) : -1;
 
             makeDummyAugmentedUnaryGraphs(dirUnaryIn, dirUnaryOut, topKUnaries);
+        }
+
+        else if (argList.remove("--complete")) {
+            if (argList.size() < 3) {
+                System.out.println("Usage: Valence --complete <monograph-in-folder> <dualgraph-in-folder> <dualgraph-out-folder> [keep-top-K]");
+                exit(1);
+            }
+
+            System.out.println("Valence: MERGE ARGWISE AND BINARY GRAPHS");
+            if (checkOnly) {
+                System.out.print("[CHECK-ONLY] ");
+            }
+
+            Path dirMono = Paths.get(argList.get(0));
+            Path dirDual = Paths.get(argList.get(1));
+            Path dirDest = Paths.get(argList.get(2));
+
+            int topKUnaries = -1;
+
+            if (argList.size() == 4) {
+                topKUnaries = Integer.parseInt(argList.get(3));
+                if (topKUnaries % 2 == 1) {
+                    System.err.println("Given topKUnaries: " + topKUnaries + ". Parameter must be an even number as it is divided evenly between arg1 and arg2.");
+                    exit(1);
+                }
+                System.out.println("* integrating with top " + topKUnaries + " unaries");
+            }
+
+            // Integrate the graphs into one set of multi-valency graphs
+            completeEntailmentGraphs(dirMono, dirDual, dirDest, checkOnly, topKUnaries);
         }
 
         else {

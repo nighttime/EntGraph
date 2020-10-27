@@ -129,7 +129,7 @@ def generate_questions(partition: List[Article],
 	selected_questions = sample_props[:cap]
 
 	# answer_choices = {q:{e for p in Q_cand for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
-	print('From {} sents > {} top u ents / {} top b ents; {} top u props / {} top b props; {} questions (cap {})'.format(num_sents, len(most_common_u), len(most_common_b), len(top_props_u), len(top_props_b), len(selected_questions), cap))
+	# print('From {} sents > {} top u ents / {} top b ents; {} top u props / {} top b props; {} questions (cap {})'.format(num_sents, len(most_common_u), len(most_common_b), len(top_props_u), len(top_props_b), len(selected_questions), cap))
 	return selected_questions, un_Q, bin_Q_all
 
 # Input | Q : [Prop]
@@ -284,7 +284,7 @@ def generate_questions(partition: List[Article],
 # 	# print('\nSet of {} props > {} NE props > {} questions ; {} unique ents ; {} top preds ; {} candidate props'.format(len(Q), len(Q_ents), len(questions), len(ents), len(top_preds), ct_passing_props))
 # 	return questions, answers, props
 
-def generate_top_pred_cache(articles: List[Article], negative_swaps: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, int]:
+def generate_top_pred_cache(articles: List[Article]) -> Dict[str, int]:
 	pred_counter_u = Counter()
 	pred_counter_b = Counter()
 	for art in articles:
@@ -566,7 +566,7 @@ def generate_tf_question_sets(articles: List[Article],
 		Tuple[List[List[Article]], List[List[Prop]], Optional[List[List[Prop]]], List[Tuple[List[Prop], List[Prop]]], Dict[str, int]]:
 	print('Partitioning...', end=' ', flush=True)
 	partitions = generate_question_partitions(articles)
-	top_pred_cache = generate_top_pred_cache(articles, negative_swaps)
+	top_pred_cache = generate_top_pred_cache(articles)
 	print('Generating positives...', end=' ', flush=True)
 	P_list, evidence_list = generate_positive_question_sets(partitions, top_pred_cache, question_modes, uu_graphs, bu_graphs)
 	print('Generating negatives...', end=' ', flush=True)
@@ -686,6 +686,8 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 	rej = defaultdict(Counter)
 	swap_pairs = defaultdict(set)
 
+	article_pred_cache = {p.pred_desc() for articles in partitions for article in articles for p in article.unary_props + article.selected_binary_props}
+
 	for i, ps in enumerate(P_list):
 		# Cache the local predicates seen with each local entity
 		ent_pred_mentions_u = defaultdict(set)
@@ -706,9 +708,7 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 
 		for j, positive_prop in enumerate(ps):
 			is_unary = len(positive_prop.args) == 1
-
-			if positive_prop.pred.startswith('be.'):
-				continue
+			is_copula = positive_prop.pred.startswith('be.')
 
 			ct = 0
 
@@ -716,28 +716,35 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 			query_word = proposition.extract_predicate_base_term(pred)
 			typed_pred = positive_prop.pred_desc()
 			pred_type = '#'.join(positive_prop.basic_types)
-			# ent = positive_prop.arg_desc()[0]
 
-			if is_unary and uu_graphs:
-				if pred_type not in uu_graphs or typed_pred not in uu_graphs[pred_type].nodes:
-					continue
-			elif not is_unary and bu_graphs:
-				if pred_type not in bu_graphs or typed_pred not in bu_graphs[pred_type].nodes:
-					rej['no graph for predicate type'][pred_type] += 1
-					continue
-				else:
-					rej['+ total preds with available graph type'][pred_type] += 1
+			# if is_unary and uu_graphs:
+			# 	if pred_type not in uu_graphs or typed_pred not in uu_graphs[pred_type].nodes:
+			# 		continue
+			# elif not is_unary and bu_graphs:
+			# 	if pred_type not in bu_graphs:
+			# 		rej['no graph for predicate type'][pred_type] += 1
+			# 		continue
+			# 	elif typed_pred not in bu_graphs[pred_type].nodes:
+			# 		rej['typed predicate not in graph'][typed_pred] += 1
+			# 		continue
+			# 	else:
+			# 		rej['+ total typed binary predicates with available graph'][pred_type] += 1
 
 			if query_word not in negative_swaps:
 				if not is_unary:
 					rej['predicate has no swaps'][pred] += 1
 				continue
 
-			antonyms = negative_swaps[query_word]['antonyms']
-			troponyms = negative_swaps[query_word]['troponyms']
-			# query_word = negative_swaps[pred]['query_word']
-			# pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
-			pred_relations = random.sample(troponyms, len(troponyms))
+			if is_unary and is_copula:
+				rels = negative_swaps[query_word]['hyponyms']
+			else:
+				antonyms = negative_swaps[query_word]['antonyms']
+				troponyms = negative_swaps[query_word]['troponyms']
+				# query_word = negative_swaps[pred]['query_word']
+				# pred_relations = random.sample(antonyms, len(antonyms)) + random.sample(troponyms, len(troponyms))
+				rels = troponyms
+
+			pred_relations = random.sample(rels, len(rels))
 
 			# Filter potential relations
 			if filter_dict and query_word in filter_dict:
@@ -750,10 +757,13 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 				swapped_pred = Prop.swap_pred(typed_pred, relation)
 
 				# is swap in same graph?
-				if is_unary and uu_graphs and swapped_pred not in uu_graphs[pred_type].nodes:
-					continue
-				elif not is_unary and bu_graphs and swapped_pred not in bu_graphs[pred_type].nodes:
-					rej['swapped pred is not in the graph'][pred_type] += 1
+				# if is_unary and uu_graphs and swapped_pred not in uu_graphs[pred_type].nodes:
+				# 	continue
+				# elif not is_unary and bu_graphs and swapped_pred not in bu_graphs[pred_type].nodes:
+				# 	rej['swapped predicate not in graph'][swapped_pred] += 1
+				# 	continue
+				if swapped_pred not in article_pred_cache:
+					rej['swapped pred is never mentioned'][swapped_pred] += 1
 					continue
 
 				# Swap pair is testable
@@ -764,7 +774,7 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 				if swapped_pred in ent_pred_mentions_u[prop_args[0]] or \
 						swapped_pred in ent_pred_mentions_b[tuple(prop_args)]:
 					if not is_unary:
-						rej['swapped pred is actually mentioned'][swapped_pred] += 1
+						rej['swapped pred is actually mentioned in context'][swapped_pred] += 1
 					continue
 
 				# if known and not mentioned, add to list
@@ -782,7 +792,14 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 		N_list.append(nprops[:len(ps)*max_per_positive])
 
 	# print('Found {} antonyms and {} troponyms...'.format(num_antonyms, sum(len(n) for n in N_list)-num_antonyms), end=' ', flush=True)
-	#print(rej)
+	# print(rej)
+	for key, counter in rej.items():
+		print(key, sum(v for k,v in counter.items()))
+
+	# sw = list(rej['swapped predicate not in graph'].items())
+	# random.shuffle(sw)
+	# print(sw[:100])
+	# print()
 	return N_list
 
 
@@ -805,3 +822,63 @@ def format_tf_QA_sets(positives: List[List[Prop]], negatives: List[List[Prop]]) 
 		assert len(Q_sets[-1]) == len(A_sets[-1])
 	assert len(Q_sets) == len(A_sets)
 	return Q_sets, A_sets
+
+# Input: list of partitioned positive questions, negative questions
+# Input: desired percentage of questions to be unary (vs. binary), and percentage of positive (vs. negative)
+# Output:
+
+def rebalance_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], pct_unary:float=0.5, pct_pos:float=0.5) -> Tuple[List[List[Prop]], List[List[Prop]]]:
+
+	# Adjust BINARY positivity ratio
+	total_pos_b_qs = len([p for ps in P_list for p in ps if len(p.args) == 2])
+	total_neg_b_qs = len([p for ps in N_list for p in ps if len(p.args) == 2])
+	total_b_qs = total_pos_b_qs + total_neg_b_qs
+
+	b_pos_rate = total_pos_b_qs / total_b_qs
+	b_neg_rate = total_neg_b_qs / total_b_qs
+
+	b_majority_class_pos = total_pos_b_qs > total_neg_b_qs
+	if b_majority_class_pos:
+		alpha = (pct_pos * b_neg_rate) / ((1 - pct_pos) * b_pos_rate)
+		P_list = [[p for p in ps if len(p.args) == 1 or (len(p.args) == 2 and random.random() < alpha)] for ps in P_list]
+	else:
+		alpha = ((1 - pct_pos) * b_pos_rate) / (pct_pos * b_neg_rate)
+		N_list = [[p for p in ps if len(p.args) == 1 or (len(p.args) == 2 and random.random() < alpha)] for ps in N_list]
+
+	# Adjust UNARY positivity ratio
+	total_pos_u_qs = len([p for ps in P_list for p in ps if len(p.args) == 1])
+	total_neg_u_qs = len([p for ps in N_list for p in ps if len(p.args) == 1])
+	total_u_qs = total_pos_u_qs + total_neg_u_qs
+
+	u_pos_rate = total_pos_u_qs / total_u_qs
+	u_neg_rate = total_neg_u_qs / total_u_qs
+
+	u_majority_class_pos = total_pos_u_qs > total_neg_u_qs
+	if u_majority_class_pos:
+		alpha = (pct_pos * u_neg_rate) / ((1 - pct_pos) * u_pos_rate)
+		P_list = [[p for p in ps if len(p.args) == 2 or (len(p.args) == 1 and random.random() < alpha)] for ps in
+				  P_list]
+	else:
+		alpha = ((1 - pct_pos) * u_pos_rate) / (pct_pos * u_neg_rate)
+		N_list = [[p for p in ps if len(p.args) == 2 or (len(p.args) == 1 and random.random() < alpha)] for ps in
+				  N_list]
+
+	# Adjust BINARY / UNARY ratio
+	total_u_qs = len([p for ps in P_list + N_list for p in ps if len(p.args) == 1])
+	total_b_qs = len([p for ps in P_list + N_list for p in ps if len(p.args) == 2])
+	total_qs = total_u_qs + total_b_qs
+
+	u_rate = total_u_qs / total_qs
+	b_rate = total_b_qs / total_qs
+
+	majority_class_u = total_u_qs > total_b_qs
+	if majority_class_u:
+		alpha = (pct_unary * b_rate) / ((1 - pct_unary) * u_rate)
+		P_list = [[p for p in ps if len(p.args) == 2 or (len(p.args) == 1 and random.random() < alpha)] for ps in P_list]
+		N_list = [[p for p in ps if len(p.args) == 2 or (len(p.args) == 1 and random.random() < alpha)] for ps in N_list]
+	else:
+		alpha = ((1 - pct_unary) * u_rate) / (pct_unary * b_rate)
+		P_list = [[p for p in ps if len(p.args) == 1 or (len(p.args) == 2 and random.random() < alpha)] for ps in P_list]
+		N_list = [[p for p in ps if len(p.args) == 1 or (len(p.args) == 2 and random.random() < alpha)] for ps in N_list]
+
+	return P_list, N_list

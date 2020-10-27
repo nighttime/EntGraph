@@ -216,7 +216,11 @@ public class PGraph implements Comparable<PGraph> {
 				
 				line = line.replace("types: ", "").replace(",", " ");
 				line = line.substring(0, line.indexOf(' '));
-				
+
+//				if (line.contains("#unary")) { // Added by NMM in case of dummied unary graph
+//					line = line.substring(0, line.indexOf("#"));
+//				}
+
 				this.types = line;
 				this.name = this.types;
 //				System.out.println("types in pgraph: "+this.types);
@@ -251,8 +255,12 @@ public class PGraph implements Comparable<PGraph> {
 				}
 				if (line.endsWith("sims") || line.endsWith("sim")) {
 					simName = line.toLowerCase();
+					if (simName.contains("iter 1")) { // NMM extension to read in global graphs
+						String[] fname_parts = fname.split("_");
+						String feat_ext = fname_parts[fname_parts.length-1].split("\\.")[0];
+						simName = feat_ext.toLowerCase();
+					}
 				} else {
-
 					if (!simName.contains(featNameToStr.get(ConstantsGraphs.featName)) || simName.contains("unary")
 							|| simName.contains("sep")) {
 						continue;

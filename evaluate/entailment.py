@@ -135,7 +135,7 @@ class EntailmentGraph:
 					current_pred = self.normalize_pred(pred)
 					self.nodes.add(current_pred)
 
-				if 'BInc sims' in line or 'iter 1 sims' in line:
+				if any(t in line for t in ['BInc sims', 'iter 1 sims', 'global sims']):
 					line = next(file, None)
 					while line is not None:
 						line = line.strip()
@@ -161,9 +161,10 @@ class EntailmentGraph:
 # Type definitions
 EGraphCache = Dict[str, EntailmentGraph]
 
-def read_graphs(graph_dir: str, ext: str='sim') -> EGraphCache:
+def read_graphs(graph_dir: str, stage: EGStage) -> EGraphCache:
 	(_, _, filenames) = next(os.walk(graph_dir))
-	graph_fpaths = [os.path.join(graph_dir, fname) for fname in filenames if fname.endswith('_' + ext + '.txt')]
+	exts = ['sim'] if stage == EGStage.LOCAL else ['binc', 'gsim']
+	graph_fpaths = [os.path.join(graph_dir, fname) for fname in filenames if any(fname.endswith('_' + ext + '.txt') for ext in exts)]
 	graphs = list(filter(lambda x: x.typing is not None, [EntailmentGraph(g) for g in graph_fpaths]))
 	g_forward = {g.typing: g for g in graphs}
 	g_reverse = {g.reverse_typing: g for g in graphs}
@@ -187,10 +188,10 @@ class EmbeddingCache:
 	cache: np.ndarray
 	id_map: Dict[str, int]
 
-def load_similarity_cache(folder: str) -> EmbeddingCache:
+def load_similarity_cache(folder: str, model: str) -> EmbeddingCache:
 	folder_name = folder if folder.endswith('/') else folder + '/'
-	cache_fname = folder_name + 'prop_embs.npy'
-	map_fname = folder_name + 'prop_emb_idx.pkl'
+	cache_fname = folder_name + model + '-prop_embs.npy'
+	map_fname = folder_name + model + '-prop_emb_idx.pkl'
 	with open(map_fname, 'rb') as f:
 		cache_map = pickle.load(f)
 	cache = np.load(cache_fname)
@@ -200,13 +201,13 @@ def load_similarity_cache(folder: str) -> EmbeddingCache:
 if __name__ == '__main__':
 	if len(sys.argv) != 5:
 		print('Cache EGraphs: <-g|-l> <type space: 1 or 2> <graph dir> <output cache dir>')
-	graph_ext = 'binc' if sys.argv[1] == '-g' else 'sim'
+	graph_stage = EGStage.GLOBAL if sys.argv[1] == '-g' else EGStage.LOCAL
 	egspace = {'1': EGSpace.ONE_TYPE, '2': EGSpace.TWO_TYPE}[sys.argv[2]]
 	in_dir = sys.argv[3]
 	out_dir = sys.argv[4]
 
 	print('Reading graphs from', in_dir)
-	egcache = read_graphs(in_dir, ext=graph_ext)
+	egcache = read_graphs(in_dir, stage=graph_stage)
 	print('Writing cache to', out_dir)
 	save_EGs(egcache, out_dir, egspace)
 

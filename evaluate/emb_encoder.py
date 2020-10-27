@@ -120,19 +120,19 @@ def construct_sentence(prop: Prop) -> Tuple[List[str], List[int]]:
 
 	return sent_parts, pred_idx
 
-def encode(prop: Prop, arg_idx: int, model: BertModel, tokenizer: BertTokenizer) -> np.ndarray:
-	pred, arg, ccg_arg_position = construct_proposition(prop, arg_idx=arg_idx)
-	tokens_pred = tokenizer.encode(pred)
-	tokens_arg = tokenizer.encode(arg)
-	tokens = tokens_arg + tokens_pred if ccg_arg_position == 1 else tokens_pred + tokens_arg
-
-	input_ids = torch.tensor([tokens])
-	model_outputs = model(input_ids)
-	hidden_states = model_outputs[0].squeeze()  # model outputs
-	partial_toks = [tokenizer._convert_id_to_token(t) for t in tokens]
-	partial_embs = hidden_states[len(tokens_arg):] if ccg_arg_position == 1 else hidden_states[:len(tokens_pred)]
-	emb = np.average(partial_embs.detach().numpy(), axis=0)
-	return emb
+# def encode(prop: Prop, arg_idx: int, model: BertModel, tokenizer: BertTokenizer) -> np.ndarray:
+# 	pred, arg, ccg_arg_position = construct_proposition(prop, arg_idx=arg_idx)
+# 	tokens_pred = tokenizer.encode(pred)
+# 	tokens_arg = tokenizer.encode(arg)
+# 	tokens = tokens_arg + tokens_pred if ccg_arg_position == 1 else tokens_pred + tokens_arg
+#
+# 	input_ids = torch.tensor([tokens])
+# 	model_outputs = model(input_ids)
+# 	hidden_states = model_outputs[0].squeeze()  # model outputs
+# 	partial_toks = [tokenizer._convert_id_to_token(t) for t in tokens]
+# 	partial_embs = hidden_states[len(tokens_arg):] if ccg_arg_position == 1 else hidden_states[:len(tokens_pred)]
+# 	emb = np.average(partial_embs.detach().numpy(), axis=0)
+# 	return emb
 
 def find_subsequence(needle: List[Any], haystack: List[Any]) -> Tuple[int, int]:
 	for start in range(len(haystack)):
@@ -140,7 +140,7 @@ def find_subsequence(needle: List[Any], haystack: List[Any]) -> Tuple[int, int]:
 		if haystack[start:end] == needle:
 			return start, end
 
-def encode_batch(batch: List[Tuple[Any, List[str], List[int]]], model: BertModel, tokenizer: BertTokenizer, cache_map: Dict[Any, int], cache: np.ndarray, map_idx: int) -> int:
+def encode_batch(batch: List[Tuple[Any, List[str], List[int]]], model: PreTrainedModel, tokenizer: PreTrainedTokenizer, cache_map: Dict[Any, int], cache: np.ndarray, map_idx: int) -> int:
 	_, sent_part_list, pred_idx_list = tuple(zip(*batch))
 	batch_size = len(sent_part_list)
 
@@ -185,13 +185,22 @@ def encode_batch(batch: List[Tuple[Any, List[str], List[int]]], model: BertModel
 def make_emb_cache(unary_props: List[Prop],
 				   binary_props: List[Prop],
 				   neg_substitutions: Optional[Dict[str, Dict[str, List[str]]]],
-				   uu_graphs: Optional[EGraphCache],
-				   bu_graphs: Optional[EGraphCache]) -> Tuple[Dict[Tuple[str, int], int], np.ndarray]:
-	# Initialize Bert model
-	print('Initializing BERT...', flush=True, end=' ')
-	pretrained_weights = 'bert-base-uncased'
-	bert_model = BertModel.from_pretrained(pretrained_weights)#, output_hidden_states=True)
-	bert_tokenizer = BertTokenizer.from_pretrained(pretrained_weights)#, never_split=v, do_basic_tokenize=False)
+				   # uu_graphs: Optional[EGraphCache],
+				   # bu_graphs: Optional[EGraphCache],
+				   model_name: str) -> Tuple[Dict[Tuple[str, int], int], np.ndarray]:
+	# Initialize model
+	model = None
+	tokenizer = None
+	if model_name == 'bert':
+		print('Initializing BERT...', flush=True, end=' ')
+		pretrained_weights = 'bert-base-uncased'
+		model = BertModel.from_pretrained(pretrained_weights)#, output_hidden_states=True)
+		tokenizer = BertTokenizer.from_pretrained(pretrained_weights)#, never_split=v, do_basic_tokenize=False)
+	elif model_name == 'roberta':
+		print('Initializing ROBERTA...', flush=True, end=' ')
+		pretrained_weights = 'roberta-base'
+		model = RobertaModel.from_pretrained(pretrained_weights)
+		tokenizer = RobertaTokenizer.from_pretrained(pretrained_weights)
 
 	# Deduplicate positive propositions
 	unary_props = list(set(unary_props))
@@ -203,19 +212,27 @@ def make_emb_cache(unary_props: List[Prop],
 		print('Generating negatives...')
 		positives = unary_props + binary_props
 		num_pos = len(positives)
+
+		article_pred_cache = {p.pred_desc() for p in unary_props + binary_props}
+
 		ct = 0
 		for p in positives:
 			is_unary = len(p.args) == 1
+			is_copula = p.pred.startswith('be.')
 			if reference.RUNNING_LOCAL and 'person' not in p.basic_types:
 				continue
 			p_query = proposition.extract_predicate_base_term(p.pred)
 			if p_query in neg_substitutions:
-				neg_swaps = neg_substitutions[p_query]['troponyms']
+				if is_unary and is_copula:
+					neg_swaps = neg_substitutions[p_query]['hyponyms']
+				else:
+					neg_swaps = neg_substitutions[p_query]['troponyms']
 				swapped_props = [Prop.with_swapped_pred(p, swap) for swap in neg_swaps]
 
-				type_key = p.types[0] if is_unary else '#'.join(p.basic_types)
-				graphs = uu_graphs if is_unary else bu_graphs
-				kept_swaps = [p for p in swapped_props if type_key in graphs and p.pred_desc() in graphs[type_key].nodes]
+				# type_key = p.types[0] if is_unary else '#'.join(p.basic_types)
+				# graphs = uu_graphs if is_unary else bu_graphs
+				# kept_swaps = [p for p in swapped_props if type_key in graphs and p.pred_desc() in graphs[type_key].nodes]
+				kept_swaps = [p for p in swapped_props if p.pred_desc() in article_pred_cache]
 
 				prop_swaps.extend(kept_swaps)
 
@@ -270,7 +287,7 @@ def make_emb_cache(unary_props: List[Prop],
 
 		if len(batch_map) == batch_size:
 			batch = [(key, s, p) for key, (s,p) in batch_map.items()]
-			encode_errors = encode_batch(batch, bert_model, bert_tokenizer, cache_map, cache, map_idx=completed)
+			encode_errors = encode_batch(batch, model, tokenizer, cache_map, cache, map_idx=completed)
 			errors += encode_errors
 			batch_map = {}
 			completed += batch_size
@@ -281,16 +298,21 @@ def make_emb_cache(unary_props: List[Prop],
 	cache = cache[:len(cache_map)]
 	return cache_map, cache
 
-def write_cache(prop_idx: Dict[Any, int], prop_embeddings: np.ndarray):
+def write_cache(prop_idx: Dict[Any, int], prop_embeddings: np.ndarray, model_name: str):
 	global ARGS
 	dest_folder = (lambda x: x if x.endswith('/') else x + '/')(ARGS.data_folder)
-	with open(dest_folder + 'prop_emb_idx.pkl', 'wb+') as f:
+	with open(dest_folder + model_name + '-prop_emb_idx.pkl', 'wb+') as f:
 		pickle.dump(prop_idx, f, pickle.HIGHEST_PROTOCOL)
-	np.save(dest_folder + 'prop_embs', prop_embeddings)
+	np.save(dest_folder + model_name + '-prop_embs', prop_embeddings)
 
 def main():
 	global ARGS
 	ARGS = parser.parse_args()
+
+	model_options = ['bert', 'roberta']
+	if ARGS.model not in model_options:
+		print('Specify a model from:', model_options)
+		exit(1)
 
 	utils.checkpoint()
 
@@ -308,16 +330,16 @@ def main():
 	print('Reading in data...')
 	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
 	negative_swaps = read_substitution_pairs(os.path.join(ARGS.data_folder, 'substitution_pairs.json'))
-	print('Loading entailment graphs...')
-	uu_graphs = read_precomputed_EGs(ARGS.uu_graphs)
-	print('Read {} UU Graphs'.format(len(uu_graphs)))
-	bu_graphs = read_precomputed_EGs(ARGS.bu_graphs)
-	print('Read {} BU Graphs'.format(len(bu_graphs)))
+	# print('Loading entailment graphs...')
+	# uu_graphs = read_precomputed_EGs(ARGS.uu_graphs)
+	# print('Read {} UU Graphs'.format(len(uu_graphs)))
+	# bu_graphs = read_precomputed_EGs(ARGS.bu_graphs)
+	# print('Read {} BU Graphs'.format(len(bu_graphs)))
 	print('Embedding propositions...', flush=True, end=' ')
-	prop_idx, prop_embeddings = make_emb_cache(unary_props, binary_props, negative_swaps, uu_graphs, bu_graphs)
+	prop_idx, prop_embeddings = make_emb_cache(unary_props, binary_props, negative_swaps, model_name=ARGS.model)
 	utils.checkpoint()
 	print('Writing to file...')
-	write_cache(prop_idx, prop_embeddings)
+	write_cache(prop_idx, prop_embeddings, ARGS.model)
 	print('Done')
 	utils.checkpoint()
 
@@ -325,9 +347,9 @@ def main():
 parser = argparse.ArgumentParser(description='Generate cache of embeddings for propositions')
 parser.add_argument('news_gen_file', help='Path to file used for partition into Question set and Answer set')
 parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
-parser.add_argument('uu_graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
-parser.add_argument('bu_graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
-
+# parser.add_argument('uu_graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
+# parser.add_argument('bu_graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
+parser.add_argument('--model', help='Choice of model: <bert/roberta>')
 
 if __name__ == '__main__':
 	main()
