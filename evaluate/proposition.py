@@ -107,7 +107,10 @@ def binary_pred_root(prop: Prop) -> str:
 	return '.'.join(pred_parts_l[:i])
 
 def extract_predicate_base_term(pred: str) -> str:
-	parts = pred.split(',')[0].split('.')
+	if all(c in pred for c in '(,)'):
+		parts = pred.split(',')[0].split('.')
+	else:
+		parts = pred.split('.')
 	if pred.startswith('be.') and len(parts) > 2:
 		return '.'.join(parts[:2])
 	root = parts[0]

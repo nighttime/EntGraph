@@ -309,12 +309,12 @@ public class LabelPropagationMNWithinGraph implements Runnable {
 						DefaultWeightedEdge e0 = pgraph.g0.getEdge(i, j);
 						w = pgraph.g0.getEdgeWeight(e0);
 
-						System.err.println("g0 has the edge, but it hasn't been propagated!!!");
-						System.err.println("Edge: " + e0 + " weight: " + w);
-						System.err.println("i: " + i + " pred: " + pgraph.idx2node.get(i).id);
-						System.err.println("j: " + j + " pred: " + pgraph.idx2node.get(j).id);
-						System.err.println("-------");
-						 System.exit(1);
+//						System.err.println("g0 has the edge, but it hasn't been propagated!!!");
+//						System.err.println("Edge: " + e0 + " weight: " + w);
+//						System.err.println("i: " + i + " pred: " + pgraph.idx2node.get(i).id);
+//						System.err.println("j: " + j + " pred: " + pgraph.idx2node.get(j).id);
+//						System.err.println("-------");
+//						 System.exit(1);
 					}
 					gMN.setEdgeWeight(ee, w);
 					TypePropagateMN.allPropEdges++;

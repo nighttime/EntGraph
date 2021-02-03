@@ -132,167 +132,11 @@ def generate_questions(partition: List[Article],
 	# print('From {} sents > {} top u ents / {} top b ents; {} top u props / {} top b props; {} questions (cap {})'.format(num_sents, len(most_common_u), len(most_common_b), len(top_props_u), len(top_props_b), len(selected_questions), cap))
 	return selected_questions, un_Q, bin_Q_all
 
-# Input | Q : [Prop]
-# Input | cap : int or None (for no max cap)
-# Returns questions (typed preds) and answer sets : ([str], [{str}])
-# def generate_questions(Q: List[Prop], bin_Q: List[Prop],
-# 					   pred_cache: Optional[Dict[str, int]],
-# 					   uu_graphs: Optional[EGraphCache],
-# 					   cap: Optional[int]=None) -> List[Prop]:
-#
-# 	########## FILTER OUT BAD PROPS
-#
-# 	# Filter out general entity props (keep named entities)
-# 	Q_cand = [p for p in Q if 'E' in p.entity_types]
-#
-# 	# Filer out modals
-# 	Q_cand = [p for p in Q_cand if not any(p.pred.startswith(m + '.') for m in reference.AUXILIARY_VERBS)]
-#
-# 	# Filter out oversimplified predicates
-# 	simples = [re.compile(s) for s in [r'be\.\d#', r'do\.\d#']]
-# 	Q_cand = [p for p in Q_cand if not any(r.match(p.pred) for r in simples)]
-#
-# 	# Filter out questions not answerable using the graphs, if available (essentially for local debug mode)
-# 	if uu_graphs:
-# 		Q_cand = [p for p in Q_cand if p.types[0] in uu_graphs]
-#
-# 	# Filter out duplicate props
-# 	Q_cand = list(set(Q_cand))
-#
-# 	########## IDENTIFY CANDIDATE ENTITIES
-#
-# 	# Generate counts of mentions for each unique entity (across binaries and unaries)
-# 	ent_counts_u = Counter(prop.arg_desc()[0] for prop in Q_cand)
-# 	ent_counts_b  = Counter(prop.arg_desc()[0] for prop in bin_Q if prop.entity_types[0] == 'E')
-# 	ent_counts_b += Counter(prop.arg_desc()[1] for prop in bin_Q if prop.entity_types[1] == 'E')
-#
-# 	# Pick entities that have at least K mentions between unaries and binaries
-# 	most_common_u = {e for e, count in ent_counts_u.most_common() if count >= 3}
-# 	most_common_b = {e for e, count in ent_counts_b.most_common() if count >= 60}
-#
-# 	most_common_ents = most_common_u.intersection(most_common_b)
-#
-# 	########## SELECT CANDIDATE PROPOSITIONS
-#
-# 	# Generate questions from the most mentioned entities about the most popular predicates
-# 	top_props = [p for p in Q_cand if p.arg_desc()[0] in most_common_ents and p.pred in pred_cache]
-#
-# 	# Subsample propositions based on overall predicate frequency
-# 	# top_props = [p for p in top_props if random.random() < reference.K_UNARY_PRED_MENTIONS / pred_cache[p.pred]]
-#
-#
-# 	########## SAMPLE CANDIDATE PROPOSITIONS
-#
-# 	random.shuffle(top_props)
-# 	selected_questions = top_props[:cap]
-#
-# 	# PLOT A BAR GRAPH OF ENTITY TYPES
-# 	# Q_cand_u_types = [p.types[0] for p in Q_cand]
-# 	# Q_cand_b_0_types = [p.types[0].replace('_1', '').replace('_2', '') for p in bin_Q if p.entity_types[0] == 'E']
-# 	# Q_cand_b_1_types = [p.types[1].replace('_1', '').replace('_2', '') for p in bin_Q if p.entity_types[1] == 'E']
-# 	# ent_types_u = Counter(Q_cand_u_types)
-# 	# ent_types_b = Counter(Q_cand_b_0_types) + Counter(Q_cand_b_1_types)
-#
-# 	# data = {'Arg Type': Q_cand_u_types + Q_cand_b_0_types + Q_cand_b_1_types,
-# 	# 		'Prop Type': (['Unary'] * len(Q_cand_u_types)) +
-# 	# 					 (['Binary'] * len(Q_cand_b_0_types)) +
-# 	# 					 (['Binary'] * len(Q_cand_b_1_types)) }
-# 	# df = pd.DataFrame(data)
-# 	#
-# 	# plt.figure(figsize=(9, 7))
-# 	# ax = sns.countplot(y='Arg Type', data=df, hue='Prop Type')
-# 	# ax.set_xscale('log')
-# 	# # plt.xticks(rotation=80)
-# 	# plt.xlabel('Frequency')
-# 	# plt.ylabel('Category')
-# 	# plt.title('Frequency of Entity Types as Predicate Arguments')
-# 	#
-# 	# fname = 'type_chart.png'
-# 	# plt.savefig(fname)
-# 	# print('Type figure saved to', fname)
-# 	# exit(0)
-#
-# 	# answer_choices = {q:{e for p in Q_cand for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
-# 	# print('\nSet of {} props > {} NE props > {} questions ; {} unique ents ; {} top preds ; {} candidate props'.format(len(Q), len(Q_cand), len(questions), len(ents), len(top_preds), ct_passing_props))
-# 	return selected_questions
-
-# # Input | Q : [Prop]
-# # Input | cap : int or None (for no max cap)
-# # Returns questions (typed preds) and answer sets : ([str], [{str}])
-# def generate_questions(Q: List[Prop], aux_Q: List[Prop],
-# 					   pred_cache: Optional[Set[str]],
-# 					   uu_graphs: Optional[EGraphCache],
-# 					   cap: Optional[int]=None) -> \
-# 		Tuple[List[str], List[Set[str]], List[Prop]]:
-# 	# Filter unary props down to just ones containing named entities
-# 	Q_ents = [p for p in Q if 'E' in p.entity_types]
-# 	if len(Q_ents) == 0:
-# 		return [], [], []
-# 	Q_unique_ents = set(e.args[0] for e in Q_ents)
-# 	# print('  {:.1f}% of Q is named entities ({} instances, {} unique)'.format(len(Q_ents)/len(Q)*100, len(Q_ents), len(unique_ents)))
-#
-# 	# Generate index of: entity + type -> count
-# 	ents = Counter(prop.arg_desc()[0] for prop in Q_ents)
-#
-# 	# Pick the K most frequent entities
-# 	most_common_ents = ents.most_common(TOP_K_ENTS)
-# 	most_common_ents = set(tuple(zip(*most_common_ents))[0])
-#
-# 	# Generate questions from the most common entities: pred -> {prop}
-# 	#	Keep predicates that match an entity
-# 	# top_preds = {prop.pred_desc() for prop in Q_ents if prop.arg_desc()[0] in most_common_ents and prop.pred_desc() in pred_cache and count_mentions(prop.args[0], Q_ents + aux_evidence)>1}
-# 	top_preds = set()
-# 	top_props = {}
-# 	ct_passing_props = 0
-# 	for prop in Q_ents:
-# 		if prop.arg_desc()[0] in most_common_ents \
-# 				and prop.pred_desc() in pred_cache:
-# 				# and (count_mentions(prop.args[0], Q_ents)>1 or count_mentions(prop.args[0], aux_evidence)>4):
-# 			top_preds.add(prop.pred_desc())
-# 			top_props[prop.pred_desc()] = prop
-# 			ct_passing_props += 1
-#
-# 	if len(top_preds) == 0:
-# 		return [], [], []
-#
-# 	#	Take all entities that match the common entity preds
-# 	statements = defaultdict(set)
-# 	for prop in Q_ents:
-# 		if prop.pred_desc() in top_preds:  # and prop.types[0] == 'person':
-# 			statements[prop.pred_desc()].add(prop.args[0])
-#
-# 	# Sample the statements and return (question, answers) pairs separated into two lists
-# 	# s = list(statements.items())
-# 	s = [(q, a_set, top_props[q]) for q, a_set in statements.items()]
-# 	random.shuffle(s)
-# 	selected_questions = s[:cap]
-#
-# 	if uu_graphs:
-# 		# Filter out questions not answerable using the graphs, if available
-# 		selected_questions = [(q, a, p) for q, a, p in selected_questions if q.split('#')[1] in uu_graphs]
-#
-# 	# Filer out modals
-# 	selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(q.startswith(m + '.') for m in reference.AUXILIARY_VERBS)]
-# 	# Filter out oversimplified predicates
-# 	simples = [re.compile(s) for s in [r'be\.\d#', r'do\.\d#']]
-# 	selected_questions = [(q, a, p) for q, a, p in selected_questions if not any(r.match(q) for r in simples)]
-#
-# 	questions, answers, props = [list(t) for t in tuple(zip(*selected_questions))]
-#
-# 	answer_choices = {q:{e for p in Q_ents for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
-#
-# 	# print('\nSet of {} props > {} NE props > {} questions ; {} unique ents ; {} top preds ; {} candidate props'.format(len(Q), len(Q_ents), len(questions), len(ents), len(top_preds), ct_passing_props))
-# 	return questions, answers, props
 
 def generate_top_pred_cache(articles: List[Article]) -> Dict[str, int]:
 	pred_counter_u = Counter()
 	pred_counter_b = Counter()
 	for art in articles:
-		# for p in art.unary_props:
-			# if negative_swaps:
-			# 	first = p.pred.split('.')[0]
-			# 	if first in negative_swaps:
-			# 		pred_counter[p.pred_desc()]
 		pred_counter_u.update([p.pred for p in art.unary_props])
 		pred_counter_b.update([p.pred for p in art.binary_props])
 
@@ -405,14 +249,6 @@ def generate_positive_question_sets(partitions: List[List[Article]],
 	P_list, evidence_list = [], []
 	for partition in partitions:
 		props, q_unaries, q_binaries = generate_questions(partition, pred_cache, question_modes, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-		# if not q:
-		# 	assert not a and not props
-		# for j, q_j in enumerate(q):
-		# 	art.remove_qa_pair(q_j, list(a[j])[0])
-		# if len(art.unary_props) == 0 and len(art.binary_props) == 0:
-		# 	continue
-		# Q_list.append(q)
-		# A_list.append(a)
 		P_list.append(props)
 		evidence_list.append((q_unaries, q_binaries))
 
@@ -574,6 +410,7 @@ def generate_tf_question_sets(articles: List[Article],
 	if negative_swaps and uu_graphs:
 		N_list = generate_negative_question_sets(P_list, partitions, negative_swaps, uu_graphs, bu_graphs, filter_dict=filter_dict)
 
+	print()
 	return partitions, P_list, N_list, evidence_list, top_pred_cache
 
 # generate negative questions for unaries only
@@ -792,9 +629,11 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 		N_list.append(nprops[:len(ps)*max_per_positive])
 
 	# print('Found {} antonyms and {} troponyms...'.format(num_antonyms, sum(len(n) for n in N_list)-num_antonyms), end=' ', flush=True)
-	# print(rej)
-	for key, counter in rej.items():
-		print(key, sum(v for k,v in counter.items()))
+
+	# print()
+	# for key, counter in rej.items():
+	# 	print(key, sum(v for k,v in counter.items()))
+	# print()
 
 	# sw = list(rej['swapped predicate not in graph'].items())
 	# random.shuffle(sw)
@@ -823,12 +662,34 @@ def format_tf_QA_sets(positives: List[List[Prop]], negatives: List[List[Prop]]) 
 	assert len(Q_sets) == len(A_sets)
 	return Q_sets, A_sets
 
+
+def select_answerable_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], uu_graphs: Optional[EGraphCache], bu_graphs: Optional[EGraphCache]) -> Tuple[List[List[Prop]], List[List[Prop]]]:
+	def in_graphs(p: Prop):
+		if len(p.args) == 1:
+			t = p.types[0]
+			if reference.GRAPH_BACKOFF:
+				return prop_recognized_in_graphs(p, uu_graphs) or prop_recognized_in_graphs(p, bu_graphs)
+			else:
+				# return t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
+				in_unary = t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
+				in_binary = any(t in g and p.pred_desc() in bu_graphs[g].nodes for g in bu_graphs.keys())
+				return in_unary or in_binary
+		else:
+			t = '#'.join(p.basic_types)
+			if reference.GRAPH_BACKOFF:
+				return prop_recognized_in_graphs(p, bu_graphs)
+			else:
+				return t in bu_graphs and p.pred_desc() in bu_graphs[t].nodes
+
+	selected_P_list = [[p for p in ps if in_graphs(p)] for ps in P_list]
+	selected_N_list = [[p for p in ps if in_graphs(p)] for ps in N_list]
+
+	return selected_P_list, selected_N_list
+
+
 # Input: list of partitioned positive questions, negative questions
 # Input: desired percentage of questions to be unary (vs. binary), and percentage of positive (vs. negative)
-# Output:
-
 def rebalance_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], pct_unary:float=0.5, pct_pos:float=0.5) -> Tuple[List[List[Prop]], List[List[Prop]]]:
-
 	# Adjust BINARY positivity ratio
 	total_pos_b_qs = len([p for ps in P_list for p in ps if len(p.args) == 2])
 	total_neg_b_qs = len([p for ps in N_list for p in ps if len(p.args) == 2])

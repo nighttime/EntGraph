@@ -19,14 +19,10 @@ from questions import *
 from answer_wh import *
 from answer_tf import *
 import ppdb_reader
+from reference import bar, BAR
 
 from typing import *
 
-
-# For printing
-BAR_LEN = 50
-BAR = '=' * BAR_LEN
-bar = '-' * BAR_LEN
 
 # Program Hyperparameters
 # Fraction of props partitioned into Q
@@ -172,6 +168,9 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		title += ' (quick mode)'
 	print(title)
 
+	if ARGS.test_mode:
+		print('* EVAL on TEST SET')
+
 	original_types_file = 'data/freebase_types/entity2Types.txt'
 	print('* Using entity types and substitution pairs from: ' + ARGS.data_folder)
 
@@ -198,7 +197,11 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		if not ARGS.quick:
 			answer_modes.add('BU')
 
-	print('* Answer modes:', answer_modes)
+	if ARGS.backoff:
+		reference.GRAPH_BACKOFF = True
+		print('* Answer modes:', answer_modes, '[+Backoff]')
+	else:
+		print('* Answer modes:', answer_modes)
 
 	utils.checkpoint()
 	print(BAR)
@@ -245,14 +248,17 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	if ARGS.sim_cache:
 		print('Loading similarity cache...', end=' ', flush=True)
 		found = False
+		cache_location = ARGS.data_folder
+		if ARGS.test_mode:
+			cache_location = os.path.join(cache_location, 'test_data')
 		try:
-			sim_cache_bert = load_similarity_cache(ARGS.data_folder, 'bert')
+			sim_cache_bert = load_similarity_cache(cache_location, 'bert')
 			models['BERT'] = sim_cache_bert
 			found = True
 			print('Loaded BERT...', end=' ', flush=True)
 		except: pass
 		try:
-			sim_cache_roberta = load_similarity_cache(ARGS.data_folder, 'roberta')
+			sim_cache_roberta = load_similarity_cache(cache_location, 'roberta')
 			models['RoBERTa'] = sim_cache_roberta
 			found = True
 			print('Loaded RoBERTa...', end=' ', flush=True)
@@ -266,7 +272,10 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	# Read in news articles
 	print('Reading source articles & auxiliary data...')
 	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
-	negative_swaps = read_substitution_pairs(os.path.join(ARGS.data_folder, 'substitution_pairs.json'))
+	swap_folder = ARGS.data_folder
+	if ARGS.test_mode:
+		swap_folder = os.path.join(swap_folder, 'test_data')
+	negative_swaps = read_substitution_pairs(os.path.join(swap_folder, 'substitution_pairs.json'))
 	ppdb = None
 	if ARGS.filter_qs:
 		print('Reading PPDB data...')
@@ -276,10 +285,29 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	print('Generating questions...', end=' ', flush=True)
 	partitions, P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, question_modes, negative_swaps=negative_swaps, uu_graphs=uu_graphs, bu_graphs=bu_graphs, filter_dict=ppdb)
 	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	print()
 
-	print('Subsampling questions...')
+	if ARGS.graph_qs:
+		print('Selecting only questions with hits in the graphs')
+		P_list, N_list = select_answerable_qs(P_list, N_list, uu_graphs, bu_graphs)
+		utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+		print()
+
+	print('Balancing questions...')
 	P_list, N_list = rebalance_qs(P_list, N_list, pct_unary=0.5, pct_pos=0.5)
 	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	print()
+
+	# if ARGS.graph_qs:
+	# 	print('Selecting only questions with hits in the graphs...')
+	# 	P_list, N_list = select_answerable_qs(P_list, N_list, uu_graphs, bu_graphs)
+	# 	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	# 	print()
+	#
+	# 	print('Balancing questions...')
+	# 	P_list, N_list = rebalance_qs(P_list, N_list, pct_unary=0.5, pct_pos=0.5)
+	# 	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	# 	print()
 
 	# if reference.RUNNING_LOCAL:
 	# 	print('(IGNORE positivity rate for local question generation; filtering is done based on available graphs)')
@@ -300,6 +328,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		return partitions, Q_list, A_list, evidence_list, None
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
+	print(BAR)
 	print('Predicting answers...')
 
 	# results = {'*always-true':(pct_positive, None)}
@@ -359,9 +388,8 @@ def run_evaluate() -> Tuple[List[List[Article]],
 
 	if ARGS.plot:
 		print(bar)
-		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh)
-		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, subset='unary')
-		plot_results(ARGS.data_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, subset='binary')
+		results_folder = os.path.join(ARGS.data_folder, 'tf_results')
+		generate_results(results_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, test=ARGS.test_mode)
 
 	utils.checkpoint()
 	print(BAR)
@@ -383,11 +411,15 @@ parser.add_argument('--text-EGs', action='store_true', help='Read in plain-text 
 parser.add_argument('--local', action='store_true', help='Read in local entailment graphs (default is global)')
 parser.add_argument('--eval-fun', default='acc', help='Evaluate results using the specified test function')
 # parser.add_argument('--day-range', type=int, default=0, help='Evidence window around the day questions are drawn from (extends # days in both directions)')
+parser.add_argument('--graph-qs', action='store_true', help='Ask only questions which have hits in the graph')
+parser.add_argument('--backoff', action='store_true', help='Back off to wrong-type graphs if right-type graphs can\'t answer')
 
-parser.add_argument('--save-results', action='store_true', help='Plot results visually')
+parser.add_argument('--test-mode', action='store_true', help='Use test set data (default is dev set)')
+
 parser.add_argument('--plot', action='store_true', help='Plot results visually')
 parser.add_argument('--sample', action='store_true', help='Sample results at specified precision cutoff')
 
+parser.add_argument('--save-results', action='store_true', help='')
 parser.add_argument('--save-thresh', action='store_true', help='Save precision-level cutoffs for entailment graphs')
 parser.add_argument('--save-qs', action='store_true', help='Save generated questions to file')
 parser.add_argument('--save-preds', action='store_true', help='Save top predicates to file')

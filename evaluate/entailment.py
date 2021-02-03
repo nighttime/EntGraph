@@ -6,6 +6,7 @@ import sys
 import pickle
 import pdb
 import numpy as np
+from proposition import Prop
 from typing import *
 
 
@@ -68,6 +69,11 @@ class EntailmentGraph:
 			return set()
 		else:
 			return self.backmap[pred]
+
+	def get_antecedents_bare_pred(self, barepred):
+		forward = self.get_antecedents(barepred + '#' + self.typing)
+		backward = self.get_antecedents(barepred + '#' + self.reverse_typing)
+		return forward | backward
 
 	def _backmap_antecedents(self, edges):
 		backmap = defaultdict(set)
@@ -160,6 +166,16 @@ class EntailmentGraph:
 
 # Type definitions
 EGraphCache = Dict[str, EntailmentGraph]
+
+def query_all_graphs_for_prop(claim: Prop, ent_graphs: EGraphCache) -> List[Set[BackEntailment]]:
+	antecedent_list = []
+	for graph in ent_graphs.values():
+		antecedents = graph.get_antecedents_bare_pred(claim.pred)
+		antecedent_list.append(antecedents)
+	return antecedent_list
+
+def prop_recognized_in_graphs(prop: Prop, graphs: EGraphCache) -> bool:
+	return any(len(a) > 0 for a in query_all_graphs_for_prop(prop, graphs))
 
 def read_graphs(graph_dir: str, stage: EGStage) -> EGraphCache:
 	(_, _, filenames) = next(os.walk(graph_dir))

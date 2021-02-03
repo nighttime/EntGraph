@@ -136,7 +136,7 @@ public class LabelPropagationBetweenGraphs implements Runnable {
 
 
 //					System.out.println(pred_p + " " + pred_q +" " + sim); // NMM
-					 System.out.println("propagating from: "+pred_r+" "+pred_rp);
+//					 System.out.println("propagating from: "+pred_r+" "+pred_rp);
 					// propagate similarity to pred_p => pred_q. Also, compute the coef sum of all
 					// the neighbors for those (pre-compute all at once)
 					propagateOneEdge(pgraph, pgraph_neigh, pred_p, pred_q, sim, compScore1, rawPred_r, rawPred_rp,
@@ -179,7 +179,7 @@ public class LabelPropagationBetweenGraphs implements Runnable {
 	void propagateOneEdge(PGraph pgraph, PGraph pgraph_neigh, String pred_p, String pred_q, double sim,
 			double compScore, String rawPred_p, String rawPred_q, String tp1, String tp2, boolean aligned,
 			Set<Integer> neighborGraphs, int minPairOcc1) {
-		System.out.println(pgraph.types + " " + pgraph_neigh.types);
+//		System.out.println(pgraph.types + " " + pgraph_neigh.types);
 		if (pgraph_neigh.pred2node.containsKey(pred_p) && pgraph_neigh.pred2node.containsKey(pred_q)) {
 			// System.out.println("propagating from graph: " + pgraph.types + " to graph " +
 			// pgraph_neigh.types + " for "
@@ -194,7 +194,7 @@ public class LabelPropagationBetweenGraphs implements Runnable {
 			int p = pgraph_neigh.pred2node.get(pred_p).idx;
 			int q = pgraph_neigh.pred2node.get(pred_q).idx;
 
-			System.out.println("p,q: " + p + " " + q);
+//			System.out.println("p,q: " + p + " " + q);
 
 			double w;
 			DefaultWeightedEdge ee;
@@ -240,9 +240,10 @@ public class LabelPropagationBetweenGraphs implements Runnable {
 					pgraph_neigh.edgeToMNWeight.put(edgeStr, sumCoefs);
 				}
 			}
-		} else {
-			System.out.println("did not have pred_p or pred_q");
 		}
+//		} else {
+//			System.out.println("did not have pred_p or pred_q");
+//		}
 	}
 
 	// rawPred_p#rawPred_q#aligned#tp1#tp2 will receive message from neighGraphs

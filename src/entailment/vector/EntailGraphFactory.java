@@ -704,6 +704,11 @@ public class EntailGraphFactory implements Runnable {
 			return;
 		}
 
+		// Skip if: the pred is a reporting verb
+		if (pred.startsWith("say.")) {
+			return;
+		}
+
 		// Predicate lemmatization / normalization
 		/*
 		String[] predicateLemma;

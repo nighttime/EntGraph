@@ -218,13 +218,18 @@ def make_emb_cache(unary_props: List[Prop],
 		ct = 0
 		for p in positives:
 			is_unary = len(p.args) == 1
-			is_copula = p.pred.startswith('be.')
+			is_copula = p.pred.startswith('be.') and p.pred.count('.') > 1
 			if reference.RUNNING_LOCAL and 'person' not in p.basic_types:
 				continue
 			p_query = proposition.extract_predicate_base_term(p.pred)
 			if p_query in neg_substitutions:
 				if is_unary and is_copula:
-					neg_swaps = neg_substitutions[p_query]['hyponyms']
+					try:
+						neg_swaps = neg_substitutions[p_query]['hyponyms']
+					except:
+						print('hyponyms not found?', p_query)
+						print(neg_substitutions[p_query])
+						exit(1)
 				else:
 					neg_swaps = neg_substitutions[p_query]['troponyms']
 				swapped_props = [Prop.with_swapped_pred(p, swap) for swap in neg_swaps]
@@ -300,14 +305,23 @@ def make_emb_cache(unary_props: List[Prop],
 
 def write_cache(prop_idx: Dict[Any, int], prop_embeddings: np.ndarray, model_name: str):
 	global ARGS
-	dest_folder = (lambda x: x if x.endswith('/') else x + '/')(ARGS.data_folder)
-	with open(dest_folder + model_name + '-prop_emb_idx.pkl', 'wb+') as f:
+	dest_folder = ARGS.data_folder
+	if ARGS.test_mode:
+		dest_folder = os.path.join(dest_folder, 'test_data')
+
+	# Save index
+	with open(os.path.join(dest_folder, model_name + '-prop_emb_idx.pkl'), 'wb+') as f:
 		pickle.dump(prop_idx, f, pickle.HIGHEST_PROTOCOL)
-	np.save(dest_folder + model_name + '-prop_embs', prop_embeddings)
+
+	# Save embeddings
+	np.save(os.path.join(dest_folder, model_name + '-prop_embs'), prop_embeddings)
 
 def main():
 	global ARGS
 	ARGS = parser.parse_args()
+
+	if ARGS.test_mode:
+		print('* TEST MODE: Reading in some data from:', os.path.join(ARGS.data_folder, 'test_data'))
 
 	model_options = ['bert', 'roberta']
 	if ARGS.model not in model_options:
@@ -328,8 +342,12 @@ def main():
 	print('Loading entity type cache...')
 	load_precomputed_entity_types(ARGS.data_folder)
 	print('Reading in data...')
-	articles, unary_props, binary_props = read_source_data(ARGS.news_gen_file)
-	negative_swaps = read_substitution_pairs(os.path.join(ARGS.data_folder, 'substitution_pairs.json'))
+	articles, unary_props, _ = read_source_data(ARGS.news_gen_file)
+	binary_props = [p for art in articles for p in art.selected_binary_props]
+	swap_folder = ARGS.data_folder
+	if ARGS.test_mode:
+		swap_folder = os.path.join(swap_folder, 'test_data')
+	negative_swaps = read_substitution_pairs(os.path.join(swap_folder, 'substitution_pairs.json'))
 	# print('Loading entailment graphs...')
 	# uu_graphs = read_precomputed_EGs(ARGS.uu_graphs)
 	# print('Read {} UU Graphs'.format(len(uu_graphs)))
@@ -350,6 +368,7 @@ parser.add_argument('data_folder', help='Path to data folder including freebase 
 # parser.add_argument('uu_graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
 # parser.add_argument('bu_graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
 parser.add_argument('--model', help='Choice of model: <bert/roberta>')
+parser.add_argument('--test-mode', action='store_true', help='Generate test set data in subdirectory (default is dev set in given directory)')
 
 if __name__ == '__main__':
 	main()

@@ -6,6 +6,8 @@ try:
 except:
 	RUNNING_LOCAL = bool(int(open('../RUNNING_LOCAL').readline()))
 
+GRAPH_BACKOFF = False
+
 K_UNARY_ENT_MENTIONS = 6
 K_BINARY_ENT_MENTIONS = 6
 
@@ -73,3 +75,7 @@ PREPOSITIONS = {
 'through'
 }
 
+# For printing
+BAR_LEN = 50
+BAR = '=' * BAR_LEN
+bar = '-' * BAR_LEN

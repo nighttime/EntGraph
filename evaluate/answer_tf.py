@@ -125,21 +125,21 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 
 		# Get inferred answers from U->U graph
 		if 'UU' in answer_modes and is_unary:
-			uu_score, uu_support = infer_claim_UU(c, prop_facts_u, models['UU'])
+			uu_score, uu_support = infer_claim_UU(c, prop_facts_u, arg_facts_u, models['UU'])
 			if uu_support:
 				score = max(score, uu_score)
 				prediction_support[-1]['UU'] = uu_support
 
 		# Get inferred answers from B->B/U graph
 		if 'BU' in answer_modes and is_unary:
-			bu_score, bu_support = infer_claim_BU(c, prop_facts_b, models['BU'])
+			bu_score, bu_support = infer_claim_BU(c, prop_facts_b, arg_facts_u, models['BU'])
 			if bu_support:
 				score = max(score, bu_score)
 				prediction_support[-1]['BU'] = bu_support
 
 		# Get inferred answers from B->B/U graph
 		if 'BB' in answer_modes and not is_unary:
-			bb_score, bb_support = infer_claim_BB(c, prop_facts_b, models['BU'])
+			bb_score, bb_support = infer_claim_BB(c, prop_facts_b, arg_facts_b, models['BU'])
 			if bb_support:
 				score = max(score, bb_score)
 				prediction_support[-1]['BB'] = bb_support
@@ -161,7 +161,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 	return predictions, prediction_support
 
 
-def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
+def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Dict[str, List[Tuple[Prop, int]]], ent_graphs: EGraphCache) -> \
 		Tuple[float, Optional[Prop]]:
 
 	score = 0
@@ -170,21 +170,43 @@ def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 	question = claim.pred_desc()
 	query_type = claim.types[0]
 
-	if not any(query_type == t for t in ent_graphs.keys()):
+	# if not any(query_type == t for t in ent_graphs.keys()):
+	# 	return score, support
+
+	if query_type not in ent_graphs:
 		return score, support
 
-	if query_type in ent_graphs:
-		antecedents = ent_graphs[query_type].get_antecedents(question)
-		for ant in antecedents:
-			ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc()[0] == claim.arg_desc()[0]), None)
-			if ant_support and ant.score > score:
-				score = ant.score
-				support = ant_support
+	antecedents = ent_graphs[query_type].get_antecedents(question)
+	for ant in antecedents:
+		ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc()[0] == claim.arg_desc()[0]), None)
+		if ant_support and ant.score > score:
+			score = ant.score
+			support = ant_support
+
+	# Back off to other graphs
+	if reference.GRAPH_BACKOFF:
+		if len(antecedents) == 0:
+			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+			evidence_props = arg_cache[claim.args[0]]
+			found_edges = defaultdict(int)
+			score_sum = defaultdict(float)
+			for antecedents in antecedents_list:
+				for ant in antecedents:
+					for p,i in evidence_props:
+						if len(p.args) == 1 and ant.pred.split('#')[0] == p.pred:
+							found_edges[p] += 1
+							score_sum[p] += ant.score
+
+			backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
+			for p, s in backoff_scores.items():
+				if s > score:
+					score = s
+					support = p
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
 
-def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
+def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Dict[str, List[Tuple[Prop, int]]], ent_graphs: EGraphCache) -> \
 		Tuple[float, Optional[Prop]]:
 
 	score = 0
@@ -198,6 +220,8 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 
 	graph_types = {p.type_desc() for props in prop_cache.values() for p in props if query_type in p.basic_types}
 
+	found_node = False
+
 	for graph_type in graph_types:
 		if graph_type not in ent_graphs:
 			continue
@@ -209,6 +233,8 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 			qualified_question = question + suffix
 			qualified_question_type = qualified_question.split('#')[1]
 			antecedents = ent_graphs[graph_type].get_antecedents(qualified_question)
+			if len(antecedents) > 0:
+				found_node = True
 			for ant in antecedents:
 				for prop in prop_cache[ant.pred]:
 					arg_idx = prop.types.index(qualified_question_type)
@@ -218,10 +244,30 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 							support = prop
 							break
 
+	# Back off to other graphs
+	if reference.GRAPH_BACKOFF:
+		if not found_node:
+			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+			evidence_props = arg_cache[claim.args[0]]
+			found_edges = defaultdict(int)
+			score_sum = defaultdict(float)
+			for antecedents in antecedents_list:
+				for ant in antecedents:
+					for p, i in evidence_props:
+						if len(p.args) == 2 and ant.pred.split('#')[0] == p.pred:
+							found_edges[p] += 1
+							score_sum[p] += ant.score
+
+			backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
+			for p, s in backoff_scores.items():
+				if s > score:
+					score = s
+					support = p
+
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
 
-def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
+def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
 		Tuple[float, Optional[Prop]]:
 
 	score = 0
@@ -234,14 +280,36 @@ def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], ent_graphs: E
 		return score, support
 
 	antecedents = ent_graphs[query_type].get_antecedents(question)
+
 	for ant in antecedents:
 		ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc() == claim.arg_desc() or list(reversed(p.arg_desc())) == claim.arg_desc()), None)
 		if ant_support and ant.score > score:
 			score = ant.score
 			support = ant_support
 
+	# Back off to other graphs
+	if reference.GRAPH_BACKOFF:
+		if len(antecedents) == 0:
+			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+			evidence_props = arg_cache[tuple(sorted(claim.args))]
+			found_edges = defaultdict(int)
+			score_sum = defaultdict(float)
+			for antecedents in antecedents_list:
+				for ant in antecedents:
+					for p in evidence_props:
+						if ant.pred.split('#')[0] == p.pred:
+							found_edges[p] += 1
+							score_sum[p] += ant.score
+
+			backoff_scores = {k:score_sum[k]/found_edges[k] for k,v in found_edges.items()}
+			for p,s in backoff_scores.items():
+				if s > score:
+					score = s
+					support = p
+
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
+
 
 P_TOTAL = 0
 P_NF = 0
@@ -309,7 +377,7 @@ def infer_claim_sim(claim: Prop,
 			if int(p.types[0].split('_')[-1]) == 2:
 				continue
 
-		premise = p.prop_desc() # + '::' + str(arg_idx)
+		premise = p.prop_desc()
 
 		if premise == hypothesis:
 			return 1.0, p

@@ -1,6 +1,7 @@
 package graph;
 
 import com.google.common.collect.Sets;
+import org.apache.batik.dom.util.HashTable;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -194,7 +195,7 @@ public class Valence {
         System.out.println();
     }
 
-    public static void transitivelyCompleteDualGraph(PGraph graphD, PGraph graphM1, PGraph graphM2, Path destFname, int topKUnaries) throws IOException {
+    public static void transitivelyCompleteBivalentGraph(PGraph graphB, PGraph graphM1, PGraph graphM2, Path destFname, int topKUnaries) throws IOException {
         // For each node N in D...
         //  For each entailment of N to U1
         //      For each entailment U2 of U1
@@ -205,17 +206,19 @@ public class Valence {
         PrintWriter output = new PrintWriter(new BufferedWriter(new FileWriter(destFname.toString())));
 
         // Write file header
-        output.println("types: " + graphD.types + ", num preds: " + graphD.nodes.size());
+        output.println("types: " + graphB.types + ", num preds: " + graphB.nodes.size());
 
         // Initialize metadata structures
-        String[] graphTypes = graphD.types.split("#");
+        String[] graphTypes = graphB.types.split("#");
         Map<String, String> typeToOtherType = new HashMap<>();
         typeToOtherType.put(graphTypes[0], graphTypes[1]);
         typeToOtherType.put(graphTypes[1], graphTypes[0]);
-        Set<String> entailedUnaries = new HashSet<>();
+
+        String T1 = graphM1.types.split("#")[0];
+        String T2 = graphM2.types.split("#")[0];
 
         // Write out nodes from the binary graph
-        for (Node node : graphD.nodes) {
+        for (Node node : graphB.nodes) {
             String pred = node.id;
 
 
@@ -226,6 +229,27 @@ public class Valence {
             output.println("BInc sims");
 
             // Write B->B entailments
+            PriorityQueue<PredSim> entailedUnariesT1 = new PriorityQueue<>((a, b) -> Float.compare(a.sim, b.sim));
+            PriorityQueue<PredSim> entailedUnariesT2 = new PriorityQueue<>((a, b) -> Float.compare(a.sim, b.sim));
+
+
+            Map<String, Float> transitiveUnariesT1 = new HashMap<>();
+            Map<String, Float> transitiveUnariesT2 = new HashMap<>();
+
+            for (Oedge edge : node.oedges) {
+                float score = edge.sim;
+                String entailedPred = graphB.idx2node.get(edge.nIdx).id;
+                String[] predParts = entailedPred.split("#");
+                boolean binaryPred = (predParts.length == 3);
+                if (binaryPred) {
+                    output.println(entailedPred + " " + score);
+                } else if (predParts[1].equals(T1)) {
+                    // fetch M1 entailments
+
+                } else if (predParts[1].equals(T2)) {
+                    // fetch M2 entailments
+                }
+            }
 //            if (numBinaryEntailments > 0) {
 //                writeEntailments("", "", node, graphB, output);
 //            }
@@ -287,6 +311,9 @@ public class Valence {
         System.out.println("Binary-only graphs: " + filenamesBinary.size());
 
         if (checkOnly) {
+            if (filenamesArgwise.size() + filenamesBinary.size() == 0) {
+                System.out.println("* Looks good! *");
+            }
             exit(0);
         }
 
@@ -343,12 +370,12 @@ public class Valence {
 //        }
     }
 
-    public static void completeEntailmentGraphs(Path dirMono, Path dirDual, Path dirDest, boolean checkOnly, int topKUnaries) {
+    public static void completeEntailmentGraphs(Path dirUni, Path dirBi, Path dirDest, boolean checkOnly, int topKUnaries) {
         // Fetch filenames for each graph in the given directories
-        Set<String> filenamesMono = filenamesFromDirectory(dirMono, ".*_binc\\.txt");
-        System.out.println("found globalized mono graphs: " + dirMono.toString());
-        Set<String> filenamesDual = filenamesFromDirectory(dirDual, ".*_sim\\.txt");
-        System.out.println("found binary graphs: " + dirDual.toString());
+        Set<String> filenamesUni = filenamesFromDirectory(dirUni, ".*_binc\\.txt");
+        System.out.println("found globalized mono graphs: " + dirUni.toString());
+        Set<String> filenamesBi = filenamesFromDirectory(dirBi, ".*_sim\\.txt");
+        System.out.println("found binary graphs: " + dirBi.toString());
 
         if (checkOnly) {
             exit(0);
@@ -362,32 +389,32 @@ public class Valence {
         int progress = 0;
         int dGraphsSkipped = 0;
 
-        for (String fname : filenamesDual) {
-            printProgress(progress, filenamesDual.size(), fname);
+        for (String fname : filenamesBi) {
+            printProgress(progress, filenamesBi.size(), fname);
             progress++;
             Path destFname = destFolder.toPath().resolve(fname);
 
-            String[] monoTypes = fname.substring(0,fname.indexOf("_binc")).split("#");
-            String[] monoFnames = {monoTypes[0] + "_sim.txt", monoTypes[1] + "_sim.txt"};
+            String[] uniTypes = fname.substring(0,fname.indexOf("_binc")).split("#");
+            String[] uniFnames = {uniTypes[0] + "_sim.txt", uniTypes[1] + "_sim.txt"};
 
-            PGraph graphD = new PGraph(dirDual.resolve(fname).toString());
-            PGraph graphM1 = new PGraph(dirMono.resolve(monoFnames[0]).toString());
+            PGraph graphB = new PGraph(dirBi.resolve(fname).toString());
+            PGraph graphM1 = new PGraph(dirUni.resolve(uniFnames[0]).toString());
             PGraph graphM2 = null;
-            if (!monoTypes[0].equals(monoTypes[1])) {
-                graphM2 = new PGraph(dirMono.resolve(monoFnames[0]).toString());
+            if (!uniTypes[0].equals(uniTypes[1])) {
+                graphM2 = new PGraph(dirUni.resolve(uniFnames[0]).toString());
             }
-            if (graphD.name == null) {
+            if (graphB.name == null) {
 //                    System.err.println("Empty graphA: " + fname);
                 dGraphsSkipped++;
             }
             try {
-                transitivelyCompleteDualGraph(graphD, graphM1, graphM2, destFname, topKUnaries);
+                transitivelyCompleteBivalentGraph(graphB, graphM1, graphM2, destFname, topKUnaries);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
-        printProgress(filenamesDual.size(), filenamesDual.size(), "done");
+        printProgress(filenamesBi.size(), filenamesBi.size(), "done");
         System.out.println();
     }
 
@@ -401,9 +428,9 @@ public class Valence {
     public static void main(String[] args) throws IOException {
 
 //        PGraph g = new PGraph("newsspike_sims/argwise_sample/person#person_sim.txt");
-        PGraph g = new PGraph("newsspike_sims/UU_10_10/person#unary_binc.txt");
-        System.out.println(g.types);
-        System.out.println("num nodes: " + g.nodes.size());
+//        PGraph g = new PGraph("newsspike_sims/UU_10_10/person#unary_binc.txt");
+//        System.out.println(g.types);
+//        System.out.println("num nodes: " + g.nodes.size());
 
         // *** EXPECTED PROGRAM ARGS
         // 0 Destination folder for integrated graphs
@@ -473,8 +500,8 @@ public class Valence {
                 System.out.print("[CHECK-ONLY] ");
             }
 
-            Path dirMono = Paths.get(argList.get(0));
-            Path dirDual = Paths.get(argList.get(1));
+            Path dirUni = Paths.get(argList.get(0));
+            Path dirBi = Paths.get(argList.get(1));
             Path dirDest = Paths.get(argList.get(2));
 
             int topKUnaries = -1;
@@ -489,7 +516,7 @@ public class Valence {
             }
 
             // Integrate the graphs into one set of multi-valency graphs
-            completeEntailmentGraphs(dirMono, dirDual, dirDest, checkOnly, topKUnaries);
+            completeEntailmentGraphs(dirUni, dirBi, dirDest, checkOnly, topKUnaries);
         }
 
         else {

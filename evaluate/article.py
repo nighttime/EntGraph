@@ -69,6 +69,15 @@ def reject_unary(pred: str) -> bool:
 	if any(r.match(pred) for r in simples):
 		return True
 
+	if any(pred.startswith(v + '.') for v in reference.REPORTING_VERBS):
+		return True
+
+	if any(pred.startswith(v + '.') for v in reference.PREPOSITIONS):
+		return True
+
+	if '.e.' in pred:
+		return True
+
 	return False
 
 def reject_binary(pred: str) -> bool:
@@ -140,7 +149,9 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 
 				norm_ents = [normalize_entity(e) for e in parts[1:3]]
 				entity_types = parts[3]
-				typing = [get_type(norm_ents[i], 'E' in entity_types[i]) for i in range(2)]
+				if not all(e in 'GE' for e in entity_types):
+					continue
+				typing = [get_type(norm_ents[i], 'E' == entity_types[i]) for i in range(2)]
 
 				if reversed_pred:
 					norm_ents = list(reversed(norm_ents))
@@ -169,6 +180,13 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 					articles[art_ID].add_binary(prop_rev)
 
 	arts = [a for artID, a in articles.items()]
+
+	# for art in arts:
+	# 	start_size = len(art.selected_binary_props)
+	# 	art.selected_binary_props = [p for p in art.selected_binary_props if not p.types[0].endswith('_2')]
+	# 	end_size = len(art.selected_binary_props)
+	# 	if start_size != end_size:
+	# 		print('removed {} props ({:.2f}%)'.format(start_size - end_size, (start_size - end_size)/start_size))
 
 	for art in arts:
 		art.sents = [s for line_ID, s in sorted(art.sents)]
