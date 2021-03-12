@@ -81,10 +81,11 @@ def reject_unary(pred: str) -> bool:
 	return False
 
 def reject_binary(pred: str) -> bool:
-	if pred.find('(') != 0 or pred.count(',') != 1:
+	# if pred.find('(') != 0 or pred.count(',') != 1: #changed on Mar 11 2021
+	if pred.find('(') == -1 or pred.count(',') != 1:
 		return True
 
-	pred = pred[1:pred.find(')')]
+	pred = pred[pred.find('(')+1:pred.find(')')]
 	parts = pred.split(',')
 
 	# filter out malformed extractions e.g. (1,with.2)#person#thing

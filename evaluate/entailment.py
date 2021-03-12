@@ -49,14 +49,16 @@ class EntailmentGraph:
 	stage = None
 	nodes = set()
 	backmap = defaultdict(set)
-	# edges = defaultdict(list)
+	edges = defaultdict(set)
 	
-	def __init__(self, fname):
+	def __init__(self, fname, keep_forward=False):
 		nodes, edges = self.read_graph_from_file(fname)
 		backmap = self._backmap_antecedents(edges)
 
 		self.nodes = nodes
 		self.backmap = backmap
+		if keep_forward:
+			self.edges = edges
 
 	# def get_entailments(self, pred):
 	# 	if pred not in self.nodes:
@@ -64,7 +66,7 @@ class EntailmentGraph:
 	# 	else:
 	# 		return self.edges[pred]
 
-	def get_antecedents(self, pred):
+	def get_antecedents(self, pred) -> Set[Entailment]:
 		if not pred in self.nodes:
 			return set()
 		else:

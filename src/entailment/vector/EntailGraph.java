@@ -9,15 +9,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import constants.ConstantsAgg;
-import edu.uw.easysrl.semantics.Constant;
 import entailment.randWalk.RandWalkMatrix;
 import entailment.vector.EntailGraphFactoryAggregator.LinkPredModel;
 import entailment.vector.EntailGraphFactoryAggregator.ProbModel;
-
-import static java.lang.System.exit;
 
 public class EntailGraph extends SimpleEntailGraph {
 
@@ -927,12 +923,19 @@ public class EntailGraph extends SimpleEntailGraph {
 //		String featName_sub = featNames[0] + "-" + typeNames[0];
 //		String featName_obj = featNames[1] + "-" + typeNames[1];
 //
-//		addArgumentwisePredicate(pred_1, featName_sub, timeInterval, count, threshold, preComputedScore);
-//		addArgumentwisePredicate(pred_2, featName_obj, timeInterval, count, threshold, preComputedScore);
+//		addPredicate(pred_1, featName_sub, timeInterval, count, threshold, preComputedScore);
+//		addPredicate(pred_2, featName_obj, timeInterval, count, threshold, preComputedScore);
 //	}
 
     void  addBinaryPredicate(String pred, String featName, String timeInterval, double count, double threshold,
 							double preComputedScore) {
+		// If building binary graphs
+		if (!ConstantsAgg.generateArgwiseGraphs) {
+			addPredicate(pred, featName, timeInterval, count, threshold, preComputedScore);
+			return;
+		}
+
+		// Otherwise building argwise graphs...
 		int role_idx = pred.indexOf(")") + 1;
 		String[] featNames = featName.split("#");
 		String[] typeNames = pred.substring(role_idx+1).split("#");
@@ -944,19 +947,19 @@ public class EntailGraph extends SimpleEntailGraph {
 		String featName_arg1 = featNames[0] + "-" + graphTypes[0];
 		String featName_arg2 = featNames[1] + "-" + graphTypes[1];
 
-		addArgumentwisePredicate(pred_arg1, featName_arg1, timeInterval, count, threshold, preComputedScore);
-		addArgumentwisePredicate(pred_arg2, featName_arg2, timeInterval, count, threshold, preComputedScore);
+		addPredicate(pred_arg1, featName_arg1, timeInterval, count, threshold, preComputedScore);
+		addPredicate(pred_arg2, featName_arg2, timeInterval, count, threshold, preComputedScore);
 	}
 
 	void addUnaryPredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
 		String pred_unary = "[unary]" + pred;
 		String type = pred.split("#")[1];
 		String featName_unary = featName + "-" + type;
-		addArgumentwisePredicate(pred_unary, featName_unary, timeInterval, count, threshold, preComputedScore);
+		addPredicate(pred_unary, featName_unary, timeInterval, count, threshold, preComputedScore);
 	}
 
 	//	void addBinaryRelation(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
-	void addArgumentwisePredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
+	void addPredicate(String pred, String featName, String timeInterval, double count, double threshold, double preComputedScore) {
 
 		if (!predToIdx.containsKey(pred)) {
 			PredicateVector pvec = new PredicateVector(pred, predToIdx.size(), this);

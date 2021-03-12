@@ -16,23 +16,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.management.RuntimeErrorException;
 
+import com.google.common.collect.Sets;
 import eu.excitementproject.eop.globalgraphoptimizer.defs.Constants;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
@@ -89,6 +80,14 @@ public class Util {
 	private static Map<String, Boolean> entToFigerONLYNE = null;
 	static String[] goodPart2s = new String[] { "1", "2", "3" };
 	public static Set<String> pronouns;// TODO: remove this. This should be done in parsing!
+
+	public static final Set<String> MODAL_VERBS = new HashSet<>(Arrays.asList("can", "may", "must", "could", "would", "should", "might", "shall", "will", "ought"));
+	public static final Set<String> AUXILIARY_VERBS = Sets.union(MODAL_VERBS, new HashSet<>(Arrays.asList("do", "have"))); // and "be" but we like the copula!
+	public static final Set<String> LIGHT_VERBS = new HashSet<>(Arrays.asList("take", "make"));
+	public static final Set<String> REPORTING_VERBS = new HashSet<>(Arrays.asList("say"));
+	public static final Set<String> PREPOSITIONS = new HashSet<>(Arrays.asList("about", "beside", "near", "to", "above", "between", "of", "towards", "across", "beyond", "off", "under", "after", "by", "on", "underneath", "against", "despite", "onto", "unlike", "along", "down", "opposite", "until", "among", "during", "out", "up", "around", "except", "outside", "upon", "as", "for", "over", "via", "at", "from", "past", "with", "before", "in", "round", "within", "behind", "inside", "since", "without", "below", "into", "than", "beneath", "like", "through"));
+	public static final Set<Character> NUMERALS = new HashSet<>(Arrays.asList('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'));
+	public static final Set<Character> MISC_CHARS = new HashSet<>(Arrays.asList('$', '&', '#', '`'));
 
 	static HashSet<String> goodPart2sSet = new HashSet<String>();
 	static {

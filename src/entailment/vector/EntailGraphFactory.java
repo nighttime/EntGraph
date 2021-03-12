@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.google.common.collect.Sets;
 import com.google.gson.*;
 
 import constants.ConstantsAgg;
@@ -704,9 +705,21 @@ public class EntailGraphFactory implements Runnable {
 			return;
 		}
 
-		// Skip if: the pred is a reporting verb
-		if (pred.startsWith("say.")) {
+		// Skip if: the pred is a reporting verb or auxiliary or preposition
+		String basicPred = pred.substring(pred.indexOf("__")+2, pred.indexOf("."));
+		if (Util.AUXILIARY_VERBS.contains(basicPred) || Util.PREPOSITIONS.contains(basicPred) || Util.REPORTING_VERBS.contains(basicPred)) {
 			return;
+		}
+
+		// Skip if: the pred is somehow messed up
+		if (pred.contains(".e.")) {
+			return;
+		}
+
+		for (char c : Sets.union(Util.NUMERALS, Util.MISC_CHARS)) {
+			if (pred.indexOf(c) >= 0) {
+				return;
+			}
 		}
 
 		// Predicate lemmatization / normalization
