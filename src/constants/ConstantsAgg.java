@@ -31,8 +31,8 @@ public class ConstantsAgg {
 	
 
 	// cutoffs
-	public static int minArgPairForPred = 3;// 100;
-	public static int minPredForArgPair = 3;// 20;// min num of unique predicates for argpair
+	public static int minArgPairForPred = 10;// 100;
+	public static int minPredForArgPair = 10;// 20;// min num of unique predicates for argpair
 	// when NS based num aps, we allow x aps for each pred, even if not in NS
 	public static int numArgPairsNSBasedAlwaysAllowed = 0;// default: 10
 	public static int numTopTypePairs = 20;// the big types, used in NSbased sizes
@@ -55,13 +55,15 @@ public class ConstantsAgg {
 
 //	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
 //	public static String relAddress = "../relExtract/liane_newsspike_bin_un_3/newsspike_gen.json"; // Used for NAACL 2021 submission
-	public static String relAddress = "../relExtract/liane_newsspike_mv_5_mods_no_bare_pred_lneg/news_gen.json";
+//	public static String relAddress = "../relExtract/liane_newsspike_mv_5_mods_no_bare_pred_lneg/news_gen.json";
+	public static String relAddress = "news_gen_argwise/newscrawl/newscrawl_easyccg/news_genC_GG.json";
 //	public static String relAddress = "news_gen_argwise/newsspike/news_gen_argwise_100k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
-	public static String simsFolder = "newsspike_sims/newsspike_mv_bb_" + minArgPairForPred + "_" + minPredForArgPair + "_lneg";
+	public static String simsFolder = "newscrawl_sims/newscrawl_siva_easyccg_bb_" + minArgPairForPred + "_" + minPredForArgPair;
+//	public static String simsFolder = "newsspike_sims/newsspike_mv_bb_" + minArgPairForPred + "_" + minPredForArgPair + "_lneg";
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + minArgPairForPred + "_" + minPredForArgPair;

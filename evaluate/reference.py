@@ -6,7 +6,9 @@ try:
 except:
 	RUNNING_LOCAL = bool(int(open('../RUNNING_LOCAL').readline()))
 
-GRAPH_BACKOFF = False
+FINISH_TIME = None
+
+GRAPH_BACKOFF = None
 
 K_UNARY_ENT_MENTIONS = 6
 K_BINARY_ENT_MENTIONS = 6
@@ -79,3 +81,14 @@ PREPOSITIONS = {
 BAR_LEN = 50
 BAR = '=' * BAR_LEN
 bar = '-' * BAR_LEN
+
+class tcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKCYAN = '\033[96m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'

@@ -101,8 +101,8 @@ def generate_questions(partition: List[Article],
 	# most_common_u = [e for e, count in ent_counts_u.most_common() if count >= reference.K_UNARY_ENT_MENTIONS]
 	most_common_b = [es for es, count in ent_counts_b.most_common() if count >= reference.K_BINARY_ENT_MENTIONS]
 
-	top_most_common_u = most_common_u[:num_arts*2]
-	top_most_common_b = most_common_b[:num_arts*2]
+	top_most_common_u = most_common_u[:num_arts]
+	top_most_common_b = most_common_b[:num_arts]
 
 	# most_common_ents = most_common_u.union(most_common_b)
 
@@ -584,9 +584,9 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 			pred_relations = random.sample(rels, len(rels))
 
 			# Filter potential relations
-			if filter_dict and query_word in filter_dict:
-				filter_out = filter_dict[query_word]
-				pred_relations = [p for p in pred_relations if p not in filter_out]
+			# if filter_dict and query_word in filter_dict:
+			# 	filter_out = filter_dict[query_word]
+			# 	pred_relations = [p for p in pred_relations if p not in filter_out]
 
 			confirmed_swaps = []
 			for a, relation in enumerate(pred_relations):

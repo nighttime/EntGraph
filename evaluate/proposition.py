@@ -106,6 +106,26 @@ def binary_pred_root(prop: Prop) -> str:
 
 	return '.'.join(pred_parts_l[:i])
 
+def extract_predicate_base(pred: str) -> str:
+	unary = '(' not in pred
+	mod = ''
+	if '__' in pred:
+		mod, pred = pred.split('__')
+
+	if unary:
+		parts = pred.split('.')[:-1]
+	else:
+		parts = pred[pred.index(',')+1:pred.index(')')].split('.')[:-1]
+
+	if unary and parts[0] == 'be':
+		parts = parts[1:]
+
+	# if len(parts) > 1 and parts[-1] in reference.PREPOSITIONS:
+	# 	parts = parts[:-1]
+
+	return ' '.join(parts).replace('-', ' ')
+
+# DEPRECATED
 def extract_predicate_base_term(pred: str) -> str:
 	if all(c in pred for c in '(,)'):
 		parts = pred.split(',')[0].split('.')

@@ -10,6 +10,7 @@ import datetime
 import numpy as np
 from sklearn import metrics
 
+import reference
 import utils
 from proposition import *
 from entailment import *
@@ -181,6 +182,8 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		resources.append('B->U graphs')
 	if ARGS.sim_cache:
 		resources.append('Similarity cache')
+	if ARGS.ppdb:
+		resources.append('PPDB')
 	print('* Using evidence from:', str(resources))
 
 	question_modes = set()
@@ -197,9 +200,9 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		if not ARGS.quick:
 			answer_modes.add('BU')
 
-	if ARGS.backoff:
-		reference.GRAPH_BACKOFF = True
-		print('* Answer modes:', answer_modes, '[+Backoff]')
+	if ARGS.backoff != 'none':
+		reference.GRAPH_BACKOFF = ARGS.backoff
+		print('* Answer modes:', answer_modes, '[+Backoff {}]'.format(ARGS.backoff))
 	else:
 		print('* Answer modes:', answer_modes)
 
@@ -219,7 +222,22 @@ def run_evaluate() -> Tuple[List[List[Article]],
 				graphs = read_graphs(graph_dir, stage)
 			else:
 				graphs = read_precomputed_EGs(graph_dir)
-			print('Graphs read: {}'.format(len(graphs)))
+
+			# Count nodes and edges
+			# nodes = 0
+			# edges = 0
+			# toU_edges = 0
+			# for g in set(graphs.values()):
+			# 	antecedents = [e.pred for e_set in g.backmap.values() for e in e_set]
+			# 	print(g.typing, 'nodes', len(set(antecedents)), 'edges', len(antecedents))
+			# 	nodes += len(set(antecedents))
+			# 	edges += len(antecedents)
+			# 	toU = sum([len(g.backmap[ent]) for ent in g.backmap.keys() if ent.count('#') == 1])
+			# 	toU_edges += toU
+			#
+			# print('Graphs read: {}'.format(len(graphs)))
+			# print('antecedents: {} entailments: {}'.format(nodes, edges))
+			# print('edges: ? -> U {}'.format(toU_edges))
 			return graphs
 
 	uu_graphs = load_graphs(ARGS.uu_graphs, 'Reading U->U graphs...')
@@ -227,6 +245,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		print('! Mode is not set properly. Remember to turn off local mode!')
 		exit(1)
 	bu_graphs = load_graphs(ARGS.bu_graphs, 'Reading B->U graphs...')
+	print()
 
 	if uu_graphs:
 		models['UU'] = uu_graphs
@@ -234,6 +253,15 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		models['BU'] = bu_graphs
 
 	utils.checkpoint()
+
+	ppdb = None
+	if ARGS.ppdb:
+		print(bar)
+		print('Reading PPDB...')
+		ppdb = ppdb_reader.load_ppdb(ARGS.ppdb)
+		models['PPDB'] = ppdb
+		utils.checkpoint()
+
 	print(BAR)
 
 	# Read in entity type cache
@@ -256,18 +284,19 @@ def run_evaluate() -> Tuple[List[List[Article]],
 			models['BERT'] = sim_cache_bert
 			found = True
 			print('Loaded BERT...', end=' ', flush=True)
-		except: pass
+		except:
+			print(reference.tcolors.FAIL + 'FAILED to load BERT...' + reference.tcolors.ENDC, end=' ', flush=True)
 		try:
 			sim_cache_roberta = load_similarity_cache(cache_location, 'roberta')
 			models['RoBERTa'] = sim_cache_roberta
 			found = True
 			print('Loaded RoBERTa...', end=' ', flush=True)
-		except: pass
+		except:
+			print(reference.tcolors.FAIL + 'FAILED to load RoBERTa...' + reference.tcolors.ENDC, end=' ', flush=True)
 		print()
 		if not found:
-			print('! No cached model data was found. Quitting.')
+			print(reference.tcolors.FAIL + '! No cached model data was found. Quitting.' + reference.tcolors.ENDC)
 			exit(1)
-
 
 	# Read in news articles
 	print('Reading source articles & auxiliary data...')
@@ -276,26 +305,27 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	if ARGS.test_mode:
 		swap_folder = os.path.join(swap_folder, 'test_data')
 	negative_swaps = read_substitution_pairs(os.path.join(swap_folder, 'substitution_pairs.json'))
-	ppdb = None
-	if ARGS.filter_qs:
-		print('Reading PPDB data...')
-		ppdb = ppdb_reader.load_ppdb(ARGS.data_folder)
 
 	# Generate questions from Q
 	print('Generating questions...', end=' ', flush=True)
-	partitions, P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles, question_modes, negative_swaps=negative_swaps, uu_graphs=uu_graphs, bu_graphs=bu_graphs, filter_dict=ppdb)
-	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	partitions, P_list, N_list, evidence_list, top_pred_cache = generate_tf_question_sets(articles,
+																						  question_modes,
+																						  negative_swaps=negative_swaps,
+																						  uu_graphs=uu_graphs,
+																						  bu_graphs=bu_graphs,
+																						  filter_dict=None)
+	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs, ppdb)
 	print()
 
 	if ARGS.graph_qs:
 		print('Selecting only questions with hits in the graphs')
 		P_list, N_list = select_answerable_qs(P_list, N_list, uu_graphs, bu_graphs)
-		utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+		utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs, ppdb)
 		print()
 
 	print('Balancing questions...')
 	P_list, N_list = rebalance_qs(P_list, N_list, pct_unary=0.5, pct_pos=0.5)
-	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs)
+	utils.analyze_questions(P_list, N_list, uu_graphs, bu_graphs, ppdb)
 	print()
 
 	# if ARGS.graph_qs:
@@ -357,14 +387,14 @@ def run_evaluate() -> Tuple[List[List[Article]],
 			results['BU'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU', eval_fun, models, answer_modes)
 
 	# if uu_graphs and bu_graphs:
-		# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
-		# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-		# print(bar)
-		# print('U->U and B->U')
-		# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
-		# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
-		# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
-		# utils.checkpoint()
+	# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
+	# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
+	# print(bar)
+	# print('U->U and B->U')
+	# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
+	# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
+	# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
+	# utils.checkpoint()
 
 	if ARGS.sim_cache:
 		if 'BERT' in models:
@@ -373,6 +403,11 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		if 'RoBERTa' in models:
 			answer_modes = {'RoBERTa'}
 			results['RoBERTa'] = run_tf_sets(Q_list, A_list, evidence_list, 'RoBERTa', eval_fun, models, answer_modes)
+
+	if ARGS.ppdb:
+		print(bar)
+		answer_modes = {'PPDB'}
+		results['PPDB'] = run_tf_sets(Q_list, A_list, evidence_list, 'PPDB', eval_fun, models, answer_modes)
 
 	# else:
 	# 	results['*exact-match'] = run_tf_sets(Q_list, A_list, evidence_list, 'form-dependent baseline', eval_fun, models, answer_modes)
@@ -383,7 +418,10 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	# 		label = ('U->U' if uu_graphs else '') + (' and ' if uu_graphs and bu_graphs else '') + ('B->U' if bu_graphs else '')
 	# 		results[label] = run_tf_sets(Q_list, A_list, evidence_list, label, eval_fun=eval_fun, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
 
+	reference.FINISH_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
+
 	if ARGS.save_results:
+		print(bar)
 		utils.save_results_on_file(ARGS.data_folder, Q_list, A_list, results)
 
 	if ARGS.plot:
@@ -404,15 +442,16 @@ parser.add_argument('news_gen_file', help='Path to file used for partition into 
 parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
 parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
 parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
-parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to assist question answering (file must be located in data folder)')
-parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
+parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to answer questions (file must be located in data folder)')
+# parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
 # parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
+parser.add_argument('--ppdb', help='Path to PPDB to answer questions')
 parser.add_argument('--text-EGs', action='store_true', help='Read in plain-text entailment graphs from a folder')
 parser.add_argument('--local', action='store_true', help='Read in local entailment graphs (default is global)')
 parser.add_argument('--eval-fun', default='acc', help='Evaluate results using the specified test function')
 # parser.add_argument('--day-range', type=int, default=0, help='Evidence window around the day questions are drawn from (extends # days in both directions)')
 parser.add_argument('--graph-qs', action='store_true', help='Ask only questions which have hits in the graph')
-parser.add_argument('--backoff', action='store_true', help='Back off to wrong-type graphs if right-type graphs can\'t answer')
+parser.add_argument('--backoff', default='none', choices=['none', 'node', 'edge'], help='Back off to wrong-type graphs if right-type graphs can\'t answer')
 
 parser.add_argument('--test-mode', action='store_true', help='Use test set data (default is dev set)')
 

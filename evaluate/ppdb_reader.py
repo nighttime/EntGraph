@@ -8,40 +8,44 @@ from typing import *
 lemmatizer = nltk.stem.wordnet.WordNetLemmatizer()
 
 # def load_ppdb(fpath: str) -> Dict[str, Dict[str, Set[str]]]:
-def load_ppdb(fpath: str) -> Optional[Dict[str, Set[str]]]:
-	fname = next(f for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)) and f.startswith('ppdb-'))
-	ppdb = defaultdict(set)
+def load_ppdb(fpath: str) -> Optional[Dict[str, Dict[str, float]]]:
+	# fname = next(f for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)) and f.startswith('ppdb-'))
+	ppdb = defaultdict(lambda: defaultdict(float))
 	pos_types = Counter()
 
-	with open(os.path.join(fpath, fname)) as f:
+	# with open(os.path.join(fpath, fname)) as f:
+	with open(fpath) as f:
 		for line in f:
 			parts = line.split('|||')
 
 			pos = parts[0].strip()
-			if not pos.startswith('[VB'):
-				continue
+			# if not (pos.startswith('[VB') or pos.startswith('[NP')):
+			# 	continue
 			pos_types[pos] += 1
+			pos_id = pos[1].lower()
 
 			kinds = ['Equivalence', 'ForwardEntailment', 'ReverseEntailment', 'Independent', 'OtherRelated']
-			# features = {f[0]:float(f[1]) for f in [p.split('=') for p in parts[3].split()] if f[0] in kinds}
-			# assert 0.95 < sum(features.values()) < 1.05
-			# for k in kinds:
-			# 	if k not in features:
-			# 		features[k] = 0
 			pp_kind = parts[-1].strip()
-			if pp_kind not in ['Equivalence', 'ForwardEntailment', 'OtherRelated']:
+			if pp_kind not in ['Equivalence', 'ForwardEntailment']:
 				continue
+
+			# features = {f[0]:float(f[1]) for f in [p.split('=') for p in parts[3].split()] if f[0] in kinds}
+			features = dict([tuple(f.split('=')) for f in parts[3].split()])
+			score = float(features['PPDB2.0Score'])
+
 			# if features['Equivalence'] < 0.2 or features['ForwardEntailment'] < 0.2:
 			# 	continue
 
 			w1 = parts[1].strip()
 			w2 = parts[2].strip()
-			l1 = lemmatizer.lemmatize(w1, 'v')
-			l2 = lemmatizer.lemmatize(w2, 'v')
+			# l1 = lemmatizer.lemmatize(w1, pos_id)
+			# l2 = lemmatizer.lemmatize(w2, pos_id)
 
 			# ppdb[l1][pp_kind].add(l2)
-			ppdb[l1].add(l2)
+			# ppdb[l1].add(l2)
 			# ppdb[w1].add(w2)
+			# ppdb[l2][l1] = score
+			ppdb[w2][w1] = score
 
 	return ppdb
 

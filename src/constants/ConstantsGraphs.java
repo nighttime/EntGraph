@@ -8,7 +8,8 @@ public class ConstantsGraphs {
 //	public static String root = "../../python/gfiles/typedEntGrDirC_NSBased_10_3thing_80_location_thing_times4_f20_GG_UT_back_noGGThing_hier/";
 //	public static String root = "/home/nick/Documents/datasets/entgraphs/newsspike/";
 //	public static String root = "/home/nick/Documents/entgraph/EntGraph/sims/newscrawl_modifiers_3_3/";
-	public static String root = "newsspike_sims/newsspike_mv_uv_local_4_4_nosay_top100U/";
+//	public static String root = "newsspike_sims/newsspike_mv_uv_local_4_4_nosay_top100U/";
+	public static String root = "../share/tacl_javad_binary_graphs_local/";
 //	public static String root = "newsspike_sims/newsspike_mv_bu_localmerged_3_3_top100U_sample/";
 //	public static String root = "newsspike_sims/newsspike_mv_dual_4_4_top100U/";
 //	public static String root = "newsspike_sims/newsspike_mv_mono_4_4_top100U/";

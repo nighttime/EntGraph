@@ -1,3 +1,5 @@
+from __future__ import annotations
+import argparse
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
@@ -49,40 +51,57 @@ class EntailmentGraph:
 	stage = None
 	nodes = set()
 	backmap = defaultdict(set)
-	edges = defaultdict(set)
+	edges = defaultdict(list)
 	
-	def __init__(self, fname, keep_forward=False):
-		nodes, edges = self.read_graph_from_file(fname)
-		backmap = self._backmap_antecedents(edges)
+	def __init__(self, fname: Optional[str] = None, keep_forward: bool = False):
+		if fname == None:
+			return
+		nodes, edges = self._read_graph_from_file(fname)
+		self._configure_graph(nodes, edges, keep_forward)
 
-		self.nodes = nodes
-		self.backmap = backmap
-		if keep_forward:
-			self.edges = edges
+	def get_entailments(self, pred):
+		if pred not in self.nodes:
+			return []
+		else:
+			return self.edges[pred]
 
-	# def get_entailments(self, pred):
-	# 	if pred not in self.nodes:
-	# 		return []
-	# 	else:
-	# 		return self.edges[pred]
-
-	def get_antecedents(self, pred) -> Set[Entailment]:
-		if not pred in self.nodes:
+	def get_antecedents(self, pred) -> Set[BackEntailment]:
+		if pred not in self.nodes:
 			return set()
 		else:
 			return self.backmap[pred]
 
-	def get_antecedents_bare_pred(self, barepred):
+	def get_antecedents_bare_pred(self, barepred: str) -> Set[BackEntailment]:
 		forward = self.get_antecedents(barepred + '#' + self.typing)
 		backward = self.get_antecedents(barepred + '#' + self.reverse_typing)
 		return forward | backward
 
-	def _backmap_antecedents(self, edges):
+	def _configure_graph(self, nodes: Set[str], edges: Dict[str, List[Entailment]], keep_forward: bool):
+		backmap = self._backmap_antecedents(edges)
+		self.nodes = nodes
+		self.backmap = backmap
+		self.edges = edges if keep_forward else None
+
+	def _configure_metadata(self, typing: str, space: EGSpace, stage: EGStage):
+		self.typing = typing
+		self.reverse_typing = '#'.join(list(reversed(typing.split('#'))))
+		self.space = space
+		self.stage = stage
+
+	def _backmap_antecedents(self, edges: Dict[str, List[Entailment]]) -> Dict[str, Set[BackEntailment]]:
 		backmap = defaultdict(set)
 		for k,vlist in edges.items():
 			for v in vlist:
 				backmap[v.pred].add(BackEntailment(k, v.score))
 		return backmap
+
+	@classmethod
+	def from_edges(cls, edges: Dict[str, List[Entailment]], typing: str, space: EGSpace, stage: EGStage, keep_forward: bool = False) -> EntailmentGraph:
+		new_graph = EntailmentGraph()
+		new_graph._configure_metadata(typing, space, stage)
+		nodes = set(edges.keys())
+		new_graph._configure_graph(nodes, edges, keep_forward)
+		return new_graph
 
 	@classmethod
 	def _strip_tag(cls, pred):
@@ -98,13 +117,14 @@ class EntailmentGraph:
 			return '#'.join(pred_parts[:2])
 		return pred
 
-	def normalize_pred(self, pred):
-		pred = EntailmentGraph._strip_tag(pred)
-		pred = EntailmentGraph._unary_strip_second_type(pred)
-		return pred
+	@classmethod
+	def normalize_pred(cls, pred: str):
+		clean_pred = EntailmentGraph._strip_tag(pred)
+		clean_pred = EntailmentGraph._unary_strip_second_type(clean_pred)
+		return clean_pred
 
 
-	def read_graph_from_file(self, fname):
+	def _read_graph_from_file(self, fname: str) -> Tuple[Set[str], Dict[str, List[Entailment]]]:
 		nodes = set()
 		edges = defaultdict(list)
 
@@ -140,7 +160,7 @@ class EntailmentGraph:
 
 				if line.startswith('predicate:'):
 					pred = line[line.index(':')+2:]
-					current_pred = self.normalize_pred(pred)
+					current_pred = EntailmentGraph.normalize_pred(pred)
 					self.nodes.add(current_pred)
 
 				if any(t in line for t in ['BInc sims', 'iter 1 sims', 'global sims']):
@@ -152,7 +172,10 @@ class EntailmentGraph:
 
 						pred, score_text = line.split()
 						score = float(score_text)
-						pred = self.normalize_pred(pred)
+						if score < 0.01:
+							continue
+
+						pred = EntailmentGraph.normalize_pred(pred)
 
 						nodes.add(pred)
 						edges[current_pred].append(Entailment(pred, score))
@@ -165,6 +188,29 @@ class EntailmentGraph:
 				line = next(file, None)
 
 		return nodes, edges
+
+	def write_to_file(self, fpath: str):
+		with open(fpath, 'w+') as file:
+			if self.stage == EGStage.LOCAL:
+				file.write('types: {}, num preds: {}\n'.format(self.typing, len(self.nodes)))
+			else:
+				file.write('{}  type propagation num preds: {}\n'.format(self.typing, len(self.nodes)))
+
+			for pred, edges in self.edges.items():
+				file.write('predicate: {}\n'.format(pred))
+				file.write('num neighbors: {}\n'.format(len(edges)))
+				file.write('\n')
+				if self.stage == EGStage.LOCAL:
+					file.write('BInc sims\n')
+				else:
+					file.write('global sims\n')
+
+				for edge in edges:
+					file.write('{} {:.4f}\n'.format(edge.pred, edge.score))
+
+				file.write('\n\n')
+
+			return file
 
 # Type definitions
 EGraphCache = Dict[str, EntailmentGraph]
@@ -179,11 +225,11 @@ def query_all_graphs_for_prop(claim: Prop, ent_graphs: EGraphCache) -> List[Set[
 def prop_recognized_in_graphs(prop: Prop, graphs: EGraphCache) -> bool:
 	return any(len(a) > 0 for a in query_all_graphs_for_prop(prop, graphs))
 
-def read_graphs(graph_dir: str, stage: EGStage) -> EGraphCache:
+def read_graphs(graph_dir: str, stage: EGStage, keep_forward=False) -> EGraphCache:
 	(_, _, filenames) = next(os.walk(graph_dir))
 	exts = ['sim'] if stage == EGStage.LOCAL else ['binc', 'gsim']
 	graph_fpaths = [os.path.join(graph_dir, fname) for fname in filenames if any(fname.endswith('_' + ext + '.txt') for ext in exts)]
-	graphs = list(filter(lambda x: x.typing is not None, [EntailmentGraph(g) for g in graph_fpaths]))
+	graphs = list(filter(lambda x: x.typing is not None, [EntailmentGraph(g, keep_forward=keep_forward) for g in graph_fpaths]))
 	g_forward = {g.typing: g for g in graphs}
 	g_reverse = {g.reverse_typing: g for g in graphs}
 	return {**g_forward, **g_reverse}
@@ -192,7 +238,7 @@ def read_graphs(graph_dir: str, stage: EGStage) -> EGraphCache:
 _UU_EG_fname = 'UU_EGs.pkl'
 _BU_EG_fname = 'BU_EGs.pkl'
 
-def save_EGs(egcache: EGraphCache, fname: str, egspace: EGSpace):
+def save_EGs(egcache: EGraphCache, fname: str):
 	with open(fname + '.pkl', 'wb+') as f:
 		pickle.dump(egcache, f, pickle.HIGHEST_PROTOCOL)
 
@@ -216,16 +262,25 @@ def load_similarity_cache(folder: str, model: str) -> EmbeddingCache:
 	return EmbeddingCache(cache, cache_map)
 
 
-if __name__ == '__main__':
-	if len(sys.argv) != 5:
-		print('Cache EGraphs: <-g|-l> <type space: 1 or 2> <graph dir> <output cache dir>')
-	graph_stage = EGStage.GLOBAL if sys.argv[1] == '-g' else EGStage.LOCAL
-	egspace = {'1': EGSpace.ONE_TYPE, '2': EGSpace.TWO_TYPE}[sys.argv[2]]
-	in_dir = sys.argv[3]
-	out_dir = sys.argv[4]
+def main():
+	global ARGS
+	ARGS = parser.parse_args()
 
-	print('Reading graphs from', in_dir)
-	egcache = read_graphs(in_dir, stage=graph_stage)
-	print('Writing cache to', out_dir)
-	save_EGs(egcache, out_dir, egspace)
+	graph_stage = EGStage.GLOBAL if ARGS.stage == 'global' else EGStage.LOCAL
+	# egspace = EGSpace.ONE_TYPE if ARGS.valence == 'uv' else EGSpace.TWO_TYPE
+
+	print('Reading graphs from', ARGS.graphs)
+	egcache = read_graphs(ARGS.graphs, stage=graph_stage, keep_forward=ARGS.keep_forward)
+	print('Writing cache to', ARGS.outdir)
+	save_EGs(egcache, ARGS.outdir)
+
+parser = argparse.ArgumentParser(description='Read in and cache an entailment graph for easy use later')
+parser.add_argument('graphs', help='Folder of raw graph files')
+parser.add_argument('outdir', help='location to place output graph cache')
+# parser.add_argument('--valence', required=True, choices=['uv', 'bv'], help='Graph valence: bv (bivalent; entailments from binaries) or uv (univalent; entailments from unaries)')
+parser.add_argument('--stage', required=True, choices=['local', 'global'], help='Graph stage: local or global')
+parser.add_argument('--keep-forward', action='store_true', help='keep forward direction (otherwise only backward)')
+
+if __name__ == '__main__':
+	main()
 

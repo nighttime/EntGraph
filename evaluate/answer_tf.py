@@ -5,7 +5,7 @@ from proposition import *
 from entailment import *
 from article import *
 from analyze import *
-from run import *
+from mv_run import *
 import reference
 
 import pdb
@@ -156,6 +156,12 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 				score = max(score, sim_score)
 				prediction_support[-1]['RoBERTa'] = sim_support
 
+		if 'PPDB' in answer_modes:
+			sim_score, sim_support = infer_claim_ppdb(c, arg_facts_u, arg_facts_b, models['PPDB'])
+			if sim_support:
+				score = max(score, sim_score)
+				prediction_support[-1]['PPDB'] = sim_support
+
 		predictions.append(score)
 
 	return predictions, prediction_support
@@ -184,24 +190,26 @@ def infer_claim_UU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 			support = ant_support
 
 	# Back off to other graphs
-	if reference.GRAPH_BACKOFF:
-		if len(antecedents) == 0:
-			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
-			evidence_props = arg_cache[claim.args[0]]
-			found_edges = defaultdict(int)
-			score_sum = defaultdict(float)
-			for antecedents in antecedents_list:
-				for ant in antecedents:
-					for p,i in evidence_props:
-						if len(p.args) == 1 and ant.pred.split('#')[0] == p.pred:
-							found_edges[p] += 1
-							score_sum[p] += ant.score
+	backoff_node = reference.GRAPH_BACKOFF == 'node' and len(antecedents) == 0
+	backoff_edge = reference.GRAPH_BACKOFF == 'edge' and support is None
 
-			backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
-			for p, s in backoff_scores.items():
-				if s > score:
-					score = s
-					support = p
+	if backoff_node or backoff_edge:
+		antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+		evidence_props = arg_cache[claim.args[0]]
+		found_edges = defaultdict(int)
+		score_sum = defaultdict(float)
+		for antecedents in antecedents_list:
+			for ant in antecedents:
+				for p,i in evidence_props:
+					if len(p.args) == 1 and ant.pred.split('#')[0] == p.pred:
+						found_edges[p] += 1
+						score_sum[p] += ant.score
+
+		backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
+		for p, s in backoff_scores.items():
+			if s > score:
+				score = s
+				support = p
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
@@ -245,24 +253,26 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 							break
 
 	# Back off to other graphs
-	if reference.GRAPH_BACKOFF:
-		if not found_node:
-			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
-			evidence_props = arg_cache[claim.args[0]]
-			found_edges = defaultdict(int)
-			score_sum = defaultdict(float)
-			for antecedents in antecedents_list:
-				for ant in antecedents:
-					for p, i in evidence_props:
-						if len(p.args) == 2 and ant.pred.split('#')[0] == p.pred:
-							found_edges[p] += 1
-							score_sum[p] += ant.score
+	backoff_node = reference.GRAPH_BACKOFF == 'node' and not found_node
+	backoff_edge = reference.GRAPH_BACKOFF == 'edge' and support is None
 
-			backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
-			for p, s in backoff_scores.items():
-				if s > score:
-					score = s
-					support = p
+	if backoff_node or backoff_edge:
+		antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+		evidence_props = arg_cache[claim.args[0]]
+		found_edges = defaultdict(int)
+		score_sum = defaultdict(float)
+		for antecedents in antecedents_list:
+			for ant in antecedents:
+				for p, i in evidence_props:
+					if len(p.args) == 2 and ant.pred.split('#')[0] == p.pred:
+						found_edges[p] += 1
+						score_sum[p] += ant.score
+
+		backoff_scores = {k: score_sum[k] / found_edges[k] for k, v in found_edges.items()}
+		for p, s in backoff_scores.items():
+			if s > score:
+				score = s
+				support = p
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
@@ -288,24 +298,26 @@ def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 			support = ant_support
 
 	# Back off to other graphs
-	if reference.GRAPH_BACKOFF:
-		if len(antecedents) == 0:
-			antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
-			evidence_props = arg_cache[tuple(sorted(claim.args))]
-			found_edges = defaultdict(int)
-			score_sum = defaultdict(float)
-			for antecedents in antecedents_list:
-				for ant in antecedents:
-					for p in evidence_props:
-						if ant.pred.split('#')[0] == p.pred:
-							found_edges[p] += 1
-							score_sum[p] += ant.score
+	backoff_node = reference.GRAPH_BACKOFF == 'node' and len(antecedents) == 0
+	backoff_edge = reference.GRAPH_BACKOFF == 'edge' and support is None
 
-			backoff_scores = {k:score_sum[k]/found_edges[k] for k,v in found_edges.items()}
-			for p,s in backoff_scores.items():
-				if s > score:
-					score = s
-					support = p
+	if backoff_node or backoff_edge:
+		antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
+		evidence_props = arg_cache[tuple(sorted(claim.args))]
+		found_edges = defaultdict(int)
+		score_sum = defaultdict(float)
+		for antecedents in antecedents_list:
+			for ant in antecedents:
+				for p in evidence_props:
+					if ant.pred.split('#')[0] == p.pred:
+						found_edges[p] += 1
+						score_sum[p] += ant.score
+
+		backoff_scores = {k:score_sum[k]/found_edges[k] for k,v in found_edges.items()}
+		for p,s in backoff_scores.items():
+			if s > score:
+				score = s
+				support = p
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
@@ -336,7 +348,7 @@ def infer_claim_sim(claim: Prop,
 		return score, support
 
 	H_TOTAL += 1
-	hypothesis = claim.prop_desc() # + '::0'
+	hypothesis = claim.prop_desc()
 	if hypothesis not in sim_cache.id_map:
 		H_NF += 1
 		H_FETCH_ERR += 1
@@ -422,3 +434,77 @@ def infer_claim_sim(claim: Prop,
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
+
+
+def format_prop_ppdb_lookup(prop: Prop):
+	formatted = proposition.extract_predicate_base(prop.pred)
+	# if formatted.startswith('be.'):
+	# 	formatted = formatted[3:]
+	return formatted
+
+def infer_claim_ppdb(claim: Prop,
+					u_arg_cache: Dict[str, List[Tuple[Prop, int]]],
+					b_arg_cache: Dict[str, List[Prop]],
+					ppdb: Dict[str, Dict[str, float]]) -> Tuple[float, Optional[Prop]]:
+	score = 0
+	support = None
+
+	hypothesis = format_prop_ppdb_lookup(claim)
+
+	is_unary = len(claim.args) == 1
+	if is_unary:
+		args = claim.args[0]
+		premise_props = [p for p, i in u_arg_cache[args]]
+	else:
+		args = tuple(sorted(claim.args))
+		premise_props = b_arg_cache[args]
+
+
+	found_hyp = False
+	best_h_text = ''
+	best_p_text = ''
+	while len(hypothesis.split()) > 0 and not found_hyp:
+		if hypothesis in ppdb:
+			found_hyp = True
+
+		for p in premise_props:
+			if reference.RUNNING_LOCAL and 'person' not in p.types:
+				continue
+
+			# Skip binaries with reverse-typing (this is an artifact due to the graphs)
+			if len(p.types) == 2 and p.basic_types[0] == p.basic_types[1]:
+				if len(p.types[0].split('_')) < 2:
+					print('Mismatch of types and basic types: {} / {}'.format(p, p.basic_types))
+					continue
+				if int(p.types[0].split('_')[-1]) == 2:
+					continue
+
+			if claim.prop_desc() == p.prop_desc():
+				# print('ppdb: {} => {} / {} => {}'.format(premise, hypothesis, p, claim))
+				return 1.0, p
+
+			premise = format_prop_ppdb_lookup(p)
+			found_prem = False
+			while len(premise.split()) > 0 and not found_prem:
+
+				if premise in ppdb:
+					found_prem = True
+
+				if found_hyp:
+					if premise in ppdb[hypothesis]:
+						new_score = ppdb[hypothesis][premise]
+						if new_score > score:
+							score = new_score
+							support = p
+							best_h_text = hypothesis
+							best_p_text = premise
+
+				premise = ' '.join(premise.split()[:-1])
+
+		hypothesis = ' '.join(hypothesis.split()[:-1])
+
+
+	normed_score = score / 100.0
+	# if normed_score > 0:
+	# 	print('ppdb: {} => {} / {} => {}'.format(best_p_text, best_h_text, support, claim))
+	return normed_score, support

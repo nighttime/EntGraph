@@ -6,6 +6,7 @@ import reference
 import pickle
 from collections import Counter
 from entailment import prop_recognized_in_graphs
+from answer_tf import format_prop_ppdb_lookup
 from typing import *
 
 def checkpoint():
@@ -17,7 +18,7 @@ def print_progress(progress, info='', bar_len=20):
 	if filled == bar_len:
 		print()
 
-def analyze_questions(P_list, N_list, uu_graphs, bu_graphs):
+def analyze_questions(P_list, N_list, uu_graphs, bu_graphs, PPDB: Optional[Dict[str, Dict[str, float]]]=None):
 	num_Qs = sum(len(qs) for qs in P_list + N_list)
 	num_unary_Qs = len([q for qs in P_list + N_list for q in qs if len(q.args) == 1])
 	num_binary_Qs = num_Qs - num_unary_Qs
@@ -64,6 +65,18 @@ def analyze_questions(P_list, N_list, uu_graphs, bu_graphs):
 	print('Questions recognized in typed graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_u * 100,
 																							   pct_known_b * 100))
 
+	if PPDB:
+		formatted_qs = [format_prop_ppdb_lookup(p) for ps in P_list  + N_list for p in ps]
+		found_qs = [q for q in formatted_qs if q in PPDB]
+		fallback_qs = [[' '.join(q.split()[:-i]) for i in range(1, len(q.split()))] + [q] for q in formatted_qs]
+		found_fallback_qs = [1 for qs in fallback_qs if any(q in PPDB for q in qs)]
+
+		pct_known_qs = len(found_qs)/num_Qs
+		pct_known_fallback_qs = len(found_fallback_qs)/num_Qs
+
+		print('Questions recognized in PPDB: {:.1f}%, with fallback: {:.1f}%'.format(pct_known_qs*100, pct_known_fallback_qs*100))
+		print('PPDB graph stats: {} nodes, {} allnodes {} edges'.format(len(PPDB), len(set(PPDB.keys()) | set([k for vs in PPDB.values() for k,v in vs.items()])), sum([len(es) for es in PPDB.values()])))
+
 	pct_known_untyped_u = len(known_u_untyped_qs) / num_unary_Qs if num_unary_Qs else 0
 	pct_known_untyped_b = len(known_b_untyped_qs) / num_binary_Qs if num_binary_Qs else 0
 	print('Questions recognized in untyped graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_untyped_u * 100,
@@ -104,15 +117,16 @@ def save_results_on_file(dest_folder: str,
 						 Q_list: List[List[Prop]],
 						 A_list: List[List[int]],
 						 results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]]):
-	results_file = os.path.join(dest_folder, 'last_results.pkl')
+	# results_file = os.path.join(dest_folder, 'last_results.pkl')
+	fname = reference.FINISH_TIME + '.pkl'
+	results_file = os.path.join(dest_folder, 'saved_results', fname)
 	data = {'questions': Q_list, 'answers': A_list, 'results': results}
 	with open(results_file, 'wb+') as f:
 		pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 		print('Results saved to {}'.format(results_file))
 
-def read_results_on_file(source_folder: str) -> Tuple[List[List[Prop]], List[List[int]], Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]]]:
-	results_file = os.path.join(source_folder, 'last_results.pkl')
-	with open(results_file, 'rb') as f:
+def read_results_on_file(source_file: str) -> Tuple[List[List[Prop]], List[List[int]], Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]]]:
+	with open(source_file, 'rb') as f:
 		data = pickle.load(f)
 		Q_List, A_List, results = data['questions'], data['answers'], data['results']
 		return Q_List, A_List, results

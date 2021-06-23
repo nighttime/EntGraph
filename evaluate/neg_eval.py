@@ -23,22 +23,48 @@ MIN_OCCURRENCE_NEG = 3
 
 
 def run_test(test_set: List[Tuple[str, str]], graphs: EGraphCache):
-	cum_score = 0
-	total_tests = 0
-	found_tests = 0
+	cum_score_neg = 0
+	total_tests_neg = 0
+	found_tests_neg = 0
 
-	print('Testing...')
+	cum_score_pos = 0
+	total_tests_pos = 0
+	found_tests_pos = 0
 
 	for antecedent, entailment in test_set:
-		typing = '#'.join(antecedent.split('#')[1:])
+		typing = '#'.join([t.replace('_1', '').replace('_2', '') for t in antecedent.split('#')[1:]])
+		neg_ant = antecedent.startswith('NEG')
+		if neg_ant:
+			total_tests_neg += 1
+		else:
+			total_tests_pos += 1
+
+		if typing not in graphs:
+			print('typing {} not found in graphs'.format(typing))
+			continue
+
 		ants = graphs[typing].get_antecedents(entailment)
 		for ant in ants:
 			if ant.pred == antecedent:
-				cum_score += ant.score
-				found_tests += 1
-		total_tests += 1
+				if neg_ant:
+					cum_score_neg += ant.score
+					found_tests_neg += 1
+				else:
+					cum_score_pos += ant.score
+					found_tests_pos += 1
 
-	print('Results: {} tests, {:.2f} avg score, {} found ({:.2f}%)'.format(total_tests, cum_score/total_tests, found_tests, found_tests/total_tests))
+	total_tests = total_tests_pos + total_tests_neg
+	found_tests = found_tests_pos + found_tests_neg
+
+	print('Results: {} tests, {:.1f}% found edges'.format(total_tests, found_tests/total_tests*100))
+	print()
+	print('NEG_X => X : {:.1f}% found edges'.format(found_tests_neg/total_tests_neg*100))
+	print('{:.4f} avg score / total'.format(cum_score_neg / total_tests_neg))
+	print('{:.4f} avg score / found'.format(cum_score_neg / found_tests_neg))
+	print()
+	print('X => NEG_X : {:.1f}% found edges'.format(found_tests_pos/total_tests_pos*100))
+	print('{:.4f} avg score / total'.format(cum_score_pos / total_tests_pos))
+	print('{:.4f} avg score / found'.format(cum_score_pos / found_tests_pos))
 
 def generate_test_set(props: List[Prop]) -> List[Tuple[str, str]]:
 	negs = Counter()
@@ -97,10 +123,10 @@ def main():
 		print('Writing test set to file...')
 		write_test_set(test_set, ARGS.write_tests)
 
-	if ARGS.graph_dir:
+	if ARGS.graphs:
 		# Load entailment graphs
 		print('Reading EGs from cache...')
-		graphs = read_precomputed_EGs(ARGS.graph_dir)
+		graphs = read_precomputed_EGs(ARGS.graphs)
 		print('Running test...')
 		run_test(test_set, graphs)
 
@@ -108,7 +134,7 @@ def main():
 parser = argparse.ArgumentParser(description='Evaluate the overlap of X and NEG_X predicates')
 parser.add_argument('--news-gen-file', help='Path to file used for generating the test set')
 parser.add_argument('--data-folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
-parser.add_argument('--graph-dir', help='Path to folder containing the entailment graphs to test')
+parser.add_argument('--graphs', help='Path to pre-cached entailment graphs to test')
 parser.add_argument('--write-tests', help='output the test set as a .tsv file')
 parser.add_argument('--use-tests', help='Use the test file in the given path')
 
