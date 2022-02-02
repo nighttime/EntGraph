@@ -1,20 +1,26 @@
 import json
 import re
+import gc
 from collections import defaultdict, Counter
 import random
-import datetime
+from datetime import datetime
+import argparse
 
+import utils
 from proposition import *
 from collections import Counter
 from typing import *
+import random
+
+REQUIRE_ONE_NE = True
 
 class Article:
 	def __init__(self, art_ID, date):
 		self.art_ID = art_ID
 		self.date = date
-		self.unary_props = []
-		self.binary_props = []
-		self.selected_binary_props = []
+		self.unary_props: List[Prop] = []
+		self.binary_props: List[Prop] = []
+		self.selected_binary_props: List[Prop] = []
 		self.sents = []
 
 	def add_unary(self, unary):
@@ -105,21 +111,30 @@ def reject_binary(pred: str) -> bool:
 
 	return False
 
-def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List[Prop]]:
+# ((of.1,of.2)::first::the year::EE::0::4::null::null::Tue_Jan_01_00:00:00_GMT_2013::Tue_Dec_31_00:00:00_GMT_2013)
+def read_source_data(source_fname: str, save_sents=True, read_dates=False, target_entities:Optional[Set[str]]=None) -> Tuple[List[Article], List[Prop], List[Prop]]:
+	global REQUIRE_ONE_NE
 	articles = {}
 	unary_props = []
 	binary_props = []
 	with open(source_fname) as source_data:
-		for line in source_data:
+		gc_collect = False
+		for linenum,line in enumerate(source_data):
+			if not line.startswith('{'):
+				continue
 			l = json.loads(line)
-			art_ID = int(l['articleId'])
+			try:
+				art_ID = int(l['articleId'])
+			except:
+				continue
 			if art_ID not in articles:
-				date = datetime.datetime.strptime(l['date'], '%b %d, %Y %X %p')
+				date = datetime.strptime(l['date'], '%b %d, %Y %X %p')
 				articles[art_ID] = Article(art_ID, date)
 
 			line_ID = l['lineId']
 			sent = l['s']
-			articles[art_ID].sents.append((line_ID, sent))
+			if save_sents:
+				articles[art_ID].sents.append((line_ID, sent))
 
 			unaries_raw = [u['r'][1:-1] for u in l['rels_unary']]
 			for i, u in enumerate(unaries_raw):
@@ -130,7 +145,11 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 					continue
 
 				norm_ent = normalize_entity(parts[1])
+				if target_entities and norm_ent not in target_entities:
+					continue
 				entity_type = parts[2]
+				if REQUIRE_ONE_NE and 'E' not in entity_type:
+					continue
 				typing = get_type(norm_ent, 'E' in entity_type)
 
 				prop = Prop(norm_pred, [norm_ent])
@@ -149,10 +168,30 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 					continue
 
 				norm_ents = [normalize_entity(e) for e in parts[1:3]]
+				if target_entities and tuple(sorted(norm_ents)) not in target_entities:
+					continue
 				entity_types = parts[3]
 				if not all(e in 'GE' for e in entity_types):
 					continue
+				if REQUIRE_ONE_NE and 'E' not in entity_types:
+					continue
 				typing = [get_type(norm_ents[i], 'E' == entity_types[i]) for i in range(2)]
+
+				prop_date = None
+				if read_dates:
+					start_date = parts[-2]
+					if len(parts) < 10 or start_date == 'null':
+						prop_date = articles[art_ID].date
+					else:
+						date_parts = start_date.split('_')
+						date_str = '-'.join([date_parts[i] for i in [1,2,5]])
+						try:
+							prop_date = datetime.strptime(date_str, '%b-%d-%Y')
+						except:
+							try:
+								prop_date = datetime.strptime(date_str, '%b-%d-%y')
+							except:
+								prop_date = articles[art_ID].date
 
 				if reversed_pred:
 					norm_ents = list(reversed(norm_ents))
@@ -163,7 +202,7 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 				if type_symmetric:
 					typing = [typing[0] + '_1', typing[1] + '_2']
 
-				prop = Prop(norm_pred, norm_ents)
+				prop = Prop(norm_pred, norm_ents, date=prop_date)
 				prop.set_entity_types(entity_types)
 				prop.set_types(typing)
 				binary_props.append(prop)
@@ -174,11 +213,24 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 					norm_ents = list(reversed(norm_ents))
 					entity_types = entity_types[::-1]
 					typing = list(reversed(typing))
-					prop_rev = Prop(norm_pred, norm_ents)
+					prop_rev = Prop(norm_pred, norm_ents, date=prop_date)
 					prop_rev.set_entity_types(entity_types)
 					prop_rev.set_types(typing)
 					binary_props.append(prop_rev)
 					articles[art_ID].add_binary(prop_rev)
+
+			if linenum % 10000 == 0:
+				if linenum > 0 and linenum % 3000000 == 0:
+					gc_collect = True
+
+				print('\r{} lines read {}'.format(linenum, '(GC Collecting!)' if gc_collect else ' '*20), end='', flush=True)
+
+				if gc_collect:
+					gc.collect()
+					gc_collect = False
+
+
+	print()
 
 	arts = [a for artID, a in articles.items()]
 
@@ -193,3 +245,32 @@ def read_source_data(source_fname: str) -> Tuple[List[Article], List[Prop], List
 		art.sents = [s for line_ID, s in sorted(art.sents)]
 
 	return arts, unary_props, binary_props
+
+
+def main():
+	global ARGS
+	ARGS = parser.parse_args()
+	print('Reading entity type data from {} ...'.format(ARGS.data_folder))
+	load_precomputed_entity_types(ARGS.data_folder)
+
+	print('Reading source articles from {} ...'.format(ARGS.news_gen_file))
+	articles, _, _ = read_source_data(ARGS.news_gen_file)
+
+	random.shuffle(articles)
+	sample = articles[:10]
+
+	with open('article_sample.txt', 'w+') as f:
+		for a in sample:
+			f.write(str(a.art_ID) + '\n')
+			f.write(str(a.date) + '\n')
+			f.writelines(a.sents)
+			f.write('\n')
+			f.writelines([str(p) for p in a.selected_binary_props])
+			f.write('\n\n\n')
+
+parser = argparse.ArgumentParser(description='Print out sample of articles')
+parser.add_argument('news_gen_file', help='Path to file used for partition into Question set and Answer set')
+parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
+
+if __name__ == '__main__':
+	main()

@@ -77,10 +77,6 @@ PREPOSITIONS = {
 'through'
 }
 
-# For printing
-BAR_LEN = 50
-BAR = '=' * BAR_LEN
-bar = '-' * BAR_LEN
 
 class tcolors:
 	HEADER = '\033[95m'

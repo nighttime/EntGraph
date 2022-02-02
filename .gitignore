@@ -34,4 +34,5 @@ news_linked/
 news_gen/
 _news_gen/
 news_gen_argwise/
+temporal_rels*
 

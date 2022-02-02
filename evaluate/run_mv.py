@@ -12,6 +12,7 @@ from sklearn import metrics
 
 import reference
 import utils
+from graph_encoder import GraphDeducer
 from proposition import *
 from entailment import *
 from article import *
@@ -20,7 +21,6 @@ from questions import *
 from answer_wh import *
 from answer_tf import *
 import ppdb_reader
-from reference import bar, BAR
 
 from typing import *
 
@@ -47,7 +47,7 @@ def eval_tf_sets(A_list: List[List[Any]], predictions_list: List[List[Any]],
 def run(questions, answers, evidence, score_text, uu_graphs=None, bu_graphs=None, eval_fun=ans):
 	print('NOT SAFE')
 	exit(1)
-	print(bar)
+	utils.print_bar()
 	predictions = answer_questions(questions, evidence, uu_graphs=uu_graphs, bu_graphs=bu_graphs)
 	score = eval_fun(answers, predictions)
 	print(score_text.format(score))
@@ -57,7 +57,7 @@ def run(questions, answers, evidence, score_text, uu_graphs=None, bu_graphs=None
 def run_wh_sets(Q_list: List[List[str]], A_list: List[List[Set[str]]], evidence_list: List[Tuple[List[Prop], List[Prop]]],
 				score_text: str, eval_fun: Callable[[List[Set[str]], List[List[str]]], float],
 				uu_graphs: EGraphCache=None, bu_graphs: EGraphCache=None):
-	print(bar)
+	utils.print_bar()
 	predictions_list, _ = answer_question_sets(Q_list, evidence_list, uu_graphs=uu_graphs, bu_graphs=bu_graphs, A_list=A_list)
 	score = eval_wh_sets(A_list, predictions_list, eval_fun=eval_fun)
 	print(score_text)
@@ -74,12 +74,12 @@ def run_tf_sets(Q_list: List[List[Prop]], A_list: List[List[int]],
 				score_text: str, eval_fun: Callable[[List[Any], List[Any]], float],
 				models: Dict[str, Any],
 				answer_modes: Set[str]) -> Tuple[List[List[float]], List[List[Dict[str, Prop]]]]:
-	print(bar)
+	utils.print_bar()
 	print(score_text)
 	global ARGS
 	scores_list, supports_list, error_cases = answer_tf_sets(Q_list, evidence_list, models, answer_modes)
-	if ARGS.save_errors:
-		utils.save_props_on_file(error_cases, ARGS.data_folder, 'sim_hypo_NaN')
+	# if ARGS.save_errors:
+	# 	utils.save_props_on_file(error_cases, ARGS.data_folder, 'sim_hypo_NaN')
 	scores_flat = [s for ss in scores_list for s in ss]
 
 	##################################################################
@@ -150,6 +150,18 @@ def composite_results(results_UU: Tuple[List[List[float]], List[List[Dict[str, P
 	print('* Score compositing: {} UU-only, {} BU-only, {} overlap : Answered {}/{} questions ({:.1f}%)'.format(UU_only, BU_only, both, answered, total, answered/total*100))
 	return scores, supports
 
+# def precache_nearest_neighbors_mp(props_list: List[List[Prop]], graph_emb_fname: str) -> Dict[Prop: Optional[Tuple[List[str], List[float]]]]:
+# 	def compute_nearest_neighbors_set(props: List[Prop], graph_emb_fname: str):
+# 		graph_deducer = GraphDeducer('roberta', graph_emb_fname)
+# 		for prop in props:
+# 			graph_deducer.get_nearest_node(prop.pred_desc(), k=4, position='left', model='roberta')
+# 	cache = {}
+# 	graph_fpaths = graph_files_in_dir(graph_dir, None, True)
+# 	pool = mp.Pool()
+# 	graphs = pool.map(open_graph, props_list)
+
+
+
 
 def run_evaluate() -> Tuple[List[List[Article]],
 							List[List[Prop]],
@@ -162,7 +174,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	eval_fun = globals()[ARGS.eval_fun]
 
 	print()
-	print(BAR)
+	utils.print_BAR()
 	mode = 'local' if reference.RUNNING_LOCAL else 'server'
 	title = 'Running Eval ({})'.format(mode)
 	if ARGS.quick:
@@ -184,6 +196,10 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		resources.append('Similarity cache')
 	if ARGS.ppdb:
 		resources.append('PPDB')
+	if ARGS.uv_emb is not None:
+		resources.append('UV graph embeddings')
+	if ARGS.bv_emb is not None:
+		resources.append('BV graph embeddings')
 	print('* Using evidence from:', str(resources))
 
 	question_modes = set()
@@ -207,7 +223,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		print('* Answer modes:', answer_modes)
 
 	utils.checkpoint()
-	print(BAR)
+	utils.print_BAR()
 
 	#######################################
 
@@ -256,13 +272,13 @@ def run_evaluate() -> Tuple[List[List[Article]],
 
 	ppdb = None
 	if ARGS.ppdb:
-		print(bar)
+		utils.print_bar()
 		print('Reading PPDB...')
 		ppdb = ppdb_reader.load_ppdb(ARGS.ppdb)
 		models['PPDB'] = ppdb
 		utils.checkpoint()
 
-	print(BAR)
+	utils.print_BAR()
 
 	# Read in entity type cache
 	print('Loading entity type cache...')
@@ -354,11 +370,11 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	if ARGS.no_answer:
 		print('Quitting before the answering phase.')
 		utils.checkpoint()
-		print(BAR)
+		utils.print_BAR()
 		return partitions, Q_list, A_list, evidence_list, None
 
 	# Answer the questions using available resources: A set, U->U Graph, B->U graph
-	print(BAR)
+	utils.print_BAR()
 	print('Predicting answers...')
 
 	# results = {'*always-true':(pct_positive, None)}
@@ -375,26 +391,33 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		results['*exact-match B'] = run_tf_sets(Q_list, A_list, evidence_list, 'Literal B', eval_fun, models, answer_modes)
 
 	if uu_graphs and 'unary' in question_modes:
+		if ARGS.uv_emb:
+			print('Using graph embeddings from: {}'.format(ARGS.uv_emb))
+			models['U-Deducer'] = GraphDeducer('roberta', ARGS.uv_emb, valency=1)
+			answer_modes = {'UU', 'UU-LM', 'Literal U'}
+			results['UU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU-LM', eval_fun, models, answer_modes)
+
 		answer_modes = {'UU', 'Literal U'}
 		results['UU'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU', eval_fun, models, answer_modes)
 
 	if bu_graphs:
+		if ARGS.bv_emb:
+			print('Using graph embeddings from: {}'.format(ARGS.bv_emb))
+			models['B-Deducer'] = GraphDeducer('roberta', ARGS.bv_emb, valency=2)
+
 		if 'binary' in question_modes:
+			if ARGS.bv_emb:
+				answer_modes = {'BB', 'BB-LM', 'Literal B'}
+				results['BB-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'BB-LM', eval_fun, models, answer_modes)
 			answer_modes = {'BB', 'Literal B'}
 			results['BB'] = run_tf_sets(Q_list, A_list, evidence_list, 'BB', eval_fun, models, answer_modes)
+
 		if not ARGS.quick and 'unary' in question_modes:
+			if ARGS.bv_emb:
+				answer_modes = {'BU', 'BU-LM', 'Literal U'}
+				results['BU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU-LM', eval_fun, models, answer_modes)
 			answer_modes = {'BU', 'Literal U'}
 			results['BU'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU', eval_fun, models, answer_modes)
-
-	# if uu_graphs and bu_graphs:
-	# results['U->U and B->U'] = run_tf_sets(Q_list, A_list, evidence_list, 'U->U and B->U', eval_fun=eval_fun,
-	# 			uu_graphs=uu_graphs, bu_graphs=bu_graphs)
-	# print(bar)
-	# print('U->U and B->U')
-	# results['U->U and B->U'] = composite_results(results['U->U'], results['B->U'], None, A_list)
-	# results['U->U and B->U (Adj)'] = composite_results(results['U->U'], results['B->U'], 'linear', A_list)
-	# results['U->U and B->U (Adj-3rd)'] = composite_results(results['U->U'], results['B->U'], '3rd', A_list)
-	# utils.checkpoint()
 
 	if ARGS.sim_cache:
 		if 'BERT' in models:
@@ -405,7 +428,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 			results['RoBERTa'] = run_tf_sets(Q_list, A_list, evidence_list, 'RoBERTa', eval_fun, models, answer_modes)
 
 	if ARGS.ppdb:
-		print(bar)
+		utils.print_bar()
 		answer_modes = {'PPDB'}
 		results['PPDB'] = run_tf_sets(Q_list, A_list, evidence_list, 'PPDB', eval_fun, models, answer_modes)
 
@@ -421,16 +444,25 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	reference.FINISH_TIME = datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
 
 	if ARGS.save_results:
-		print(bar)
+		utils.print_bar()
 		utils.save_results_on_file(ARGS.data_folder, Q_list, A_list, results)
 
 	if ARGS.plot:
-		print(bar)
+		utils.print_bar()
 		results_folder = os.path.join(ARGS.data_folder, 'tf_results')
-		generate_results(results_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, test=ARGS.test_mode)
+		run_folder = generate_results(results_folder, Q_list, A_list, results, sample=ARGS.sample, save_thresh=ARGS.save_thresh, test=ARGS.test_mode)
+
+		if ARGS.memo:
+			fname = os.path.join(run_folder, 'description.txt')
+			with open(fname, 'w+') as file:
+				file.write(ARGS.memo + '\n')
 
 	utils.checkpoint()
-	print(BAR)
+	utils.print_BAR()
+	print()
+	if ARGS.memo:
+		print(ARGS.memo)
+		utils.print_BAR()
 	print()
 
 	return partitions, Q_list, A_list, evidence_list, results
@@ -440,9 +472,11 @@ def run_evaluate() -> Tuple[List[List[Article]],
 parser = argparse.ArgumentParser(description='Evaluate using P&D style question-generation and -answering')
 parser.add_argument('news_gen_file', help='Path to file used for partition into Question set and Answer set')
 parser.add_argument('data_folder', help='Path to data folder including freebase entity types and predicate substitution pairs')
-parser.add_argument('--uu-graphs', help='Path to Unary->Unary entailment graphs to assist question answering')
-parser.add_argument('--bu-graphs', help='Path to Binary->Unary entailment graphs to assist question answering')
+parser.add_argument('--uu-graphs', help='Path to Univalent entailment graphs to assist question answering')
+parser.add_argument('--bu-graphs', help='Path to Bivalent entailment graphs to assist question answering')
 parser.add_argument('--sim-cache', action='store_true', help='Use a similarity cache to answer questions (file must be located in data folder)')
+parser.add_argument('--bv-emb', help='Path to embeddings of the Bivalent graphs used to augment question answering')
+parser.add_argument('--uv-emb', help='Path to embeddings of the Univalent graphs used to augment question answering')
 # parser.add_argument('--filter-qs', action='store_true', help='Use PPDB to filter questions during generation (file must be located in data folder)')
 # parser.add_argument('--test-all', action='store_true', help='Test all variations of the given configuration')
 parser.add_argument('--ppdb', help='Path to PPDB to answer questions')
@@ -466,6 +500,8 @@ parser.add_argument('--save-errors', action='store_true', help='Save erroneous p
 
 parser.add_argument('--no-answer', action='store_true', help='Stop execution before answering questions')
 parser.add_argument('--quick', action='store_true', help='Skip long-running optional work (e.g. computing B->U)')
+
+parser.add_argument('--memo', help='Description of the experiment to be recorded with results')
 
 if __name__ == '__main__':
 	partitions, Q, A, E, results = run_evaluate()

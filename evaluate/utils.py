@@ -1,20 +1,36 @@
 import os
 import datetime
 import proposition
-from proposition import Prop
+from proposition import Prop, format_prop_ppdb_lookup
 import reference
 import pickle
 from collections import Counter
-from entailment import prop_recognized_in_graphs
-from answer_tf import format_prop_ppdb_lookup
+import entailment
 from typing import *
 
 def checkpoint():
 	print('+ Checkpoint:', datetime.datetime.now().strftime('%H:%M:%S'))
 
+# For printing
+BAR_LEN = 50
+BAR = '=' * BAR_LEN
+bar = '-' * BAR_LEN
+
+def print_bar():
+	print(bar)
+
+def print_BAR():
+	print(BAR)
+
 def print_progress(progress, info='', bar_len=20):
 	filled = int(progress*bar_len)
-	print('\r[{}{}] {:.2f}% {}'.format('=' * filled, ' ' * (bar_len-filled), progress*100, info), end='')
+	try:
+		term_width = os.get_terminal_size()[0]
+	except:
+		term_width = 80
+	update = '\r[{}{}] {:.2f}% {}'.format('=' * filled, ' ' * (bar_len-filled), progress*100, info)
+	padding = (term_width - (len(update) - 1)) * ' '
+	print(update + padding, end='')
 	if filled == bar_len:
 		print()
 
@@ -55,9 +71,9 @@ def analyze_questions(P_list, N_list, uu_graphs, bu_graphs, PPDB: Optional[Dict[
 				  len(p.args) == 2 and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
 
 	known_u_untyped_qs = [p for ps in P_list + N_list for p in ps if
-						  len(p.args) == 1 and (prop_recognized_in_graphs(p, uu_graphs) or prop_recognized_in_graphs(p, bu_graphs))]
+						  len(p.args) == 1 and (entailment.prop_recognized_in_graphs(p, uu_graphs) or entailment.prop_recognized_in_graphs(p, bu_graphs))]
 	known_b_untyped_qs = [p for ps in P_list + N_list for p in ps if
-						  len(p.args) == 2 and prop_recognized_in_graphs(p, bu_graphs)]
+						  len(p.args) == 2 and entailment.prop_recognized_in_graphs(p, bu_graphs)]
 
 	pct_known_u = len(known_u_qs) / num_unary_Qs if num_unary_Qs else 0
 	pct_known_b = len(known_b_qs) / num_binary_Qs if num_binary_Qs else 0

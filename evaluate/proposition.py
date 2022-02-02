@@ -1,6 +1,8 @@
+import argparse
 import os
 import pickle
 import json
+from datetime import datetime
 import pdb
 from functools import lru_cache
 import copy
@@ -11,12 +13,13 @@ from typing import *
 Prop_Type = TypeVar('Prop_Type', bound='Prop')
 
 class Prop:
-	def __init__(self, predicate: str, args: List[str]):
+	def __init__(self, predicate: str, args: List[str], date: Optional[datetime] = None):
 		self.pred = predicate
 		self.args = args
 		self.types = []
 		self.basic_types = []
 		self.entity_types = ''
+		self.date = date
 
 	@classmethod
 	def from_descriptions(cls: type, pred_desc: str, arg_desc: List[str]) -> Prop_Type:
@@ -34,6 +37,47 @@ class Prop:
 		# new_prop.pred = pred_swap + prop.pred[prop.pred.find('.'):]
 		new_prop.pred = Prop.swap_pred(new_prop.pred, pred_swap)
 		return new_prop
+
+	# @classmethod
+	# def with_new_pred(cls: type, prop: Prop_Type, new_pred_desc: str) -> Prop_Type:
+	# 	desc_parts = new_pred_desc.split('#')
+	# 	new_pred, new_types = desc_parts[0], desc_parts[1:]
+	# 	assert new_types == prop.types or new_types == list(reversed(prop.types))
+	#
+	# 	new_prop = copy.deepcopy(prop)
+	# 	new_prop.pred = new_pred
+	# 	if new_types == list(reversed(prop.types)):
+	# 		new_prop.set_types(new_types)
+	# 		new_prop.set_args(list(reversed(new_prop.args)))
+	# 		if new_prop.entity_types:
+	# 			new_prop.set_entity_types(str(reversed(new_prop.entity_types)))
+	#
+	# 	return new_prop
+
+	@classmethod
+	def with_new_pred(cls: type, prop: Prop_Type, new_pred_desc: str) -> Prop_Type:
+		desc_parts = new_pred_desc.split('#')
+		new_pred, new_types = desc_parts[0], desc_parts[1:]
+
+		reverse_args = False
+
+		if len(prop.types) > 1:
+			assert prop.types[0] != prop.types[1] and new_types[0] != new_types[1]
+			if (prop.types == list(reversed(new_types))) \
+					or ('_1' in prop.types[0] and '_2' in new_types[0]) \
+					or ('_2' not in prop.types[0] and '_2' in new_types[0]):
+				reverse_args = True
+
+		new_prop = copy.deepcopy(prop)
+		new_prop.pred = new_pred
+		new_prop.set_types(new_types)
+		if reverse_args:
+			new_prop.set_args(list(reversed(new_prop.args)))
+			if new_prop.entity_types:
+				new_prop.set_entity_types(str(reversed(new_prop.entity_types)))
+
+		return new_prop
+
 
 	# Input: predicate OR predicate description
 	# Output: the same, but with the base word replaced with the new word
@@ -57,6 +101,9 @@ class Prop:
 	def set_entity_types(self, entity_types: str):
 		self.entity_types = entity_types
 
+	def set_date(self, date: datetime):
+		self.date = date
+
 	def arg_desc(self, numbered=False) -> List[str]:
 		assert len(self.types) == len(self.args)
 		ts = self.types if numbered else self.basic_types
@@ -66,9 +113,13 @@ class Prop:
 		ts = reversed(self.types) if reverse else self.types
 		return self.pred + ''.join('#' + t for t in ts)
 
-	def type_desc(self, reverse:bool=False) -> str:
+	def type_desc(self, reverse:bool=False, keep_ids=False) -> str:
 		ts = reversed(self.types) if reverse else self.types
-		return '#'.join(ts).replace('_1', '').replace('_2', '')
+		typing = '#'.join(ts)
+		if keep_ids:
+			return typing
+		else:
+			return typing.replace('_1', '').replace('_2', '')
 
 	def prop_desc(self, reverse:bool=False) -> str:
 		ts = reversed(self.types) if reverse else self.types
@@ -137,6 +188,12 @@ def extract_predicate_base_term(pred: str) -> str:
 	if root.startswith('('):
 		root = root[1:]
 	return root
+
+def format_prop_ppdb_lookup(prop: Prop):
+	formatted = extract_predicate_base(prop.pred)
+	# if formatted.startswith('be.'):
+	# 	formatted = formatted[3:]
+	return formatted
 
 def entity_is_only_NE(ent: str) -> bool:
 	if len(ent) < 2:
@@ -227,6 +284,43 @@ def load_entity_types(fname):
 			_entity2type[e] = typing
 
 
+def load_majority_entity_types(fname):
+	global _entity2type, _only_NE_entities
+	_entity2type = {}
+	_only_NE_entities = set()
+
+	with open(fname) as typelist:
+		for line in typelist:
+			parts = line.split('\t')
+
+			# ent, typing = parts[1:3]
+			ent = parts[1]
+			typings = parts[2].split()
+
+			# Clean the entity
+			only_NE = entity_is_only_NE(ent)
+			e = normalize_entity(ent)
+
+			# Clean the typings
+			if typings:
+				typing = Counter([normalize_type(t) for t in typings]).most_common()[0][0]
+			else:
+				typing = 'thing'
+
+			# Reject unnecessary additions
+			if e in _entity2type and typing == 'thing':
+				continue
+
+			if e in _entity2type and only_NE:
+				continue
+
+			# Update cache
+			if only_NE:
+				_only_NE_entities.add(e)
+
+			_entity2type[e] = typing
+
+
 _e2t_fname = 'entity2type.pkl'
 _onlyNE_fname = 'only_NE_entities.pkl'
 
@@ -274,3 +368,23 @@ def read_substitution_pairs(fname: str) -> Dict[str, Dict[str, List[str]]]:
 	with open(fname) as f:
 		sub_dict = json.load(f)
 		return sub_dict
+
+
+def main():
+	global ARGS
+	ARGS = parser.parse_args()
+
+	if ARGS.make_type_cache:
+		print('Generating new type cache...')
+		type_fpath = '../data/freebase_types/entity2Types.txt'
+		load_majority_entity_types(type_fpath)
+		save_precomputed_entity_types(ARGS.make_type_cache)
+		print('Done')
+
+
+
+parser = argparse.ArgumentParser(description='Proposition utilities')
+parser.add_argument('--make-type-cache', help='Recache the entity type file')
+
+if __name__ ==  '__main__':
+	main()

@@ -1,11 +1,15 @@
+import math
 from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
 
+import utils
+from graph_encoder import GraphDeducer
 from proposition import *
 from entailment import *
 from article import *
 from analyze import *
-from mv_run import *
+from questions import prop_in_graphs
+from run_mv import *
 import reference
 
 import pdb
@@ -20,10 +24,13 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 	predictions = []
 	supports = []
 	for i, cs in enumerate(claims_list):
+		utils.print_progress(i / len(claims_list), 'sets completed')
 		answers_list = A_list[i] if A_list else None
 		pred_list, pred_support = answer_tf(cs, evidence_list[i], models, answer_modes, answers=answers_list)
 		predictions.append(pred_list)
 		supports.append(pred_support)
+	utils.print_progress(1.0, 'sets completed')
+
 	if 'Sim' in answer_modes and not any(m in answer_modes for m in ['UU', 'BU', 'BB']):
 		global P_TOTAL, P_NF, P_NAN, P_FETCH_ERR, H_TOTAL, H_NF, H_NAN, H_FETCH_ERR
 		computed_comparisons = P_TOTAL - P_NF - P_NAN
@@ -38,6 +45,37 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 	return predictions, supports, ERROR_CASES
 
 
+def _make_prop_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Prop]]:
+	cache = defaultdict(list)
+	for prop in props:
+		cache[prop.pred_desc()].append(prop)
+	for r in removals:
+		if r.pred_desc() in cache and r in cache[r.pred_desc()]:
+			cache[r.pred_desc()].remove(r)
+	return cache
+
+def _make_u_arg_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Tuple[Prop, int]]]:
+	cache = defaultdict(list)
+	for prop in props:
+		for i, arg in enumerate(prop.args):
+			cache[arg].append((prop, i))
+	for r in removals:
+		for i, arg in enumerate(r.args):
+			if arg in cache and (r, i) in cache[arg]:
+				cache[arg].remove((r, i))
+	return cache
+
+def _make_b_arg_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Prop]]:
+	cache = defaultdict(list)
+	for prop in props:
+		args = tuple(sorted(prop.args))
+		cache[args].append(prop)
+	for r in removals:
+		args = tuple(sorted(r.args))
+		if args in cache and r in cache[args]:
+			cache[args].remove(r)
+	return cache
+
 # Input | questions : [str]
 # Input | evidence : [Prop]
 # Input | uu_graph : str
@@ -50,37 +88,6 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 	# Keep props containing a named entity
 	ev_un = [ev for ev in evidence[0] if 'E' in ev.entity_types]
 	ev_bi = [ev for ev in evidence[1] if 'E' in ev.entity_types]
-
-	def _make_prop_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Prop]]:
-		cache = defaultdict(list)
-		for prop in props:
-			cache[prop.pred_desc()].append(prop)
-		for r in removals:
-			if r.pred_desc() in cache and r in cache[r.pred_desc()]:
-				cache[r.pred_desc()].remove(r)
-		return cache
-
-	def _make_u_arg_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Tuple[Prop, int]]]:
-		cache = defaultdict(list)
-		for prop in props:
-			for i, arg in enumerate(prop.args):
-				cache[arg].append((prop, i))
-		for r in removals:
-			for i, arg in enumerate(r.args):
-				if arg in cache and (r, i) in cache[arg]:
-					cache[arg].remove((r, i))
-		return cache
-
-	def _make_b_arg_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, List[Prop]]:
-		cache = defaultdict(list)
-		for prop in props:
-			args = tuple(sorted(prop.args))
-			cache[args].append(prop)
-		for r in removals:
-			args = tuple(sorted(r.args))
-			if args in cache and r in cache[args]:
-				cache[args].remove(r)
-		return cache
 
 	# Create a prop-indexed fact cache of A: {pred_desc : [prop]} for exact-match and EG lookup
 	prop_facts_u = _make_prop_cache(ev_un, removals=claims)
@@ -100,15 +107,19 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 		q = c.pred_desc()
 		is_unary = len(c.args) == 1
 		prediction_support.append({})
-		score = 0
+		score = 0.0
 
 		# Append all possible answer supports for later analysis
 		if is_unary:
-			available_support  = [f for f in arg_facts_u[c.args[0]] if f[0].args[f[1]] == c.args[0]]
+			# available_support  = [f for f in arg_facts_u[c.args[0]] if f[0].args[f[1]] == c.args[0]]
+			available_support = [f for f,i in arg_facts_u[c.args[0]] if f.args[i] == c.args[0]]
 		else:
 			sorted_cargs = tuple(sorted(c.args))
 			available_support  = [f for f in arg_facts_b[sorted_cargs] if tuple(sorted(f.args)) == sorted_cargs]
 		prediction_support[-1]['Available'] = available_support
+
+		available_support_u = [p for p in available_support if len(p.args) == 1]
+		available_support_b = [p for p in available_support if len(p.args) == 2]
 
 		# Get basic factual answers from observed evidence
 		if 'Literal U' in answer_modes:
@@ -123,12 +134,19 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 				score = 1
 				prediction_support[-1]['Literal B'] = literal_support
 
+		q_found = prop_in_graphs(c, models['UU'], models['BU'])
+
 		# Get inferred answers from U->U graph
 		if 'UU' in answer_modes and is_unary:
 			uu_score, uu_support = infer_claim_UU(c, prop_facts_u, arg_facts_u, models['UU'])
 			if uu_support:
 				score = max(score, uu_score)
 				prediction_support[-1]['UU'] = uu_support
+			elif 'UU-LM' in answer_modes:
+				uulm_score, uulm_support = deduce_edge(c, available_support_u, models, 'UU-LM')
+				if uulm_support:
+					score = max(score, uulm_score)
+					prediction_support[-1]['UU-LM'] = uulm_support
 
 		# Get inferred answers from B->B/U graph
 		if 'BU' in answer_modes and is_unary:
@@ -136,6 +154,11 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 			if bu_support:
 				score = max(score, bu_score)
 				prediction_support[-1]['BU'] = bu_support
+			elif 'BU-LM' in answer_modes:
+				bulm_score, bulm_support = deduce_edge(c, available_support_b, models, 'BU-LM')
+				if bulm_support:
+					score = max(score, bulm_score)
+					prediction_support[-1]['BU-LM'] = bulm_support
 
 		# Get inferred answers from B->B/U graph
 		if 'BB' in answer_modes and not is_unary:
@@ -143,6 +166,11 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 			if bb_support:
 				score = max(score, bb_score)
 				prediction_support[-1]['BB'] = bb_support
+			elif 'BB-LM' in answer_modes:
+				bblm_score, bblm_support = deduce_edge(c, available_support_b, models, 'BB-LM')
+				if bblm_support:
+					score = max(score, bblm_score)
+					prediction_support[-1]['BB-LM'] = bblm_support
 
 		# Get inferred answers from similarity scores
 		if 'BERT' in answer_modes:
@@ -164,6 +192,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 
 		predictions.append(score)
 
+	# assert len(predictions) == len(claims)
 	return predictions, prediction_support
 
 
@@ -279,29 +308,52 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 
 def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Dict[str, List[Prop]], ent_graphs: EGraphCache) -> \
 		Tuple[float, Optional[Prop]]:
-
 	score = 0
 	support = None
 
 	question = claim.pred_desc()
 	query_type = claim.type_desc()
 
-	if query_type not in ent_graphs:
-		return score, support
-
-	antecedents = ent_graphs[query_type].get_antecedents(question)
-
-	for ant in antecedents:
-		ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc() == claim.arg_desc() or list(reversed(p.arg_desc())) == claim.arg_desc()), None)
-		if ant_support and ant.score > score:
-			score = ant.score
-			support = ant_support
+	##############################
+	### Changed for L/H dataset processing (should be the same for MV eval but just in case...)
+	# if query_type not in ent_graphs:
+	# 	return score, support
+	#
+	# antecedents = ent_graphs[query_type].get_antecedents(question)
+	#
+	# for ant in antecedents:
+	# 	ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc() == claim.arg_desc() or list(reversed(p.arg_desc())) == claim.arg_desc()), None)
+	# 	if ant_support and ant.score > score:
+	# 		score = ant.score
+	# 		support = ant_support
+	##############################
+	antecedents = set()
+	if query_type in ent_graphs:
+		antecedents = ent_graphs[query_type].get_antecedents(question)
+		for ant in antecedents:
+			ant_support = next((p for p in prop_cache[ant.pred] if p.arg_desc() == claim.arg_desc() or list(reversed(p.arg_desc())) == claim.arg_desc()), None)
+			if ant_support and ant.score > score:
+				score = ant.score
+				support = ant_support
+	##############################
 
 	# Back off to other graphs
-	backoff_node = reference.GRAPH_BACKOFF == 'node' and len(antecedents) == 0
-	backoff_edge = reference.GRAPH_BACKOFF == 'edge' and support is None
+	node_not_found = len(antecedents) == 0 # detect if hypothesis is in the graph
+	##############################
+	# edge_not_found = support is None
+	##############################
+	edge_not_found = support is None or node_not_found
+	##############################
+	# need to detect if the premise is in the graph
+	evidence_props = arg_cache[tuple(sorted(claim.args))]
+	no_premises_found = not any(ent_graphs['#'.join(p.types)].get_entailments(p.pred_desc()) for p in evidence_props if '#'.join(p.types) in ent_graphs)
+	both_nodes_not_found = node_not_found or no_premises_found
 
-	if backoff_node or backoff_edge:
+	backoff_node = node_not_found and reference.GRAPH_BACKOFF == 'node'
+	backoff_edge = edge_not_found and reference.GRAPH_BACKOFF == 'edge'
+	backoff_both_nodes = both_nodes_not_found and reference.GRAPH_BACKOFF == 'both_nodes'
+
+	if backoff_node or backoff_edge or backoff_both_nodes:
 		antecedents_list = query_all_graphs_for_prop(claim, ent_graphs)
 		evidence_props = arg_cache[tuple(sorted(claim.args))]
 		found_edges = defaultdict(int)
@@ -321,7 +373,6 @@ def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 
 	score = 0 if score < 0 else (1 if score > 1 else score)
 	return score, support
-
 
 P_TOTAL = 0
 P_NF = 0
@@ -436,12 +487,6 @@ def infer_claim_sim(claim: Prop,
 	return score, support
 
 
-def format_prop_ppdb_lookup(prop: Prop):
-	formatted = proposition.extract_predicate_base(prop.pred)
-	# if formatted.startswith('be.'):
-	# 	formatted = formatted[3:]
-	return formatted
-
 def infer_claim_ppdb(claim: Prop,
 					u_arg_cache: Dict[str, List[Tuple[Prop, int]]],
 					b_arg_cache: Dict[str, List[Prop]],
@@ -508,3 +553,119 @@ def infer_claim_ppdb(claim: Prop,
 	# if normed_score > 0:
 	# 	print('ppdb: {} => {} / {} => {}'.format(best_p_text, best_h_text, support, claim))
 	return normed_score, support
+
+def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mode: str) -> Tuple[float, Optional[Prop]]:
+	score = 0
+	support = None
+	k = 4
+	# k = 'logscale'
+	# k = 'proportional'
+
+	if not evidence:
+		return score, support
+
+	deducer_l = models['B-Deducer'] if len(evidence[0].args) == 2 else models['U-Deducer']
+	deducer_r = models['B-Deducer'] if len(q.args) == 2 else models['U-Deducer']
+	graph = models['BU'] if len(evidence[0].args) == 2 else models['UU']
+
+	nearest_pred_clusters_l, nearest_score_clusters_l = ([], [])
+
+	ps_by_type = defaultdict(list)
+	for p in evidence:
+		ps_by_type[tuple(sorted(p.basic_types))].append(p)
+
+	ps_grouped = ps_by_type.values()
+	ps_ordered = [p for ps in ps_grouped for p in ps]
+	for group in ps_grouped:
+		# Replace Ps
+		# to_expand = [not prop_in_graphs(p, models['UU'], models['BU']) for p in group]
+		# Augment Ps
+		to_expand = [True] * len(group)
+
+		preds_to_expand = [p.pred_desc() for i, p in enumerate(group) if to_expand[i]]
+		preds_not_to_expand = [p.pred_desc() for i, p in enumerate(group) if not to_expand[i]]
+
+		res_ps_nn = deducer_l.get_nearest_node(preds_to_expand, k=k, model_typings=set(graph.keys()))
+		if res_ps_nn:
+			nearest_pred_clusters_l.extend(res_ps_nn[0])
+			nearest_score_clusters_l.extend(res_ps_nn[1])
+		else:
+			nearest_pred_clusters_l.extend([[p] for p in preds_to_expand])
+			nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_to_expand))])
+
+		if preds_not_to_expand:
+			nearest_pred_clusters_l.extend([[p] for p in preds_not_to_expand])
+			nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_not_to_expand))])
+
+	# res_ps_nn = deducer_l.get_nearest_node([p.pred_desc() for p in evidence], k=k, model_typings=set(graph.keys()))
+
+	# if not res_ps_nn and not any(ps_in_graph):
+	# 	return score, support
+
+	# nearest_pred_clusters, nearest_score_clusters = res_ps_nn if res_ps_nn else ([], [])
+	# nearest_pred_clusters.extend([[p.pred_desc()] for i,p in enumerate(evidence) if ps_in_graph[i]])
+	# nearest_score_clusters.extend([[1.0] for i, p in enumerate(evidence) if ps_in_graph[i]])
+	# nearest_pred_clusters = [[p.pred_desc()] for p in evidence]
+	# nearest_score_clusters = [[1.0] for _ in range(len(nearest_pred_clusters))]
+
+	res_r = ([q.pred_desc()], [1.0])
+
+	# Replace Q
+	# expand_q = not prop_in_graphs(q, models['UU'], models['BU'])
+	# Augment Q
+	expand_q = True
+
+	if expand_q:
+		res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, model_typings=set(graph.keys()))
+		if not res_q_nn:
+			return score, support
+		res_r = (res_q_nn[0][0], res_q_nn[1][0])
+
+	positional_weighting = False
+
+	for i in range(len(nearest_pred_clusters_l)):
+		preds = nearest_pred_clusters_l[i]
+		scores = nearest_score_clusters_l[i]
+		p = ps_ordered[i]
+		# q_typing = '#'.join(p.types)
+		# lhs_in_graph = (q_typing in models['BU'] and p.pred_desc() in models['BU'][q_typing].nodes)
+
+		res_l = (preds, scores)
+
+		basic_typing = '#'.join(preds[0].split('#')[1:]).replace('_1', '').replace('_2', '')
+
+		for lhs_pred, lhs_score in zip(*res_l):
+			lhs = Prop.with_new_pred(p, lhs_pred)
+			if positional_weighting:
+				lhs_score *= (1/(1+math.log10(1+len(graph[basic_typing].get_entailments(lhs_pred)))))
+
+			for rhs_pred, rhs_score in zip(*res_r):
+				rhs = Prop.with_new_pred(q, rhs_pred)
+				# rhs = q
+				# if positional_weighting:
+				# 	rhs_score *= (1 / (1 + math.log10(1 + len(model[basic_typing].get_antecedents(rhs_pred)))))
+
+				possible_score, possible_support = 0, None
+				if answer_mode == 'UU-LM':
+					prop_facts_u = _make_prop_cache([lhs], removals=[rhs])
+					arg_facts_u = _make_u_arg_cache([lhs], removals=[rhs])
+					possible_score, possible_support = infer_claim_UU(rhs, prop_facts_u, arg_facts_u, graph)
+
+				elif answer_mode == 'BB-LM':
+					prop_facts_b = _make_prop_cache([lhs], removals=[rhs])
+					arg_facts_b = _make_b_arg_cache([lhs], removals=[rhs])
+					possible_score, possible_support = infer_claim_BB(rhs, prop_facts_b, arg_facts_b, graph)
+
+				elif answer_mode == 'BU-LM':
+					prop_facts_b = _make_prop_cache([lhs], removals=[rhs])
+					arg_facts_u = _make_u_arg_cache([lhs], removals=[rhs])
+					possible_score, possible_support = infer_claim_BU(rhs, prop_facts_b, arg_facts_u, graph)
+
+				if possible_support:
+					possible_score = possible_score * lhs_score * rhs_score
+					# possible_score = (bb_score * min(lhs_score, rhs_score))
+					if possible_score > score:
+						score = possible_score
+						support = lhs
+
+	return score, support

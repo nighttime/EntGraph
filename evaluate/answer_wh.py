@@ -5,7 +5,7 @@ from proposition import *
 from entailment import *
 from article import *
 from analyze import *
-from mv_run import *
+from run_mv import *
 
 from typing import *
 

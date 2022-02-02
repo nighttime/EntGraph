@@ -27,8 +27,10 @@ public class ConstantsAgg {
 	public static boolean removeStopPreds = true;
 	public static boolean removePronouns = false;//TODO: You must move this to parsing 
 	public static boolean cutoffBasedonNSGraphs = true;// use NSpike-based cutoffs
-	
-	
+
+	// NMM
+//	public static boolean pruneNegatedArgPairFeatures = true;
+	public static boolean pruneEdgesUnrelatedToNegs = true;
 
 	// cutoffs
 	public static int minArgPairForPred = 10;// 100;
@@ -42,7 +44,7 @@ public class ConstantsAgg {
 	public static boolean removeGGFromTopPairs = true;// whether we should remove triples with two general entities
 														// from top pairs
 
-	public static final int numThreads = 20; //20 max?
+	public static final int numThreads = 1; //20 max?
 
 	// embedding parameters
 	public static boolean embBasedScores = false;// use sigmoid(transE score) instead of counts
@@ -53,16 +55,17 @@ public class ConstantsAgg {
 	public static EntailGraphFactoryAggregator.LinkPredModel linkPredModel = EntailGraphFactoryAggregator.LinkPredModel.ConvE;
 
 
-//	public static String relAddress = "news_gen_argwise/news_gen_argwise.json";
+	public static String relAddress = "news_gen/newsspike/news_gen_buy_test.json";
 //	public static String relAddress = "../relExtract/liane_newsspike_bin_un_3/newsspike_gen.json"; // Used for NAACL 2021 submission
 //	public static String relAddress = "../relExtract/liane_newsspike_mv_5_mods_no_bare_pred_lneg/news_gen.json";
-	public static String relAddress = "news_gen_argwise/newscrawl/newscrawl_easyccg/news_genC_GG.json";
+//	public static String relAddress = "news_gen/newscrawl/newscrawl_negation_selection_2020_5_19/news_genC_GG.json";
 //	public static String relAddress = "news_gen_argwise/newsspike/news_gen_argwise_100k.json";
 //	public static String relAddress = "/disk/scratch_big/jhosseini/mnt2/java/entGraph/news_genC.json";
 
 	public static String NERAddress = "data/stan_NER/news_genC_stanNER.json";
 
-	public static String simsFolder = "newscrawl_sims/newscrawl_siva_easyccg_bb_" + minArgPairForPred + "_" + minPredForArgPair;
+	public static String simsFolder = "newsspike_sims/newsspike_mv_bb_" + minArgPairForPred + "_" + minPredForArgPair + "_TEST";
+//	public static String simsFolder = "newscrawl_sims/newscrawl_siva_easyccg_bb_" + minArgPairForPred + "_" + minPredForArgPair + "_neg_focus";
 //	public static String simsFolder = "newsspike_sims/newsspike_mv_bb_" + minArgPairForPred + "_" + minPredForArgPair + "_lneg";
 //	public static String simsFolder = "newscrawl_sims/newscrawl_modifiers_" + minArgPairForPred + "_" + minPredForArgPair;
 //	public static String simsFolder = "newsspike_sims/newsspike_argwise_" + relAddress.replaceAll("\\D","") + "k_" + minArgPairForPred + "_" + minPredForArgPair;

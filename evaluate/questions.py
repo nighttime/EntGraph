@@ -1,10 +1,11 @@
+import statistics
 from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
 import datetime
 import re
 
 from proposition import *
-from entailment import *
+from entailment import EGraphCache, prop_recognized_in_graphs
 from article import *
 from analyze import *
 import proposition
@@ -127,6 +128,10 @@ def generate_questions(partition: List[Article],
 
 	random.shuffle(sample_props)
 	selected_questions = sample_props[:cap]
+
+	## report statistics
+	# b_counts = [ent_counts_b[tuple(sorted(p.arg_desc()))]-1 for p in selected_questions if len(p.args) == 2]
+	# print('partition avg p count (positives): {}'.format(statistics.mean(b_counts)))
 
 	# answer_choices = {q:{e for p in Q_cand for e in p.arg_desc() if e[e.index('#')+1:] == q[q.index('#')+1:]} for q in questions}
 	# print('From {} sents > {} top u ents / {} top b ents; {} top u props / {} top b props; {} questions (cap {})'.format(num_sents, len(most_common_u), len(most_common_b), len(top_props_u), len(top_props_b), len(selected_questions), cap))
@@ -663,26 +668,26 @@ def format_tf_QA_sets(positives: List[List[Prop]], negatives: List[List[Prop]]) 
 	return Q_sets, A_sets
 
 
-def select_answerable_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], uu_graphs: Optional[EGraphCache], bu_graphs: Optional[EGraphCache]) -> Tuple[List[List[Prop]], List[List[Prop]]]:
-	def in_graphs(p: Prop):
-		if len(p.args) == 1:
-			t = p.types[0]
-			if reference.GRAPH_BACKOFF:
-				return prop_recognized_in_graphs(p, uu_graphs) or prop_recognized_in_graphs(p, bu_graphs)
-			else:
-				# return t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
-				in_unary = t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
-				in_binary = any(t in g and p.pred_desc() in bu_graphs[g].nodes for g in bu_graphs.keys())
-				return in_unary or in_binary
+def prop_in_graphs(p: Prop, uu_graphs: Optional[EGraphCache], bu_graphs: Optional[EGraphCache]):
+	if len(p.args) == 1:
+		t = p.types[0]
+		if reference.GRAPH_BACKOFF:
+			return prop_recognized_in_graphs(p, uu_graphs) or prop_recognized_in_graphs(p, bu_graphs)
 		else:
-			t = '#'.join(p.basic_types)
-			if reference.GRAPH_BACKOFF:
-				return prop_recognized_in_graphs(p, bu_graphs)
-			else:
-				return t in bu_graphs and p.pred_desc() in bu_graphs[t].nodes
+			# return t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
+			in_unary = t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
+			in_binary = any(t in g and p.pred_desc() in bu_graphs[g].nodes for g in bu_graphs.keys())
+			return in_unary or in_binary
+	else:
+		t = '#'.join(p.basic_types)
+		if reference.GRAPH_BACKOFF:
+			return prop_recognized_in_graphs(p, bu_graphs)
+		else:
+			return t in bu_graphs and p.pred_desc() in bu_graphs[t].nodes
 
-	selected_P_list = [[p for p in ps if in_graphs(p)] for ps in P_list]
-	selected_N_list = [[p for p in ps if in_graphs(p)] for ps in N_list]
+def select_answerable_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], uu_graphs: Optional[EGraphCache], bu_graphs: Optional[EGraphCache]) -> Tuple[List[List[Prop]], List[List[Prop]]]:
+	selected_P_list = [[p for p in ps if prop_in_graphs(p, uu_graphs, bu_graphs)] for ps in P_list]
+	selected_N_list = [[p for p in ps if prop_in_graphs(p, uu_graphs, bu_graphs)] for ps in N_list]
 
 	return selected_P_list, selected_N_list
 

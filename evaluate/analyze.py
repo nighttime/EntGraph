@@ -1,5 +1,4 @@
 from proposition import *
-from reference import bar, BAR
 import utils
 
 import numpy as np
@@ -168,6 +167,7 @@ def plot_results(folder: str,
 				 save_thresh: bool = False,
 				 subset: Optional[str] = None):
 	comp_types = ['BB', 'UU', 'BU']
+	comp_types_LM = ['BB-LM', 'UU-LM', 'BU-LM']
 	sim_types = ['BERT', 'RoBERTa']
 
 	# Filter the questions and answers by subset
@@ -178,13 +178,13 @@ def plot_results(folder: str,
 		A_list = filter_2D_data(A_list, mask)
 		prediction_results = {title:(filter_2D_data(ps, mask), filter_2D_data(ss, mask)) for title,(ps,ss) in prediction_results.items()}
 
-		skip = ['BB'] if subset == 'unary' else ['UU', 'BU']
+		skip = ['BB', 'BB-LM'] if subset == 'unary' else ['UU', 'BU', 'UU-LM', 'BU-LM']
 		prediction_results = {title:preds for title,preds in prediction_results.items() if title not in skip}
 		print('Analyzing with {} subset only...'.format(subset))
 
 	true_flat = [ans for anss in A_list for ans in anss]
 
-	if subset is not None:
+	if subset is not None and False:
 		print('Num Qs: {}'.format(len(true_flat)))
 
 		if  '*exact-match U' in prediction_results:
@@ -202,19 +202,27 @@ def plot_results(folder: str,
 			if (subset == 'unary' and title.endswith(' B')) or (subset == 'binary' and title.endswith(' U')):
 				continue
 			# class_flat = [c for cs in threshold_sets(predictions, 0, strict=True) for c in cs]
-			class_flat, class_inds = top_x_flatten(predictions, 2000)
+			cutoff = 2000
+			if len(predictions) < cutoff:
+				print('{} skipped with {} predictions (fewer than {})'.format(title, len(predictions), cutoff))
+				continue
+			class_flat, class_inds = top_x_flatten(predictions, cutoff)
 			selected_as = np_true_flat[class_inds].tolist()
 			a = acc(selected_as, class_flat)
 			print('{}: {:.4f} ({} qs)'.format(title, a, len(selected_as)))
 		print()
-	return
+	# return
 	# plt.figure(figsize=(9,7))
 	if subset is not None:
-		plt.figure(figsize=(6, 3))
-		plt.gcf().subplots_adjust(bottom=0.2)
+		# plt.figure(figsize=(6, 3))
+		plt.figure(figsize=(6, 4))
+		# plt.gcf().subplots_adjust(bottom=0.2)
+		plt.gcf().subplots_adjust(bottom=0.3)
 	else:
-		plt.figure(figsize=(8, 4))
-		plt.gcf().subplots_adjust(bottom=0.15)
+		# plt.figure(figsize=(8, 4))
+		plt.figure(figsize=(8, 5))
+		# plt.gcf().subplots_adjust(bottom=0.15)
+		plt.gcf().subplots_adjust(bottom=0.3)
 		# plt.figure(figsize=(6, 3))
 		# plt.gcf().subplots_adjust(bottom=0.2)
 
@@ -241,7 +249,7 @@ def plot_results(folder: str,
 	precisions = {}
 	recalls = {}
 
-	num_steps = 500
+	num_steps = 1000 #500
 	markersize = 7
 	markersize_ub = 9
 	markersize_ppdb = 13
@@ -298,9 +306,9 @@ def plot_results(folder: str,
 		# thresholds[title] = threshold
 		# precisions[title] = precision
 		# recalls[title] = recall
-	# Plot component graph lines
+	# calculate component graph lines
 	for title, (predictions, support) in prediction_results.items():
-		if title not in comp_types:
+		if title not in comp_types + comp_types_LM:
 			continue
 
 		preds_flat = [p for ps in predictions for p in ps]
@@ -310,10 +318,10 @@ def plot_results(folder: str,
 		precision, recall, threshold = subsample_prt(precision, recall, threshold, num_steps)
 
 		# sns.lineplot(x=recall[:-1], y=threshold[:-1], label=title)
-		if subset is not None and title in ['BB', 'UU']:
-			sns.lineplot(x=recall, y=precision, label=title)
-		elif title in ['BB']:
-			sns.lineplot(x=recall, y=precision, label=title)
+		# if subset is not None and title in ['BB', 'UU', 'BB-LM']:
+		# 	sns.lineplot(x=recall, y=precision, label=title)
+		# elif title in ['BB', 'BB-LM']:
+		# 	sns.lineplot(x=recall, y=precision, label=title)
 
 		# sns.lineplot(x=recall, y=precision, label=title, alpha=0.3)
 
@@ -329,40 +337,49 @@ def plot_results(folder: str,
 
 	# Generate unions
 	comp_labels = [c for c in comp_types if c in prediction_results]
+	comp_labels_lm = [c + '-LM' for c in comp_types if c + '-LM' in prediction_results]
 	# comp_labels, components = tuple(zip(*((k,v[0]) for k,v in prediction_results.items() if k in comp_types)))
 	components = [prediction_results[label][0] for label in comp_labels]
-	unions = []
-	for ind in range(2, len(comp_labels)+1):
-		union_labels = comp_labels[:ind]
-		union_models = components[:ind]
-		print('Generating union results for {} from {} sample points'.format(union_labels, num_steps))
+	components_lm = [prediction_results[label][0] for label in comp_labels_lm]
 
-		# Preallocate space for precision, recall
-		optimistic_union = np.zeros([2, num_steps])
+	for comp_labels, components in [(comp_labels, components), (comp_labels_lm, components_lm)]:
+		plt.gca().set_prop_cycle(None)
+		unions = []
+		for ind in range(1, len(comp_labels)+1):
+			union_labels = comp_labels[:ind]
+			union_models = components[:ind]
+			print('Generating union results for {} from {} sample points'.format(union_labels, num_steps))
 
-		for i,prec in enumerate(np.arange(1.0, 0, -1/num_steps)):
-			threshes = [thresholds[l][np.abs(precisions[l] - prec).argmin()] for l in union_labels]
-			threshed_classifications = np.array([[c for cs in threshold_sets(comp, thresh) for c in cs] for comp,thresh in zip(union_models, threshes)])
-			optim_union_classifications: List[int] = np.any(threshed_classifications, axis=0).astype(int).tolist()
+			# Preallocate space for precision, recall
+			optimistic_union = np.zeros([2, num_steps])
 
-			optimistic_union[0][i] = calc_precision(true_flat, optim_union_classifications)
-			optimistic_union[1][i] = calc_recall(true_flat, optim_union_classifications)
+			for i,prec in enumerate(np.arange(1.0, 0, -1/num_steps)):
+				threshes = [thresholds[l][np.abs(precisions[l] - prec).argmin()] for l in union_labels]
+				threshed_classifications = np.array([[c for cs in threshold_sets(comp, thresh) for c in cs] for comp,thresh in zip(union_models, threshes)])
+				optim_union_classifications: List[int] = np.any(threshed_classifications, axis=0).astype(int).tolist()
 
-		# Cut off points before the dead drop to 1.0 recall
-		try:
-			opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
-			optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
-		except:
-			print('recall in union != 1 anywhere?')
+				optimistic_union[0][i] = calc_precision(true_flat, optim_union_classifications)
+				optimistic_union[1][i] = calc_recall(true_flat, optim_union_classifications)
 
-		# Add initial point in line with the component models
-		optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
-		unions.append(optimistic_union)
+			# Cut off points before the dead drop to 1.0 recall
+			try:
+				opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
+				optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
+			except:
+				print('recall in union != 1 anywhere?')
 
-		sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label=' + '.join(union_labels))
+			# Add initial point in line with the component models
+			optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
+			unions.append(optimistic_union)
 
-		# opt_adjusted_auc, opt_normalized_adjusted_auc = calc_adjusted_auc(optimistic_union[0], optimistic_union[1], em_recall)
-		# print('Optimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(opt_adjusted_auc, opt_normalized_adjusted_auc))
+			sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label=' + '.join(union_labels))
+
+			# Make unboosted MV graph dashed if plotting with boosted graph
+			if comp_labels_lm and comp_labels != comp_labels_lm:
+				ax.lines[-1].set_linestyle('dashed')
+
+			# opt_adjusted_auc, opt_normalized_adjusted_auc = calc_adjusted_auc(optimistic_union[0], optimistic_union[1], em_recall)
+			# print('Optimistic Union adjusted AUC = {:.3f} ({:.3f} normalized)'.format(opt_adjusted_auc, opt_normalized_adjusted_auc))
 
 
 	# Plot exact-match baseline
@@ -392,14 +409,16 @@ def plot_results(folder: str,
 		# sns.lineplot(x=[em_ub_recall], y=[em_ub_precision], marker='D', markersize=5, label='Exact-Match U+B')
 		plt.plot([em_ub_recall], [em_ub_precision], marker='h', markersize=markersize_ub, label='Exact-Match B+U', color=marker_color)
 
-	plt.xlabel('Recall', fontsize=17)
+	plt.xlabel('Recall', fontsize=15)
 	plt.xticks(np.arange(0, 1.01, step=0.1), fontsize=14)
 
 	leftplot = True
 	if leftplot:
-		plt.ylabel('Precision', fontsize=17)
+		plt.ylabel('Precision', fontsize=15)
 		plt.yticks(np.arange(0.4, 1.05, step=0.1), fontsize=14)
-		plt.legend(fontsize=13)
+		plt.legend(fontsize=12, loc='upper center', bbox_to_anchor=(0.5, -0.2),
+				   fancybox=True, ncol=3)
+
 	else:
 		# plt.gca().axes.yaxis.set_ticklabels([])
 		plt.gca().axes.yaxis.tick_right()
@@ -488,7 +507,7 @@ def plot_results(folder: str,
 				# agreement = uu_class[i][j] == bu_class[i][j]
 				# correct_union_adj = uu_bu_adj_class[i][j] == ans
 
-				if A_list[i][j] == ans and any(threshed_classes[m][i][j] == 1 for m in comp_labels):
+				if A_list[i][j] == ans and any(threshed_classes[m][i][j] == 1 for m in comp_labels_lm):
 					# if not agreement:
 					# 	total_disagreements += 1
 					# 	if correct_union_adj:
@@ -500,14 +519,11 @@ def plot_results(folder: str,
 					# bu_support = prediction_results['B->U'][1][i][j] or '-'
 					question_data = OrderedDict([('question', str(q)), ('answer', ans)])
 
-					for model in ['UU', 'BU', 'BB', 'BERT', 'RoBERTa']:
-						if model in prediction_results:
+					for model in ['UU-LM', 'BU-LM', 'BB-LM']:#, 'BU', 'BB', 'BERT', 'RoBERTa']:
+						if model in prediction_results and model in prediction_results[model][1][i][j]:
 							classification = threshed_classes[model][i][j]
 							score = prediction_results[model][0][i][j]
-							if model in prediction_results[model][1][i][j]:
-								evidence = str(prediction_results[model][1][i][j][model])
-							else:
-								evidence = '-'
+							evidence = str(prediction_results[model][1][i][j][model])
 							question_data[model] = '{} ({:.2f} {})'.format(classification, score, evidence)
 
 					any_literal_model = next(k for k in prediction_results.keys() if k.startswith('*exact-match'))
@@ -553,29 +569,30 @@ def plot_results(folder: str,
 			# f.write('{}/{} ({:.2f}%) (Adj) correct union taken in disagreement cases\n'.format(adj_correct_union, total_disagreements, adj_correct_union/total_disagreements * 100))
 			# f.write('\n')
 
-			result_infos_uu = [r for r in result_infos if r['question'].split(':')[0].count('#') == 1 and r['UU'].startswith('1 (0')]
-			result_infos_bu = [r for r in result_infos if r['question'].split(':')[0].count('#') == 1 and r['BU'].startswith('1 (0')]
-			result_infos_bb = [r for r in result_infos if r['question'].split(':')[0].count('#') == 2 and r['BB'].startswith('1 (0')]
+			# result_infos_uu = [r for r in result_infos if r['question'].split(':')[0].count('#') == 1 and r['UU'].startswith('1 (0')]
+			# result_infos_bu = [r for r in result_infos if r['question'].split(':')[0].count('#') == 1 and r['BU'].startswith('1 (0')]
+			# result_infos_bb = [r for r in result_infos if r['question'].split(':')[0].count('#') == 2 and r['BB'].startswith('1 (0')]
 
-			sample_size = min(300, len(result_infos))
+			sample_size = min(100, len(result_infos))
 			print('sampling {} questions'.format(sample_size))
 			f.write('=== Sample (n={}) ===\n'.format(sample_size))
-			result_sample_uu = random.sample(result_infos_uu, int(sample_size / 3))
-			result_sample_bu = random.sample(result_infos_bu, int(sample_size / 3))
-			result_sample_bb = random.sample(result_infos_bb, int(sample_size / 3))
-			result_sample = result_sample_uu + result_sample_bu + result_sample_bb
+			result_sample = random.sample(result_infos, int(sample_size))
+			# result_sample_uu = random.sample(result_infos_uu, int(sample_size / 3))
+			# result_sample_bu = random.sample(result_infos_bu, int(sample_size / 3))
+			# result_sample_bb = random.sample(result_infos_bb, int(sample_size / 3))
+			# result_sample = result_sample_uu + result_sample_bu + result_sample_bb
 
-			for i,s in enumerate(result_sample):
-				r = OrderedDict([('index', i)] + list(s.items()))
-				if i < sample_size / 3:
-					f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['UU'], r['RoBERTa']))
-				elif i < 2 * sample_size / 3:
-					f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['BU'], r['RoBERTa']))
-				else:
-					f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['BB'], r['RoBERTa']))
-				f.write('\n')
-
-			f.write('\n\n')
+			# for i,s in enumerate(result_sample):
+			# 	r = OrderedDict([('index', i)] + list(s.items()))
+			# 	if i < sample_size / 3:
+			# 		f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['UU'], r['RoBERTa']))
+			# 	elif i < 2 * sample_size / 3:
+			# 		f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['BU'], r['RoBERTa']))
+			# 	else:
+			# 		f.write('Q\t{}\tA\t{}\tRoBERTa\t{}'.format(r['question'], r['BB'], r['RoBERTa']))
+			# 	f.write('\n')
+			#
+			# f.write('\n\n')
 
 			for i,s in enumerate(result_sample):
 				r = OrderedDict([('index', i)] + list(s.items()))
@@ -591,7 +608,7 @@ def generate_results(folder: str,
 				 sample: bool = False,
 				 save_thresh: bool = False,
 				 test: bool = False,
-				 direct: bool = False):
+				 direct: bool = False) -> str:
 	# Make results directory
 	now = reference.FINISH_TIME or datetime.datetime.now().strftime('%Y-%m-%d_%H.%M')
 	location = 'direct' if direct else ('local' if reference.RUNNING_LOCAL else 'server')
@@ -605,15 +622,17 @@ def generate_results(folder: str,
 	plot_results(run_folder, Q_list, A_list, prediction_results, subset='unary')
 	plot_results(run_folder, Q_list, A_list, prediction_results, subset='binary')
 
+	return run_folder
+
 
 def run():
 	# global ARGS
 	ARGS = parser.parse_args()
 
 	print()
-	print(BAR)
+	utils.print_BAR()
 	print('Direct Analysis')
-	print(bar)
+	utils.print_bar()
 	utils.checkpoint()
 
 	print('Reading in results for analysis...')
@@ -627,7 +646,7 @@ def run():
 
 	utils.checkpoint()
 	print('Done')
-	print(BAR)
+	utils.print_BAR()
 	return Q_List, A_List, results
 
 

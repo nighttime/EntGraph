@@ -766,6 +766,14 @@ public class EntailGraph extends SimpleEntailGraph {
 
 					PredicateVector pvec2 = pvecs.get(pvecIdx2);
 
+					if (ConstantsAgg.pruneEdgesUnrelatedToNegs) {
+						if (!pvec1.predicate.startsWith("NEG__") && !pvec2.predicate.startsWith("NEG__")) {
+							if (!this.predToIdx.containsKey("NEG__" + pvec1.predicate) && !this.predToIdx.containsKey("NEG__" + pvec2.predicate)) {
+								continue;
+							}
+						}
+					}
+
 					if (ConstantsAgg.generateArgwiseGraphs) {
 						// Do not queue B->B or U->U edges
 						//   We require information about both nodes to compute a directed edge's score.
