@@ -105,7 +105,7 @@ class Prop:
 		self.date = date
 
 	def arg_desc(self, numbered=False) -> List[str]:
-		assert len(self.types) == len(self.args)
+		assert len(self.types) == len(self.args), "types {} not the same size as args {}".format(self.types, self.args)
 		ts = self.types if numbered else self.basic_types
 		return [self.args[i] + '#' + ts[i] for i in range(len(self.args))]
 

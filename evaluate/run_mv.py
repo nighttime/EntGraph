@@ -209,9 +209,9 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	print('* Question modes:', question_modes)
 
 	answer_modes = set()
-	if 'unary' in question_modes:
+	if 'unary' in question_modes and ARGS.uu_graphs:
 		answer_modes.add('UU')
-	if 'binary' in question_modes:
+	if 'binary' in question_modes and ARGS.bu_graphs:
 		answer_modes.add('BB')
 		if not ARGS.quick:
 			answer_modes.add('BU')
@@ -390,34 +390,40 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		answer_modes = {'Literal B'}
 		results['*exact-match B'] = run_tf_sets(Q_list, A_list, evidence_list, 'Literal B', eval_fun, models, answer_modes)
 
-	if uu_graphs and 'unary' in question_modes:
-		if ARGS.uv_emb:
-			print('Using graph embeddings from: {}'.format(ARGS.uv_emb))
-			models['U-Deducer'] = GraphDeducer('roberta', ARGS.uv_emb, valency=1)
-			answer_modes = {'UU', 'UU-LM', 'Literal U'}
-			results['UU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU-LM', eval_fun, models, answer_modes)
-
-		answer_modes = {'UU', 'Literal U'}
-		results['UU'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU', eval_fun, models, answer_modes)
-
 	if bu_graphs:
 		if ARGS.bv_emb:
-			print('Using graph embeddings from: {}'.format(ARGS.bv_emb))
-			models['B-Deducer'] = GraphDeducer('roberta', ARGS.bv_emb, valency=2)
+			print('Using graph embeddings from: {} ([B]->U nodes)'.format(ARGS.bv_emb))
+			models['BV-B-Deducer'] = GraphDeducer('roberta', ARGS.bv_emb, valency=2)
+
+		if 'unary' in question_modes and not ARGS.quick:
+			if ARGS.bv_emb:
+				print('Using graph embeddings from: {} (B->[U] nodes)'.format(ARGS.bv_emb))
+				models['BV-U-Deducer'] = GraphDeducer('roberta', ARGS.bv_emb, valency=1)
+				answer_modes = {'BU', 'BU-LM', 'Literal U'}
+				results['BU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU-LM', eval_fun, models, answer_modes)
+				print('BV-B-Deducer log:', models['BV-B-Deducer'].log)
+				print('BV-U-Deducer log:', models['BV-U-Deducer'].log)
+			answer_modes = {'BU', 'Literal U'}
+			results['BU'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU', eval_fun, models, answer_modes)
 
 		if 'binary' in question_modes:
 			if ARGS.bv_emb:
 				answer_modes = {'BB', 'BB-LM', 'Literal B'}
 				results['BB-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'BB-LM', eval_fun, models, answer_modes)
+				print('BV-B-Deducer log:', models['BV-B-Deducer'].log)
 			answer_modes = {'BB', 'Literal B'}
 			results['BB'] = run_tf_sets(Q_list, A_list, evidence_list, 'BB', eval_fun, models, answer_modes)
 
-		if not ARGS.quick and 'unary' in question_modes:
-			if ARGS.bv_emb:
-				answer_modes = {'BU', 'BU-LM', 'Literal U'}
-				results['BU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU-LM', eval_fun, models, answer_modes)
-			answer_modes = {'BU', 'Literal U'}
-			results['BU'] = run_tf_sets(Q_list, A_list, evidence_list, 'BU', eval_fun, models, answer_modes)
+	if uu_graphs and 'unary' in question_modes:
+		if ARGS.uv_emb:
+			print('Using graph embeddings from: {}'.format(ARGS.uv_emb))
+			models['UV-U-Deducer'] = GraphDeducer('roberta', ARGS.uv_emb, valency=1)
+			answer_modes = {'UU', 'UU-LM', 'Literal U'}
+			results['UU-LM'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU-LM', eval_fun, models, answer_modes)
+			print('UV-U-Deducer log:', models['UV-U-Deducer'].log)
+
+		answer_modes = {'UU', 'Literal U'}
+		results['UU'] = run_tf_sets(Q_list, A_list, evidence_list, 'UU', eval_fun, models, answer_modes)
 
 	if ARGS.sim_cache:
 		if 'BERT' in models:

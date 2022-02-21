@@ -4,13 +4,12 @@ import math
 import sys
 import traceback
 import os
-from collections import defaultdict, Counter, namedtuple
+from collections import defaultdict, Counter, namedtuple, OrderedDict
 import pickle
 from itertools import chain
 import numpy as np
 import sklearn.metrics
 import torch
-# from pytorch_transformers import *
 from transformers import *
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import pairwise_distances
@@ -26,41 +25,67 @@ from entailment import *
 from typing import *
 
 class GraphDeducer:
-	graph_embs_cache: Dict[str, Tuple[Dict[int, str], BallTree]] = {} #np.ndarray]] = {}
-	graph_embs_dir: str
-	valency: int
-	model: PreTrainedModel
-	tokenizer: PreTrainedTokenizer
-	log = defaultdict(int)
-
 	def __init__(self, model_name: str, graph_embs_dir, valency=2):
 		self.graph_embs_dir = graph_embs_dir
-		self.model, self.tokenizer = initialize_model(model_name)
-		self.valency = valency
+		self.graph_embs_cache: Dict[str, Tuple[Dict[int, str], BallTree]] = {}  # np.ndarray]] = {}
+		self.nearest_cache = LRUCache(capacity=100000)
 
-	# @lru_cache(maxsize=None)
-	def get_nearest_node(self, preds: List[str], k, model_typings: Set[str], ablated_preds=[]) -> Optional[Tuple[List[List[str]], List[List[float]]]]:
+		self.valency = valency
+		self.model, self.tokenizer = initialize_model(model_name)
+
+		self.log = defaultdict(int)
+
+	def get_nearest_node(self, preds: List[str], k, available_graphs: Set[str], target_typing=None, ablated_preds=[]) -> Optional[Tuple[List[List[str]], List[List[float]]]]:
+		# Check basic assumptions first
 		if len(preds) == 0:
 			return None
 		pred_valency = preds[0].count('#')
 		assert pred_valency == self.valency
-		basic_typing = '#'.join(preds[0].split('#')[1:]).replace('_1', '').replace('_2', '')
-		emb_result = self._graph_embs_for_basic_typing(basic_typing)
 
-		if not emb_result or basic_typing not in model_typings:
+		basic_typings = ['#'.join(sorted(p.split('#')[1:])).replace('_1', '').replace('_2', '') for p in preds]
+		basic_typing = basic_typings[0]
+		assert all(t == basic_typing for t in basic_typings)
+
+		# Try to find the correctly-typed graph
+		correct_typing = target_typing or basic_typing
+		if self.valency == 1 and len(correct_typing.split('#')) == 2:
+			use_unary_thing = set(correct_typing.split('#')) == {'thing'}
+			emb_result = self.graph_embs_for_basic_typing(correct_typing + '@' + ('thing' if use_unary_thing else basic_typing))
+		else:
+			emb_result = self.graph_embs_for_basic_typing(correct_typing)
+
+		if not emb_result or correct_typing not in available_graphs:
 			# self.log['Graph emb file not found'] += 1
 			# return None
 
 			# Back off to the thing#thing graph
-			basic_typing = '#'.join(['thing']*self.valency) #'thing#thing'
-			emb_result = self._graph_embs_for_basic_typing(basic_typing)
+			backoff_valency = target_typing.count('#')+1 if target_typing else self.valency
+			backoff_typing = '#'.join(['thing']*backoff_valency) #'thing#thing'
+			emb_result = self.graph_embs_for_basic_typing(backoff_typing)
+
 			if emb_result:
-				self.log['Fallback to {} emb file'.format(basic_typing)] += 1
-				numbered_typing = 'thing' if self.valency == 1 else '#'.join('thing_' + str(i) for i in range(1,1+self.valency))
-				preds = [p.split('#')[0] + '#' + numbered_typing for p in preds]
+				self.log['Fallback to {} emb file'.format(backoff_typing)] += 1
+				# numbered_typing = 'thing' if self.valency == 1 else '#'.join('thing_' + str(i) for i in range(1,1+self.valency))
+				if self.valency == 2:
+					numbered_typing = ['thing_1#thing_2']
+				elif backoff_valency == 2:
+					numbered_typing = ['thing_1', 'thing_2']
+				else:
+					numbered_typing = ['thing']
+				# preds = [p.split('#')[0] + '#' + numbered_typing for p in preds]
+				preds = [p.split('#')[0] + '#' + t for p in preds for t in numbered_typing]
 			else:
 				self.log['Graph emb file not found'] += 1
 				return None
+
+		# assert all(p.count('#')==self.valency for p in emb_result[0].values())
+
+		# Check cache for preds to avoid recalculating nearest neighbors
+		cached_preds_idx = [i for i, p in enumerate(preds) if (p, basic_typing) in self.nearest_cache]
+		cached_results = [self.nearest_cache[(preds[i], basic_typing)] for i in cached_preds_idx]
+		preds = [p for i,p in enumerate(preds) if i not in cached_preds_idx]
+		if not preds:
+			return tuple(zip(*cached_results))
 
 		inv_idx, graph_embs = emb_result
 
@@ -72,12 +97,13 @@ class GraphDeducer:
 
 		# Delete candidates if ablating
 		for to_ablate in ablated_preds:
-			idx = {p:i for i,p in inv_idx.items()}
-			if to_ablate in idx:
-				# Temporarily delete a predicate node from the graph (embeddings) for this question instance
-				pred_i = idx[to_ablate]
-				graph_embs = np.delete(graph_embs, pred_i, axis=0) # this does not mutate original graph_embs!
-				inv_idx = {(i if i < pred_i else i - 1):p for i,p in inv_idx.items() if i != pred_i}
+			raise RuntimeError('Ablation disabled: would give inconsistent results due to caching')
+		# 	idx = {p:i for i,p in inv_idx.items()}
+		# 	if to_ablate in idx:
+		# 		# Temporarily delete a predicate node from the graph (embeddings) for this question instance
+		# 		pred_i = idx[to_ablate]
+		# 		graph_embs = np.delete(graph_embs, pred_i, axis=0) # this does not mutate original graph_embs!
+		# 		inv_idx = {(i if i < pred_i else i - 1):p for i,p in inv_idx.items() if i != pred_i}
 
 		graph_sz = len(inv_idx)
 
@@ -127,13 +153,24 @@ class GraphDeducer:
 			# top_k_scores = (1 / (1 + top_k_dists)) * (1 / (1 + math.log10(graph_sz)))
 			top_k_preds = [inv_idx[i] for i in top_k_inds]
 
-		if graph_embs.data.shape[0] <= k:
-			k = graph_embs.data.shape[0] - 1
+		if graph_embs.data.shape[0] < k:
+			k = graph_embs.data.shape[0]
 			self.log['! scaling k to {} for {}'.format(k, basic_typing)] += 1
 
 		top_k_dists, top_k_inds = graph_embs.query(query_emb, k=k)
 		top_k_scores = (1 / (1 + top_k_dists)).tolist()
 		top_k_preds = [[inv_idx[i] for i in row] for row in top_k_inds]
+
+		# Cache calculated results if needed later
+		for i,pred in enumerate(preds):
+			self.nearest_cache[(pred, basic_typing)] = (top_k_preds[i], top_k_scores[i])
+
+		# Merge in requested cached results
+		if cached_results:
+			top_k_preds.extend([ps for ps, ss in cached_results])
+			top_k_scores.extend([ss for ps, ss in cached_results])
+
+		assert all(p.count('#')==self.valency for ps in top_k_preds for p in ps), 'Predictions not of valency {}: {}'.format(self.valency, top_k_preds)
 
 		return top_k_preds, top_k_scores
 
@@ -146,12 +183,22 @@ class GraphDeducer:
 		encode_batch(batch, self.model, self.tokenizer, cache_map, cache, 0)
 		return cache
 
-	def _graph_embs_for_basic_typing(self, basic_typing) -> Optional[Tuple[Dict[int, str], BallTree]]:
+	def graph_embs_for_basic_typing(self, query_typing) -> Optional[Tuple[Dict[int, str], BallTree]]:
+		target_typing = ''
+		basic_typing = query_typing
+		if '@' in query_typing:
+			basic_typing, target_typing = query_typing.split('@')
+
 		reverse_typing = '#'.join(reversed(basic_typing.split('#')))
-		if basic_typing in self.graph_embs_cache:
-			return self.graph_embs_cache[basic_typing]
-		elif reverse_typing in self.graph_embs_cache:
-			return self.graph_embs_cache[reverse_typing]
+
+		suffix = '@' + target_typing if target_typing else ''
+		query = basic_typing + suffix
+		rev_query = reverse_typing + suffix
+
+		if query in self.graph_embs_cache:
+			return self.graph_embs_cache[query]
+		elif rev_query in self.graph_embs_cache:
+			return self.graph_embs_cache[rev_query]
 		else:
 			embs_path = os.path.join(self.graph_embs_dir, basic_typing + '.pkl')
 			if not os.path.exists(embs_path):
@@ -167,6 +214,8 @@ class GraphDeducer:
 
 				# Use mask to keep only correct-valency candidate replacements
 				keep_inv_idx = {i: p for i, p in inv_idx.items() if p.count('#') == self.valency}
+				if target_typing:
+					keep_inv_idx = {i: p for i, p in keep_inv_idx.items() if '#'.join(p.split('#')[1:]).replace('_1', '').replace('_2', '') == target_typing}
 				keep_idx = sorted(list(keep_inv_idx.keys()))
 				embs = embs[keep_idx, :]
 				inv_idx = {new_idx: inv_idx[old_idx] for new_idx, old_idx in enumerate(keep_idx)}
@@ -182,10 +231,87 @@ class GraphDeducer:
 
 				embs = BallTree(embs)
 
-				self.graph_embs_cache[basic_typing] = (inv_idx, embs)
-				self.graph_embs_cache[reverse_typing] = (inv_idx, embs)
+				self.graph_embs_cache[query] = (inv_idx, embs)
+				self.graph_embs_cache[rev_query] = (inv_idx, embs)
+				assert all(p.count('#') == self.valency for p in inv_idx.values())
 				return inv_idx, embs
 
+	# def graph_embs_for_basic_typing(self, query_typing) -> Optional[Tuple[Dict[int, str], BallTree]]:
+	# 	target_typing = ''
+	# 	if '@' in query_typing:
+	# 		basic_typing, target_typing = query_typing.split('@')
+	# 		target_typing = '@' + target_typing
+	#
+	# 	reverse_typing = '#'.join(reversed(basic_typing.split('#')))
+	# 	if basic_typing in self.graph_embs_cache:
+	# 		return self.graph_embs_cache[basic_typing]
+	# 	elif reverse_typing in self.graph_embs_cache:
+	# 		return self.graph_embs_cache[reverse_typing]
+	# 	else:
+	# 		embs_path = os.path.join(self.graph_embs_dir, basic_typing + '.pkl')
+	# 		if not os.path.exists(embs_path):
+	# 			embs_path = os.path.join(self.graph_embs_dir, reverse_typing + '.pkl')
+	# 		if not os.path.exists(embs_path):
+	# 			return None
+	# 		with open(embs_path, 'rb') as f:
+	# 			idx, embs = pickle.load(f)
+	#
+	# 			nonzero_rows = ~(embs == 0).all(1)
+	# 			embs = embs[nonzero_rows]
+	# 			inv_idx = {v: k for k, v in idx.items() if nonzero_rows[v]}
+	#
+	# 			# Use mask to keep only correct-valency candidate replacements
+	# 			keep_inv_idx = {i: p for i, p in inv_idx.items() if p.count('#') == self.valency}
+	# 			keep_idx = sorted(list(keep_inv_idx.keys()))
+	# 			embs = embs[keep_idx, :]
+	# 			inv_idx = {new_idx: inv_idx[old_idx] for new_idx, old_idx in enumerate(keep_idx)}
+	#
+	# 			# preprocessing for cosine similarity (norming)
+	# 			# norms = np.expand_dims(np.linalg.norm(embs, axis=1), axis=1)
+	# 			# embs = embs / norms
+	#
+	# 			if embs.shape[0] == 0:
+	# 				return None
+	#
+	# 			assert not np.isnan(embs).any()
+	#
+	# 			embs = BallTree(embs)
+	#
+	# 			self.graph_embs_cache[basic_typing] = (inv_idx, embs)
+	# 			self.graph_embs_cache[reverse_typing] = (inv_idx, embs)
+	# 			assert all(p.count('#') == self.valency for p in inv_idx.values())
+	# 			return inv_idx, embs
+
+# Based on: https://www.geeksforgeeks.org/lru-cache-in-python-using-ordereddict/
+class LRUCache:
+	def __init__(self, capacity: int):
+		self.cache = OrderedDict()
+		self.capacity = capacity
+
+	def get(self, key):
+		# if key not in self.cache:
+		# 	return None
+		# else:
+		# 	self.cache.move_to_end(key)
+		# 	return self.cache[key]
+		value = self.cache[key]
+		self.cache.move_to_end(key)
+		return value
+
+	def put(self, key: int, value: int) -> None:
+		self.cache[key] = value
+		self.cache.move_to_end(key)
+		if len(self.cache) > self.capacity:
+			self.cache.popitem(last=False)
+
+	def __contains__(self, item):
+		return item in self.cache
+
+	def __getitem__(self, item):
+		return self.get(item)
+
+	def __setitem__(self, key, value):
+		self.put(key, value)
 
 def construct_proposition(prop: Prop, arg_idx=0) -> Tuple[str, str, int]:
 	is_unary = (len(prop.args) == 1)
@@ -355,12 +481,14 @@ def initialize_model(model_name: str) -> Tuple[PreTrainedModel, PreTrainedTokeni
 def embed_graph(graph: EntailmentGraph, model: PreTrainedModel, tokenizer: PreTrainedTokenizer) -> Tuple[Dict[Tuple[str, int], int], np.ndarray]:
 	assert graph.edges
 
-	graph_valency = len(graph.typing.split('#'))
-	preds = list(graph.edges.keys())
-	if graph_valency == 1:
-		preds = [p for p in preds if not article.reject_unary(p)]
-	else:
-		preds = [p for p in preds if not article.reject_binary(p)]
+	# graph_valency = len(graph.typing.split('#'))
+	# preds = list(graph.edges.keys())
+	preds = list(graph.nodes)
+	preds = [p for p in preds if (not article.reject_unary(p) if p.count('#') == 1 else not article.reject_binary(p))]
+	# if graph_valency == 1:
+	# 	preds = [p for p in preds if not article.reject_unary(p)]
+	# else:
+	# 	preds = [p for p in preds if not article.reject_binary(p)]
 
 	max_props = len(preds)
 	cache = np.zeros([max_props, 768])

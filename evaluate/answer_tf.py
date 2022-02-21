@@ -101,7 +101,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 	predictions = []
 	prediction_support = []
 	for c in claims:
-		if reference.RUNNING_LOCAL and 'person' not in c.basic_types:
+		if reference.RUNNING_LOCAL and 'UU' in models and 'BU' in models and 'person' not in c.basic_types:
 			continue
 
 		q = c.pred_desc()
@@ -134,7 +134,7 @@ def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 				score = 1
 				prediction_support[-1]['Literal B'] = literal_support
 
-		q_found = prop_in_graphs(c, models['UU'], models['BU'])
+		# q_found = prop_in_graphs(c, models['UU'], models['BU'])
 
 		# Get inferred answers from U->U graph
 		if 'UU' in answer_modes and is_unary:
@@ -275,7 +275,9 @@ def infer_claim_BU(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 			for ant in antecedents:
 				for prop in prop_cache[ant.pred]:
 					arg_idx = prop.types.index(qualified_question_type)
-					if prop.arg_desc()[arg_idx] == claim.arg_desc()[0]:
+					l_arg = prop.arg_desc()[arg_idx]
+					r_arg = claim.arg_desc()[0]
+					if l_arg == r_arg:
 						if ant.score > score:
 							score = max(score, ant.score)
 							support = prop
@@ -555,18 +557,28 @@ def infer_claim_ppdb(claim: Prop,
 	return normed_score, support
 
 def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mode: str) -> Tuple[float, Optional[Prop]]:
-	score = 0
-	support = None
+	# Parameters
 	k = 4
 	# k = 'logscale'
 	# k = 'proportional'
+	augment_P = ['none', 'missing', 'all'][1]
+	augment_Q = ['none', 'missing', 'all'][1]
+	positional_weighting = True
+
+	score = 0
+	support = None
 
 	if not evidence:
 		return score, support
+	evidence = list(set(evidence))
 
-	deducer_l = models['B-Deducer'] if len(evidence[0].args) == 2 else models['U-Deducer']
-	deducer_r = models['B-Deducer'] if len(q.args) == 2 else models['U-Deducer']
-	graph = models['BU'] if len(evidence[0].args) == 2 else models['UU']
+	deducer_l = models[{'BB-LM': 'BV-B-Deducer', 'BU-LM': 'BV-B-Deducer', 'UU-LM': 'UV-U-Deducer'}[answer_mode]]
+	deducer_r = models[{'BB-LM': 'BV-B-Deducer', 'BU-LM': 'BV-U-Deducer', 'UU-LM': 'UV-U-Deducer'}[answer_mode]]
+
+	graph = models['BU'] if answer_mode in ['BB-LM', 'BU-LM'] else models['UU']
+
+	graph_uu = models['UU'] if 'UU' in graph else None
+	graph_bu = models['BU'] if 'BU' in graph else None
 
 	nearest_pred_clusters_l, nearest_score_clusters_l = ([], [])
 
@@ -577,19 +589,23 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 	ps_grouped = ps_by_type.values()
 	ps_ordered = [p for ps in ps_grouped for p in ps]
 	for group in ps_grouped:
-		# Replace Ps
-		# to_expand = [not prop_in_graphs(p, models['UU'], models['BU']) for p in group]
-		# Augment Ps
-		to_expand = [True] * len(group)
+		if augment_P == 'all':
+			to_expand_P = [True] * len(group)
+		elif augment_P == 'missing':
+			to_expand_P = [not prop_in_graphs(p, graph_uu, graph_bu) for p in group]
+		else:
+			to_expand_P = [False] * len(group)
 
-		preds_to_expand = [p.pred_desc() for i, p in enumerate(group) if to_expand[i]]
-		preds_not_to_expand = [p.pred_desc() for i, p in enumerate(group) if not to_expand[i]]
+		preds_to_expand = [p.pred_desc() for i, p in enumerate(group) if to_expand_P[i]]
+		preds_not_to_expand = [p.pred_desc() for i, p in enumerate(group) if not to_expand_P[i]]
 
-		res_ps_nn = deducer_l.get_nearest_node(preds_to_expand, k=k, model_typings=set(graph.keys()))
+		res_ps_nn = deducer_l.get_nearest_node(preds_to_expand, k=k, available_graphs=set(graph.keys()))
 		if res_ps_nn:
+			deducer_l.log['{} LHS: nn found'.format(answer_mode)] += 1
 			nearest_pred_clusters_l.extend(res_ps_nn[0])
 			nearest_score_clusters_l.extend(res_ps_nn[1])
 		else:
+			deducer_l.log['{} LHS: nn not found'.format(answer_mode)] += 1
 			nearest_pred_clusters_l.extend([[p] for p in preds_to_expand])
 			nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_to_expand))])
 
@@ -610,40 +626,56 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 
 	res_r = ([q.pred_desc()], [1.0])
 
-	# Replace Q
-	# expand_q = not prop_in_graphs(q, models['UU'], models['BU'])
-	# Augment Q
-	expand_q = True
+	if augment_Q == 'all':
+		expand_Q = True
+	elif augment_Q == 'missing':
+		expand_Q = not prop_in_graphs(q, graph_uu, graph_bu)
+	else:
+		expand_Q = False
 
-	if expand_q:
-		res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, model_typings=set(graph.keys()))
-		if not res_q_nn:
-			return score, support
-		res_r = (res_q_nn[0][0], res_q_nn[1][0])
-
-	positional_weighting = False
+	if expand_Q and answer_mode != 'BU-LM':
+		res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, available_graphs=set(graph.keys()))
+		if res_q_nn:
+			res_r = (res_q_nn[0][0], res_q_nn[1][0])
+			deducer_r.log['{} RHS: nn found'.format(answer_mode)] += 1
+		else:
+			deducer_r.log['{} RHS: nn not found'.format(answer_mode)] += 1
 
 	for i in range(len(nearest_pred_clusters_l)):
 		preds = nearest_pred_clusters_l[i]
 		scores = nearest_score_clusters_l[i]
 		p = ps_ordered[i]
-		# q_typing = '#'.join(p.types)
-		# lhs_in_graph = (q_typing in models['BU'] and p.pred_desc() in models['BU'][q_typing].nodes)
 
 		res_l = (preds, scores)
 
 		basic_typing = '#'.join(preds[0].split('#')[1:]).replace('_1', '').replace('_2', '')
 
+		if expand_Q and answer_mode == 'BU-LM':
+			res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, available_graphs=set(graph.keys()), target_typing=basic_typing)
+			if res_q_nn:
+				res_r = (res_q_nn[0][0], res_q_nn[1][0])
+				deducer_r.log['{} RHS: nn found'.format(answer_mode)] += 1
+			else:
+				deducer_r.log['{} RHS: nn not found'.format(answer_mode)] += 1
+
 		for lhs_pred, lhs_score in zip(*res_l):
 			lhs = Prop.with_new_pred(p, lhs_pred)
 			if positional_weighting:
-				lhs_score *= (1/(1+math.log10(1+len(graph[basic_typing].get_entailments(lhs_pred)))))
+				try:
+					lhs_score *= (1/(1+math.log10(1+len(graph[basic_typing].get_entailments(lhs_pred)))))
+				except KeyError:
+					lhs_score *= 1/4
+					# deducer_l.log['LHS: type not found: {}'.format(basic_typing)] += 1
 
 			for rhs_pred, rhs_score in zip(*res_r):
 				rhs = Prop.with_new_pred(q, rhs_pred)
-				# rhs = q
-				# if positional_weighting:
-				# 	rhs_score *= (1 / (1 + math.log10(1 + len(model[basic_typing].get_antecedents(rhs_pred)))))
+
+				if positional_weighting:
+					try:
+						rhs_score *= (1 / (1 + math.log10(1 + len(graph[basic_typing].get_antecedents(rhs_pred)))))
+					except KeyError:
+						rhs_score *= 1 / 4
+						# print('RHS: type not found: {} for {}'.format(basic_typing, rhs_pred))
 
 				possible_score, possible_support = 0, None
 				if answer_mode == 'UU-LM':
@@ -667,5 +699,8 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 					if possible_score > score:
 						score = possible_score
 						support = lhs
+
+	if answer_mode == 'UU-LM':
+		score *= 2
 
 	return score, support

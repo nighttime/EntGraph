@@ -412,7 +412,8 @@ def generate_tf_question_sets(articles: List[Article],
 	P_list, evidence_list = generate_positive_question_sets(partitions, top_pred_cache, question_modes, uu_graphs, bu_graphs)
 	print('Generating negatives...', end=' ', flush=True)
 	N_list = None
-	if negative_swaps and uu_graphs:
+	# if negative_swaps and uu_graphs:
+	if negative_swaps:
 		N_list = generate_negative_question_sets(P_list, partitions, negative_swaps, uu_graphs, bu_graphs, filter_dict=filter_dict)
 
 	print()
@@ -672,18 +673,20 @@ def prop_in_graphs(p: Prop, uu_graphs: Optional[EGraphCache], bu_graphs: Optiona
 	if len(p.args) == 1:
 		t = p.types[0]
 		if reference.GRAPH_BACKOFF:
-			return prop_recognized_in_graphs(p, uu_graphs) or prop_recognized_in_graphs(p, bu_graphs)
+			in_uu = uu_graphs and prop_recognized_in_graphs(p, uu_graphs)
+			in_bu = bu_graphs and prop_recognized_in_graphs(p, bu_graphs)
+			return in_uu or in_bu
 		else:
 			# return t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
-			in_unary = t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes
-			in_binary = any(t in g and p.pred_desc() in bu_graphs[g].nodes for g in bu_graphs.keys())
-			return in_unary or in_binary
+			in_uu = uu_graphs and (t in uu_graphs and p.pred_desc() in uu_graphs[t].nodes)
+			in_bu = bu_graphs and any(t in g and p.pred_desc() in bu_graphs[g].nodes for g in bu_graphs.keys())
+			return in_uu or in_bu
 	else:
 		t = '#'.join(p.basic_types)
 		if reference.GRAPH_BACKOFF:
-			return prop_recognized_in_graphs(p, bu_graphs)
+			return bu_graphs and prop_recognized_in_graphs(p, bu_graphs)
 		else:
-			return t in bu_graphs and p.pred_desc() in bu_graphs[t].nodes
+			return bu_graphs and t in bu_graphs and p.pred_desc() in bu_graphs[t].nodes
 
 def select_answerable_qs(P_list: List[List[Prop]], N_list: List[List[Prop]], uu_graphs: Optional[EGraphCache], bu_graphs: Optional[EGraphCache]) -> Tuple[List[List[Prop]], List[List[Prop]]]:
 	selected_P_list = [[p for p in ps if prop_in_graphs(p, uu_graphs, bu_graphs)] for ps in P_list]

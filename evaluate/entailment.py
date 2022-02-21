@@ -28,6 +28,11 @@ class EdgeType(Enum):
 	CONSEQUENCE_SUCCESS = 'consequences_success'
 	CONSEQUENCE_FAILURE = 'consequences_failure'
 
+class EGMetric(Enum):
+	BINC = 'BInc sims'
+	WEEDS_PMI = 'Weed\'s PMI sim'
+	WEEDS_PMI_PREC = 'Weed\'s PMI Precision sim'
+
 class Entailment:
 	def __init__(self, entailedPred: str, score: float, edge_type: Optional[EdgeType] = None):
 		self.pred = entailedPred
@@ -59,13 +64,15 @@ class EntailmentGraph:
 	space = None
 	stage = None
 	typed_edges = False
+	metric = None
 	nodes = set()
 	backmap = defaultdict(set)
 	edges = defaultdict(list)
 	
-	def __init__(self, fname: Optional[str] = None, keep_forward: bool = False):
+	def __init__(self, fname: Optional[str] = None, keep_forward: bool = False, metric=EGMetric.BINC):
 		if fname == None:
 			return
+		self.metric = metric
 		nodes, edges = self._read_graph_from_file(fname)
 		self._configure_graph(nodes, edges, keep_forward)
 
@@ -237,13 +244,13 @@ class EntailmentGraph:
 
 			current_pred = ''
 			current_edge_type = None
-			reading_edges = True
+			reading_edges = False
 			line = next(file, None)
 			while line is not None:
 				line = line.strip()
 
 				if line == '' or (line.startswith('num ') and 'neighbors' in line):
-					pass
+					reading_edges = False
 
 				elif line.startswith('predicate:'):
 					pred = line[line.index(':')+2:]
@@ -254,11 +261,13 @@ class EntailmentGraph:
 					edge_type = EdgeType(line[1:].strip())
 					current_edge_type = edge_type
 					self.typed_edges = True
+					reading_edges = True
 
 				elif self.stage == EGStage.GLOBAL and any(t in line for t in ['iter 0 sims', 'local sims']):
 					reading_edges = False
 
-				elif any(t in line for t in ['BInc sims', 'iter 1 sims', 'global sims']):
+				# BInc sims, Weed's PMI sim
+				elif any(t in line for t in [self.metric.value, 'iter 1 sims', 'global sims']):
 					reading_edges = True
 
 				else:
@@ -327,11 +336,11 @@ def graph_files_in_dir(graph_dir: str, stage: Optional[EGStage], zipped: bool) -
 		return [os.path.join(graph_dir, fname) for fname in filenames if
 					any(fname.endswith('_' + stage_id + '.txt') for stage_id in stage_ids)]
 
-def read_graphs(graph_dir: str, stage: EGStage, keep_forward=False) -> EGraphCache:
+def read_graphs(graph_dir: str, stage: EGStage, keep_forward=False, metric=EGMetric.BINC) -> EGraphCache:
 	graph_fpaths = graph_files_in_dir(graph_dir, stage, False)
 	graphs = []
 	for i,g in enumerate(graph_fpaths):
-		graphs.append(EntailmentGraph(g, keep_forward=keep_forward))
+		graphs.append(EntailmentGraph(g, keep_forward=keep_forward, metric=metric))
 		utils.print_progress((i+1)/len(graph_fpaths), g)
 	print()
 	return make_EGraphCache(graphs)
@@ -422,12 +431,16 @@ def main():
 
 	graph_stage = EGStage.GLOBAL if ARGS.stage == 'global' else EGStage.LOCAL
 	# egspace = EGSpace.ONE_TYPE if ARGS.valence == 'uv' else EGSpace.TWO_TYPE
+	graph_metric = {'BInc': EGMetric.BINC,
+					'Weeds_PMI': EGMetric.WEEDS_PMI,
+					'Weeds_PMI_Prec': EGMetric.WEEDS_PMI_PREC
+					}[ARGS.metric]
 
 	print('Reading graphs from', ARGS.graphs)
 	if ARGS.precomputed_in:
 		egcache = read_precomputed_EGs(ARGS.graphs)
 	else:
-		egcache = read_graphs(ARGS.graphs, stage=graph_stage, keep_forward=ARGS.keep_forward)
+		egcache = read_graphs(ARGS.graphs, stage=graph_stage, keep_forward=ARGS.keep_forward, metric=graph_metric)
 
 	print('Writing cache to', ARGS.outdir)
 	if ARGS.separate_out:
@@ -443,6 +456,7 @@ parser.add_argument('--precomputed-in', action='store_true', help='Input graphs 
 parser.add_argument('--separate-out', action='store_true', help='Pickle graphs separately in output')
 parser.add_argument('--stage', default='local', choices=['local', 'global'], help='Graph stage: local or global')
 parser.add_argument('--keep-forward', action='store_true', help='keep forward direction (otherwise only backward)')
+parser.add_argument('--metric', default='BInc', choices=['BInc', 'Weeds_PMI', 'Weeds_PMI_Prec'], help='which metric to read in (usually from local graph files)')
 
 if __name__ == '__main__':
 	main()

@@ -413,8 +413,8 @@ def run_evaluate():
 	utils.print_BAR()
 	if ARGS.memo:
 		print(ARGS.memo)
+		print()
 		utils.print_BAR()
-	print()
 
 
 

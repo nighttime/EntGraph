@@ -65,21 +65,25 @@ def analyze_questions(P_list, N_list, uu_graphs, bu_graphs, PPDB: Optional[Dict[
 	# 			  # len(p.args) == 2 and bu_graphs and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
 	# known_b_qs = [p for ps in P_list for p in ps if prop_recognized_in_graphs(p, bu_graphs)]
 
-	known_u_qs = [p for ps in P_list + N_list for p in ps if
-				  len(p.args) == 1 and (p.pred_desc() in uu_graphs[p.types[0]].nodes or any(p.pred_desc() in g.nodes for g in bu_graphs.values()))]
-	known_b_qs = [p for ps in P_list + N_list for p in ps if
-				  len(p.args) == 2 and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
+	if uu_graphs and bu_graphs:
+		known_u_qs = [p for ps in P_list + N_list for p in ps if
+					  len(p.args) == 1 and (p.pred_desc() in uu_graphs[p.types[0]].nodes or any(p.pred_desc() in g.nodes for g in bu_graphs.values()))]
+		known_b_qs = [p for ps in P_list + N_list for p in ps if
+					  len(p.args) == 2 and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
 
-	known_u_untyped_qs = [p for ps in P_list + N_list for p in ps if
-						  len(p.args) == 1 and (entailment.prop_recognized_in_graphs(p, uu_graphs) or entailment.prop_recognized_in_graphs(p, bu_graphs))]
-	known_b_untyped_qs = [p for ps in P_list + N_list for p in ps if
-						  len(p.args) == 2 and entailment.prop_recognized_in_graphs(p, bu_graphs)]
+		known_u_untyped_qs = [p for ps in P_list + N_list for p in ps if
+							  len(p.args) == 1 and (entailment.prop_recognized_in_graphs(p, uu_graphs) or entailment.prop_recognized_in_graphs(p, bu_graphs))]
+		known_b_untyped_qs = [p for ps in P_list + N_list for p in ps if
+							  len(p.args) == 2 and entailment.prop_recognized_in_graphs(p, bu_graphs)]
 
-	pct_known_u = len(known_u_qs) / num_unary_Qs if num_unary_Qs else 0
-	pct_known_b = len(known_b_qs) / num_binary_Qs if num_binary_Qs else 0
-
-	print('Questions recognized in typed graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_u * 100,
+		pct_known_u = len(known_u_qs) / num_unary_Qs if num_unary_Qs else 0
+		pct_known_b = len(known_b_qs) / num_binary_Qs if num_binary_Qs else 0
+		print('Questions recognized in typed graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_u * 100,
 																							   pct_known_b * 100))
+		pct_known_untyped_u = len(known_u_untyped_qs) / num_unary_Qs if num_unary_Qs else 0
+		pct_known_untyped_b = len(known_b_untyped_qs) / num_binary_Qs if num_binary_Qs else 0
+		print('Questions recognized in untyped graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_untyped_u * 100, pct_known_untyped_b * 100))
+
 
 	if PPDB:
 		formatted_qs = [format_prop_ppdb_lookup(p) for ps in P_list  + N_list for p in ps]
@@ -92,17 +96,6 @@ def analyze_questions(P_list, N_list, uu_graphs, bu_graphs, PPDB: Optional[Dict[
 
 		print('Questions recognized in PPDB: {:.1f}%, with fallback: {:.1f}%'.format(pct_known_qs*100, pct_known_fallback_qs*100))
 		print('PPDB graph stats: {} nodes, {} allnodes {} edges'.format(len(PPDB), len(set(PPDB.keys()) | set([k for vs in PPDB.values() for k,v in vs.items()])), sum([len(es) for es in PPDB.values()])))
-
-	pct_known_untyped_u = len(known_u_untyped_qs) / num_unary_Qs if num_unary_Qs else 0
-	pct_known_untyped_b = len(known_b_untyped_qs) / num_binary_Qs if num_binary_Qs else 0
-	print('Questions recognized in untyped graph nodes: {:.1f}% unary, {:.1f}% binary'.format(pct_known_untyped_u * 100,
-																									 pct_known_untyped_b * 100))
-	# question_types = Counter([tuple(sorted(p.types)) for ps in P_list for p in ps if len(p.args) == 2])
-	# big_types = ['person', 'organization', 'location', 'thing']
-	# num_big_types = sum([count for types,count in question_types.items() if any(t in big_types for t in types)])
-	# binary_big_type_share = num_big_types / num_binary_Qs if num_binary_Qs > 0 else 0
-	# binary_small_type_share = 1 - binary_big_type_share if num_binary_Qs > 0 else 0
-	# print('Binary big-type share: {:.2f}%, small-type share: {:.2f}%'.format(binary_big_type_share*100, binary_small_type_share*100))
 
 
 def write_questions_to_file(P_list: List[List[Prop]], N_list: List[List[Prop]]):
