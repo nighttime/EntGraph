@@ -1,7 +1,8 @@
+import json
 import os
 import datetime
-import proposition
-from proposition import Prop, format_prop_ppdb_lookup
+# import proposition
+from proposition import Prop, format_prop_ppdb_lookup, extract_predicate_base_term
 import reference
 import pickle
 from collections import Counter
@@ -65,6 +66,7 @@ def analyze_questions(P_list, N_list, uu_graphs, bu_graphs, PPDB: Optional[Dict[
 	# 			  # len(p.args) == 2 and bu_graphs and p.pred_desc() in bu_graphs['#'.join(p.basic_types)].nodes]
 	# known_b_qs = [p for ps in P_list for p in ps if prop_recognized_in_graphs(p, bu_graphs)]
 
+	return
 	if uu_graphs and bu_graphs:
 		known_u_qs = [p for ps in P_list + N_list for p in ps if
 					  len(p.args) == 1 and (p.pred_desc() in uu_graphs[p.types[0]].nodes or any(p.pred_desc() in g.nodes for g in bu_graphs.values()))]
@@ -115,21 +117,30 @@ def write_questions_to_file(P_list: List[List[Prop]], N_list: List[List[Prop]]):
 
 	print('Questions written to file.')
 
+def write_q_pred_freqs_to_file(freqs_pos: Dict[str, int], freqs_neg: Dict[str, int]):
+	with open('../tf_q_pred_freqs_pos_1.4m_GG.txt', 'w+') as f:
+		f.write(json.dumps(freqs_pos, indent=2))
+
+	with open('../tf_q_pred_freqs_neg_1.4m_GG.txt', 'w+') as f:
+		f.write(json.dumps(freqs_neg, indent=2))
+
 def write_pred_cache_to_file(pred_cache: Dict[str, int]):
 	with open('../top_preds.txt', 'w+') as f:
 		for pred,count in pred_cache.items():
-			term = proposition.extract_predicate_base_term(pred)
+			term = extract_predicate_base_term(pred)
 			f.write(term)
 			f.write('\n')
 
 def save_results_on_file(dest_folder: str,
-						 Q_list: List[List[Prop]],
-						 A_list: List[List[int]],
-						 results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]]):
+						 Q_list: Union[List[List[Prop]], List[Tuple[Prop, Prop]]],
+						 A_list: Union[List[List[int]], List[int]],
+						 results: Dict[str, Tuple[List[List[float]], List[List[Dict[str, Prop]]]]],
+						 memo: Optional[str] = None,
+						 name: Optional[str] = None):
 	# results_file = os.path.join(dest_folder, 'last_results.pkl')
 	fname = reference.FINISH_TIME + '.pkl'
 	results_file = os.path.join(dest_folder, 'saved_results', fname)
-	data = {'questions': Q_list, 'answers': A_list, 'results': results}
+	data = {'questions': Q_list, 'answers': A_list, 'results': results, 'memo': memo, 'name': name}
 	with open(results_file, 'wb+') as f:
 		pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 		print('Results saved to {}'.format(results_file))
@@ -150,3 +161,79 @@ def read_props_on_file(source_path: str) -> List[Prop]:
 	with open(source_path, 'rb') as f:
 		props = pickle.load(f)
 		return props
+
+# (treatment.for.1,treatment.for.2) vancomycin::medicine infection::disease
+def read_lh_prop(prop_str: str) -> Prop:
+	bare_pred, typed_arg1, typed_arg2 = prop_str.split()
+	types = [a.split('::')[1] for a in [typed_arg1, typed_arg2]]
+	if types[0] == types[1]:
+		types = [types[0] + '_1', types[1] + '_2']
+		typed_arg1, typed_arg2 = typed_arg1 + '_1', typed_arg2 + '_2'
+	pred_desc = '#'.join([bare_pred, *types])
+	arg_desc = [a.replace('::', '#') for a in [typed_arg1, typed_arg2]]
+	prop = Prop.from_descriptions(pred_desc, arg_desc)
+	prop.set_entity_types('EE')
+	return prop
+
+def read_lh(path: str, directional=False) -> Tuple[List[Optional[Tuple[Prop, Prop]]], List[int], List[int]]:
+	print('Reading {}'.format(path))
+	Ent_list, A_list = [], []
+	issue_ct = 0
+	with open(path) as file:
+		for line in file:
+			parts = line.strip().split('\t')
+			answer = 1 if parts[-1] == 'True' else 0
+
+			if len(parts) != 3 or not all(parts):
+				issue_ct += 1
+				Ent_list.append(None)
+				A_list.append(answer)
+				continue
+
+			rel_str1, rel_str2, _ = parts
+			prop1, prop2 = read_lh_prop(rel_str1), read_lh_prop(rel_str2)
+			Ent_list.append((prop2, prop1))
+			A_list.append(answer)
+
+	q_idx = list(range(len(Ent_list)))
+	if directional:
+		all_qa = {Ent_list[i]:A_list[i] for i in range(len(Ent_list))}
+		dir_qs = []
+		reverses = set()
+		q_idx = []
+		for i,q in enumerate(Ent_list):
+			if not q:
+				continue
+			if q in reverses:
+				q_idx.append(i)
+				dir_qs.append((q, all_qa[q]))
+				continue
+			rev_q = tuple(reversed(q))
+			if rev_q in all_qa and all_qa[q] != all_qa[rev_q]:
+				q_idx.append(i)
+				dir_qs.append((q, all_qa[q]))
+				reverses.add(rev_q)
+		new_Ent_list, new_A_list = tuple(zip(*dir_qs))
+		Ent_list, A_list = new_Ent_list, new_A_list
+
+	assert len(q_idx) == len(Ent_list)
+	assert len(Ent_list) == len(A_list)
+
+	# Teddy gets 1784
+	return Ent_list, A_list, q_idx
+
+def read_dataset(dataset: str, data_folder: str, test=False, directional=False) -> Tuple[List[Tuple[Prop, Prop]], List[int], List[int]]:
+	if dataset == 'levy_holt':
+		# fname = '{}_rels.txt'.format('test' if test else 'dev')
+		# path = os.path.join(data_folder, 'datasets', 'levy_holt', fname)
+		# return read_lh(path, directional=directional)
+		if directional:
+			fname = f'{"test" if test else "dev"}_dir_rels_v2.txt'
+		else:
+			fname = '{}_rels.txt'.format('test' if test else 'dev')
+		path = os.path.join(data_folder, 'datasets', 'levy_holt', fname)
+		return read_lh(path)
+	elif dataset == 'sl_ant':
+		fname = 'ant_{}_rels_1best.txt'.format('directional' if directional else 'full')
+		path = os.path.join(data_folder, 'datasets', 'sl_ant_parsed', fname)
+		return read_lh(path)

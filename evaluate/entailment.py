@@ -34,6 +34,7 @@ class EGMetric(Enum):
 	WEEDS_PMI_PREC = 'Weed\'s PMI Precision sim'
 
 class Entailment:
+	# __slots__ = ['pred', 'basic_pred', 'score', 'direction', 'edge_type']
 	def __init__(self, entailedPred: str, score: float, edge_type: Optional[EdgeType] = None):
 		self.pred = entailedPred
 		self.basic_pred = '#'.join(x.replace('_1', '').replace('_2', '') for x in self.pred.split('#'))
@@ -48,6 +49,7 @@ class Entailment:
 		return str(self)
 
 class BackEntailment(Entailment):
+	# __slots__ = []
 	def __init__(self, antecedentPred: str, score: float, edge_type: Optional[EdgeType] = None):
 		super().__init__(antecedentPred, score, edge_type)
 		self.direction = 'backward'
@@ -65,9 +67,10 @@ class EntailmentGraph:
 	stage = None
 	typed_edges = False
 	metric = None
-	nodes = set()
-	backmap = defaultdict(set)
-	edges = defaultdict(list)
+	nodes = None
+	backmap = None
+	edges = None
+	edge_counts = None
 	
 	def __init__(self, fname: Optional[str] = None, keep_forward: bool = False, metric=EGMetric.BINC):
 		if fname == None:
@@ -77,6 +80,7 @@ class EntailmentGraph:
 		self._configure_graph(nodes, edges, keep_forward)
 
 	def get_entailments(self, pred: str, edge_type: Optional[EdgeType] = None) -> List[Entailment]:
+		assert self.edges
 		if pred not in self.nodes:
 			return []
 		else:
@@ -84,6 +88,9 @@ class EntailmentGraph:
 				return [p for p in self.edges[pred] if p.edge_type == edge_type]
 			else:
 				return self.edges[pred]
+
+	def get_entailments_count(self, pred: str) -> int:
+		return self.edge_counts[pred] if pred in self.edge_counts else 0
 
 	def get_antecedents(self, pred: str, edge_type: Optional[EdgeType] = None) -> Set[BackEntailment]:
 		if pred not in self.nodes:
@@ -104,6 +111,7 @@ class EntailmentGraph:
 		self.nodes = nodes
 		self.backmap = backmap
 		self.edges = edges if keep_forward else None
+		self.edge_counts = {p:len(es) for p,es in edges.items()}
 
 	def _configure_metadata(self, typing: str, space: EGSpace, stage: EGStage):
 		self.typing = typing
@@ -255,7 +263,7 @@ class EntailmentGraph:
 				elif line.startswith('predicate:'):
 					pred = line[line.index(':')+2:]
 					current_pred = EntailmentGraph.normalize_pred(pred)
-					self.nodes.add(current_pred)
+					nodes.add(current_pred)
 
 				elif line.startswith('%'):
 					edge_type = EdgeType(line[1:].strip())
@@ -447,6 +455,7 @@ def main():
 		save_EGs_separately(egcache, ARGS.outdir)
 	else:
 		save_EGs(egcache, ARGS.outdir)
+	print('Done')
 
 parser = argparse.ArgumentParser(description='Read in and cache an entailment graph for easy use later')
 parser.add_argument('graphs', help='Folder of raw graph files')

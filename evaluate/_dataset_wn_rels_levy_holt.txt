@@ -1,0 +1,1998 @@
+{
+  "produce": {
+    "antonyms": [],
+    "troponyms": [
+      "deliver",
+      "bear",
+      "birth",
+      "have",
+      "sporulate",
+      "manufacture"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "make",
+      "create"
+    ],
+    "synonyms": [
+      "make",
+      "create"
+    ]
+  },
+  "essential": {
+    "antonyms": [],
+    "troponyms": [
+      "desideratum",
+      "must",
+      "need",
+      "want"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "thing",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "be": {
+    "antonyms": [],
+    "troponyms": [
+      "look",
+      "suffer",
+      "hurt",
+      "feel",
+      "stay",
+      "remain",
+      "rest",
+      "continue",
+      "sparkle",
+      "scintillate",
+      "coruscate",
+      "confuse",
+      "throw",
+      "fox",
+      "befuddle",
+      "fuddle",
+      "bedevil",
+      "confound",
+      "discombobulate",
+      "rank",
+      "point",
+      "want",
+      "need",
+      "require",
+      "compact",
+      "pack",
+      "cut",
+      "seethe",
+      "boil",
+      "mope",
+      "appear",
+      "seem",
+      "owe",
+      "belong",
+      "cover",
+      "represent",
+      "account",
+      "begin",
+      "start",
+      "stand",
+      "specify",
+      "define",
+      "delineate",
+      "delimit",
+      "delimitate",
+      "go",
+      "consist",
+      "comprise",
+      "prove",
+      "stick",
+      "adhere",
+      "loiter",
+      "lounge",
+      "footle",
+      "lollygag",
+      "loaf",
+      "lallygag",
+      "tarry",
+      "linger",
+      "lurk",
+      "total",
+      "number",
+      "come",
+      "amount",
+      "count",
+      "matter",
+      "weigh",
+      "rate",
+      "deserve",
+      "merit",
+      "buy",
+      "shine",
+      "fall",
+      "depend",
+      "underlie",
+      "stink",
+      "suck",
+      "subtend",
+      "incarnate",
+      "embody",
+      "substantiate",
+      "contain",
+      "take",
+      "hold",
+      "cost",
+      "measure",
+      "hum",
+      "buzz",
+      "abound",
+      "disagree",
+      "disaccord",
+      "discord",
+      "gape",
+      "yawn",
+      "yaw",
+      "tend",
+      "lean",
+      "incline",
+      "run",
+      "figure",
+      "enter",
+      "press",
+      "rage",
+      "relate",
+      "interrelate",
+      "rut",
+      "stagnate",
+      "squat",
+      "hoodoo",
+      "impend",
+      "range",
+      "sell",
+      "translate",
+      "head",
+      "compare",
+      "encounter",
+      "gravitate",
+      "pay",
+      "diverge",
+      "iridesce",
+      "lie",
+      "hang",
+      "litter",
+      "suit",
+      "end",
+      "terminate",
+      "fit",
+      "lend",
+      "wind",
+      "twist",
+      "curve",
+      "jumble",
+      "mingle",
+      "promise",
+      "accept",
+      "clean",
+      "draw",
+      "wash",
+      "balance",
+      "hail",
+      "act",
+      "test",
+      "answer",
+      "beat",
+      "connect",
+      "kill",
+      "make",
+      "deck",
+      "adorn",
+      "decorate",
+      "grace",
+      "embellish",
+      "beautify",
+      "work",
+      "lubricate",
+      "breathe",
+      "trim",
+      "swing",
+      "osculate",
+      "retard",
+      "transplant",
+      "cohere",
+      "object",
+      "recognize",
+      "distribute",
+      "bake",
+      "broil",
+      "swim",
+      "drown"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "typify",
+      "symbolize",
+      "symbolise",
+      "represent",
+      "mean",
+      "intend",
+      "convey",
+      "impart",
+      "leave",
+      "give",
+      "tell",
+      "inform",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "typify",
+      "symbolize",
+      "symbolise",
+      "represent"
+    ]
+  },
+  "worship": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "adore",
+      "love"
+    ],
+    "synonyms": [
+      "adore"
+    ]
+  },
+  "useful": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [],
+    "synonyms": []
+  },
+  "associate": {
+    "antonyms": [
+      "decouple",
+      "dissociate"
+    ],
+    "troponyms": [
+      "remember",
+      "interrelate",
+      "correlate",
+      "identify",
+      "free-associate",
+      "mean"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "think",
+      "cogitate",
+      "cerebrate"
+    ],
+    "synonyms": [
+      "think",
+      "cogitate",
+      "cerebrate"
+    ]
+  },
+  "develop": {
+    "antonyms": [],
+    "troponyms": [
+      "build"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "create"
+    ],
+    "synonyms": [
+      "create"
+    ]
+  },
+  "neighbor": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "populate",
+      "dwell",
+      "live",
+      "inhabit",
+      "be"
+    ],
+    "synonyms": [
+      "populate",
+      "dwell",
+      "live",
+      "inhabit"
+    ]
+  },
+  "detect": {
+    "antonyms": [],
+    "troponyms": [
+      "sense",
+      "instantiate",
+      "trace",
+      "see"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "spy",
+      "sight",
+      "perceive",
+      "comprehend"
+    ],
+    "synonyms": [
+      "spy",
+      "sight"
+    ]
+  },
+  "require": {
+    "antonyms": [],
+    "troponyms": [
+      "claim",
+      "take",
+      "exact",
+      "govern",
+      "draw",
+      "cost",
+      "compel"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "demand",
+      "request",
+      "bespeak",
+      "quest",
+      "communicate",
+      "pass",
+      "convey",
+      "transmit",
+      "transfer",
+      "move",
+      "displace"
+    ],
+    "synonyms": [
+      "demand"
+    ]
+  },
+  "state": {
+    "antonyms": [],
+    "troponyms": [
+      "present",
+      "represent",
+      "misstate",
+      "answer",
+      "reply",
+      "respond",
+      "precede",
+      "preface",
+      "premise",
+      "introduce",
+      "announce",
+      "declare",
+      "articulate",
+      "enunciate",
+      "vocalize",
+      "vocalise",
+      "note",
+      "observe",
+      "mention",
+      "remark",
+      "add",
+      "append",
+      "supply",
+      "explain",
+      "give",
+      "summarize",
+      "summarise",
+      "sum"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "express",
+      "verbalize",
+      "verbalise",
+      "utter"
+    ],
+    "synonyms": [
+      "express",
+      "verbalize",
+      "verbalise",
+      "utter"
+    ]
+  },
+  "invent": {
+    "antonyms": [],
+    "troponyms": [
+      "mythologize",
+      "mythologise",
+      "confabulate",
+      "concoct",
+      "spin",
+      "vamp"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "make",
+      "create"
+    ],
+    "synonyms": []
+  },
+  "leader": {
+    "antonyms": [],
+    "troponyms": [
+      "aristocrat",
+      "patrician",
+      "bellwether",
+      "caller",
+      "captain",
+      "chieftain",
+      "cheerleader",
+      "choragus",
+      "commander",
+      "demigod",
+      "superman",
+      "Ubermensch",
+      "duce",
+      "employer",
+      "father",
+      "boss",
+      "fugleman",
+      "galvanizer",
+      "galvaniser",
+      "inspirer",
+      "guide",
+      "guru",
+      "head",
+      "chief",
+      "headman",
+      "imam",
+      "imaum",
+      "instigator",
+      "initiator",
+      "lawgiver",
+      "lawmaker",
+      "malik",
+      "misleader",
+      "model",
+      "hero",
+      "politician",
+      "politico",
+      "pol",
+      "scoutmaster",
+      "spearhead",
+      "superior",
+      "higher-up",
+      "superordinate",
+      "torchbearer",
+      "trainer"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "person",
+      "individual",
+      "someone",
+      "somebody",
+      "mortal",
+      "soul",
+      "organism",
+      "being",
+      "whole",
+      "unit",
+      "object",
+      "entity",
+      "cause"
+    ],
+    "synonyms": []
+  },
+  "treatment": {
+    "antonyms": [],
+    "troponyms": [
+      "massage",
+      "modality",
+      "detoxification",
+      "chiropractic",
+      "fomentation",
+      "naturopathy",
+      "naprapathy",
+      "orthoptics",
+      "osteopathy",
+      "osteoclasis",
+      "acupuncture",
+      "stylostixis",
+      "acupressure",
+      "G-Jo",
+      "shiatsu",
+      "autogenics",
+      "hydropathy",
+      "hydrotherapy",
+      "rest-cure"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "care",
+      "attention",
+      "aid",
+      "tending",
+      "work",
+      "activity",
+      "act",
+      "deed",
+      "event",
+      "abstraction",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "creator": {
+    "antonyms": [],
+    "troponyms": [
+      "Trinity",
+      "hypostasis"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "belief",
+      "content",
+      "cognition",
+      "knowledge",
+      "noesis",
+      "abstraction",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "bring": {
+    "antonyms": [],
+    "troponyms": [
+      "fetch",
+      "transit",
+      "ferry",
+      "return",
+      "tube",
+      "whisk",
+      "impart",
+      "conduct",
+      "transmit",
+      "convey",
+      "carry",
+      "channel",
+      "land"
+    ],
+    "entails": [
+      "come"
+    ],
+    "hypernyms": [
+      "transport",
+      "carry",
+      "move",
+      "displace"
+    ],
+    "synonyms": [
+      "transport",
+      "carry"
+    ]
+  },
+  "speak": {
+    "antonyms": [],
+    "troponyms": [
+      "read",
+      "vocalize",
+      "vocalise",
+      "phonate",
+      "troll",
+      "begin",
+      "shout",
+      "whisper",
+      "peep",
+      "snap",
+      "snarl",
+      "enthuse",
+      "swallow",
+      "verbalize",
+      "verbalise",
+      "whiff",
+      "blubber",
+      "drone",
+      "bumble",
+      "stutter",
+      "stammer",
+      "falter",
+      "rasp",
+      "blurt",
+      "blunder",
+      "ejaculate",
+      "tone",
+      "inflect",
+      "modulate",
+      "deliver",
+      "present",
+      "generalize",
+      "generalise",
+      "chatter",
+      "piffle",
+      "palaver",
+      "prate",
+      "tittle-tattle",
+      "twaddle",
+      "clack",
+      "maunder",
+      "prattle",
+      "blab",
+      "gibber",
+      "tattle",
+      "blabber",
+      "gabble",
+      "yack",
+      "jaw",
+      "snivel",
+      "whine",
+      "murmur",
+      "mumble",
+      "mutter",
+      "mussitate",
+      "slur",
+      "bark",
+      "bay",
+      "rant",
+      "jabber",
+      "spout",
+      "rave",
+      "hiss",
+      "sizz",
+      "siss",
+      "sibilate",
+      "cackle",
+      "babble",
+      "chant",
+      "intone",
+      "gulp",
+      "sing"
+    ],
+    "entails": [
+      "talk"
+    ],
+    "hypernyms": [
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "communicate",
+      "intercommunicate"
+    ]
+  },
+  "attract": {
+    "antonyms": [
+      "repel",
+      "drive",
+      "repulse"
+    ],
+    "troponyms": [
+      "tug",
+      "catch",
+      "arrest",
+      "get",
+      "retract",
+      "bring"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "pull",
+      "draw",
+      "force",
+      "move",
+      "displace"
+    ],
+    "synonyms": [
+      "pull",
+      "draw",
+      "force"
+    ]
+  },
+  "combine": {
+    "antonyms": [],
+    "troponyms": [
+      "totalize",
+      "totalise",
+      "recombine",
+      "mix",
+      "synthesize",
+      "synthesise"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "have",
+      "feature"
+    ],
+    "synonyms": [
+      "have",
+      "feature"
+    ]
+  },
+  "use": {
+    "antonyms": [],
+    "troponyms": [
+      "give",
+      "dedicate",
+      "consecrate",
+      "commit",
+      "devote",
+      "play",
+      "put",
+      "assign",
+      "ply",
+      "address",
+      "waste",
+      "misapply",
+      "misuse",
+      "avail",
+      "overuse",
+      "overdrive",
+      "cannibalize",
+      "cannibalise",
+      "recycle",
+      "reprocess",
+      "reuse",
+      "exploit",
+      "work",
+      "tap",
+      "strain",
+      "extend",
+      "exert",
+      "exercise",
+      "enjoy",
+      "take",
+      "share",
+      "implement",
+      "resort",
+      "recur"
+    ],
+    "entails": [
+      "consume",
+      "eat",
+      "deplete",
+      "exhaust"
+    ],
+    "hypernyms": [
+      "consume",
+      "ingest",
+      "take",
+      "have"
+    ],
+    "synonyms": [
+      "consume",
+      "ingest",
+      "take",
+      "have"
+    ]
+  },
+  "write": {
+    "antonyms": [],
+    "troponyms": [
+      "draw",
+      "lyric",
+      "profile",
+      "paragraph",
+      "rewrite",
+      "dramatize",
+      "dramatise",
+      "adopt",
+      "draft",
+      "outline",
+      "verse",
+      "versify",
+      "poetize",
+      "poetise",
+      "author",
+      "annotate",
+      "footnote",
+      "reference",
+      "cite",
+      "script"
+    ],
+    "entails": [
+      "spell"
+    ],
+    "hypernyms": [
+      "make",
+      "create"
+    ],
+    "synonyms": [],
+    "entailed_by": [
+      "compose"
+    ]
+  },
+  "issue": {
+    "antonyms": [
+      "recall"
+    ],
+    "troponyms": [
+      "edit"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "publicize",
+      "publicise",
+      "air",
+      "bare",
+      "tell",
+      "inform",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "publicize",
+      "publicise",
+      "air",
+      "bare"
+    ]
+  },
+  "politician": {
+    "antonyms": [],
+    "troponyms": [
+      "governor",
+      "legislator",
+      "mayor"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "leader",
+      "person",
+      "individual",
+      "someone",
+      "somebody",
+      "mortal",
+      "soul",
+      "organism",
+      "being",
+      "whole",
+      "unit",
+      "object",
+      "entity",
+      "cause"
+    ],
+    "synonyms": []
+  },
+  "commit": {
+    "antonyms": [],
+    "troponyms": [
+      "make",
+      "recommit"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "act",
+      "move"
+    ]
+  },
+  "find": {
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [
+      "sense",
+      "instantiate",
+      "trace",
+      "see"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "spy",
+      "sight",
+      "perceive",
+      "comprehend"
+    ],
+    "synonyms": [
+      "spy",
+      "sight"
+    ]
+  },
+  "announce": {
+    "antonyms": [],
+    "troponyms": [
+      "denounce",
+      "meld",
+      "report",
+      "cry",
+      "trump",
+      "advertise",
+      "publicize",
+      "advertize",
+      "publicise",
+      "post",
+      "sound"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "inform",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "inform"
+    ]
+  },
+  "control": {
+    "antonyms": [],
+    "troponyms": [
+      "preoccupy",
+      "steer",
+      "maneuver",
+      "manoeuver",
+      "manoeuvre",
+      "direct",
+      "point",
+      "head",
+      "guide",
+      "channelize",
+      "channelise",
+      "manage",
+      "deal",
+      "care",
+      "handle",
+      "internationalize",
+      "internationalise",
+      "hold",
+      "govern",
+      "regiment",
+      "monopolize",
+      "monopolise",
+      "harness",
+      "rein",
+      "corner",
+      "preside",
+      "dominate",
+      "master",
+      "charm",
+      "becharm",
+      "rule"
+    ],
+    "entails": [
+      "understand"
+    ],
+    "hypernyms": [],
+    "synonyms": [
+      "restrain",
+      "keep"
+    ]
+  },
+  "compose": {
+    "antonyms": [],
+    "troponyms": [
+      "counterpoint",
+      "arrange",
+      "set",
+      "score",
+      "melodize",
+      "melodise",
+      "harmonize",
+      "harmonise",
+      "instrument",
+      "instrumentate"
+    ],
+    "entails": [
+      "spell",
+      "write"
+    ],
+    "hypernyms": [
+      "constitute",
+      "represent",
+      "comprise",
+      "be"
+    ],
+    "synonyms": [
+      "constitute",
+      "represent",
+      "comprise",
+      "be"
+    ]
+  },
+  "manager": {
+    "antonyms": [],
+    "troponyms": [
+      "manageress"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "administrator",
+      "head",
+      "chief",
+      "leader",
+      "person",
+      "individual",
+      "someone",
+      "somebody",
+      "mortal",
+      "soul",
+      "organism",
+      "being",
+      "whole",
+      "unit",
+      "object",
+      "entity",
+      "cause"
+    ],
+    "synonyms": []
+  },
+  "discover": {
+    "antonyms": [],
+    "troponyms": [
+      "sense",
+      "instantiate",
+      "trace",
+      "see"
+    ],
+    "entails": [
+      "perceive",
+      "comprehend"
+    ],
+    "hypernyms": [
+      "spy",
+      "sight",
+      "perceive",
+      "comprehend"
+    ],
+    "synonyms": [
+      "spy",
+      "sight"
+    ]
+  },
+  "enter": {
+    "antonyms": [
+      "exit",
+      "leave"
+    ],
+    "troponyms": [
+      "penetrate",
+      "perforate",
+      "re-enter",
+      "board",
+      "intrude",
+      "irrupt",
+      "invade",
+      "dock"
+    ],
+    "entails": [
+      "act",
+      "play",
+      "represent"
+    ],
+    "hypernyms": [
+      "register",
+      "record",
+      "save",
+      "preserve",
+      "keep",
+      "have",
+      "hold"
+    ],
+    "synonyms": [
+      "register"
+    ]
+  },
+  "mixture": {
+    "antonyms": [],
+    "troponyms": [
+      "alloy",
+      "metal",
+      "colloid",
+      "composition",
+      "eutectic",
+      "solution",
+      "suspension",
+      "gummite",
+      "matte",
+      "oxyacetylene",
+      "petrolatum",
+      "plaster"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "substance",
+      "matter",
+      "entity",
+      "part",
+      "portion",
+      "component",
+      "constituent",
+      "relation",
+      "abstraction"
+    ],
+    "synonyms": []
+  },
+  "part": {
+    "antonyms": [],
+    "troponyms": [
+      "disperse",
+      "dissipate",
+      "scatter",
+      "diffract"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "move"
+    ],
+    "synonyms": [
+      "move"
+    ]
+  },
+  "rule": {
+    "antonyms": [],
+    "troponyms": [
+      "throne",
+      "misgovern",
+      "dictate",
+      "reign"
+    ],
+    "entails": [],
+    "hypernyms": [],
+    "synonyms": [
+      "control",
+      "command"
+    ]
+  },
+  "introduce": {
+    "antonyms": [],
+    "troponyms": [
+      "reintroduce",
+      "re-introduce",
+      "present"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "inform",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "inform"
+    ]
+  },
+  "import": {
+    "antonyms": [
+      "export"
+    ],
+    "troponyms": [
+      "smuggle"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "trade",
+      "merchandise"
+    ],
+    "synonyms": [
+      "trade",
+      "merchandise"
+    ]
+  },
+  "pest": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "disease",
+      "illness",
+      "unwellness",
+      "malady",
+      "sickness",
+      "unhealthiness",
+      "condition",
+      "status",
+      "state",
+      "attribute",
+      "abstraction",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "discuss": {
+    "antonyms": [],
+    "troponyms": [
+      "descant"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "cover",
+      "treat",
+      "handle",
+      "plow",
+      "deal",
+      "address",
+      "broach",
+      "initiate",
+      "talk",
+      "speak",
+      "utter",
+      "mouth",
+      "verbalize",
+      "verbalise",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "cover",
+      "treat",
+      "handle",
+      "plow",
+      "deal",
+      "address"
+    ]
+  },
+  "lead": {
+    "antonyms": [],
+    "troponyms": [
+      "beacon",
+      "hand",
+      "mislead",
+      "misdirect",
+      "misguide",
+      "usher",
+      "show"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ],
+    "hypernyms": [
+      "produce",
+      "make",
+      "create"
+    ],
+    "synonyms": [
+      "produce"
+    ]
+  },
+  "become": {
+    "antonyms": [],
+    "troponyms": [
+      "sober",
+      "work",
+      "run",
+      "take",
+      "break",
+      "settle"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "turn",
+      "change"
+    ],
+    "synonyms": [
+      "turn"
+    ]
+  },
+  "interview": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [
+      "apply"
+    ],
+    "hypernyms": [
+      "converse",
+      "discourse",
+      "talk",
+      "speak",
+      "communicate",
+      "intercommunicate",
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "converse",
+      "discourse"
+    ]
+  },
+  "make": {
+    "antonyms": [
+      "unmake",
+      "undo"
+    ],
+    "troponyms": [
+      "overdo",
+      "exaggerate"
+    ],
+    "entails": [
+      "travel",
+      "go",
+      "move",
+      "locomote"
+    ],
+    "hypernyms": [
+      "change",
+      "alter",
+      "modify"
+    ],
+    "synonyms": [
+      "change",
+      "alter",
+      "modify"
+    ]
+  },
+  "carry": {
+    "antonyms": [],
+    "troponyms": [
+      "shoulder",
+      "port",
+      "bear",
+      "bucket",
+      "return",
+      "porter",
+      "pack",
+      "cart",
+      "fly",
+      "haul",
+      "lug",
+      "tote",
+      "tug",
+      "chariot",
+      "bring",
+      "convey",
+      "take"
+    ],
+    "entails": [
+      "conceive"
+    ],
+    "hypernyms": [
+      "move",
+      "displace"
+    ],
+    "synonyms": [
+      "move",
+      "displace"
+    ]
+  },
+  "elect": {
+    "antonyms": [],
+    "troponyms": [
+      "co-opt",
+      "reelect",
+      "return"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "choose",
+      "take",
+      "select",
+      "decide",
+      "determine"
+    ],
+    "synonyms": [
+      "choose",
+      "take",
+      "select"
+    ]
+  },
+  "export": {
+    "antonyms": [
+      "import"
+    ],
+    "troponyms": [
+      "smuggle"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "trade",
+      "merchandise"
+    ],
+    "synonyms": [
+      "trade",
+      "merchandise"
+    ]
+  },
+  "effort": {
+    "antonyms": [],
+    "troponyms": [
+      "batting",
+      "best",
+      "worst",
+      "bid",
+      "play",
+      "crack",
+      "fling",
+      "go",
+      "pass",
+      "whirl",
+      "offer",
+      "essay",
+      "foray",
+      "contribution",
+      "part",
+      "share",
+      "liberation",
+      "squeeze",
+      "seeking",
+      "shot",
+      "stab",
+      "striving",
+      "nisus",
+      "pains",
+      "strain",
+      "struggle",
+      "battle",
+      "test",
+      "trial",
+      "run"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "activity",
+      "act",
+      "deed",
+      "event",
+      "abstraction",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "ruling": {
+    "antonyms": [],
+    "troponyms": [
+      "throne",
+      "misgovern",
+      "dictate",
+      "reign"
+    ],
+    "entails": [],
+    "hypernyms": [],
+    "synonyms": [
+      "control",
+      "command"
+    ]
+  },
+  "product": {
+    "antonyms": [],
+    "troponyms": [
+      "cargo",
+      "lading",
+      "freight",
+      "load",
+      "loading",
+      "payload",
+      "shipment",
+      "consignment",
+      "contraband",
+      "feature",
+      "generic",
+      "ironmongery",
+      "irregular",
+      "second",
+      "line",
+      "number",
+      "refill",
+      "release",
+      "schlock",
+      "shlock",
+      "dreck",
+      "stock",
+      "inventory"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "commodity",
+      "good",
+      "artifact",
+      "artefact",
+      "whole",
+      "unit",
+      "object",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "devour": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "destroy",
+      "ruin"
+    ],
+    "synonyms": [
+      "destroy",
+      "ruin"
+    ]
+  },
+  "bomb": {
+    "antonyms": [],
+    "troponyms": [
+      "dive-bomb",
+      "glide-bomb",
+      "skip-bomb",
+      "atom-bomb",
+      "nuke",
+      "hydrogen-bomb",
+      "pattern-bomb",
+      "atomize",
+      "atomise",
+      "zap",
+      "firebomb",
+      "blast",
+      "shell"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "attack",
+      "assail",
+      "contend",
+      "fight",
+      "struggle"
+    ],
+    "synonyms": [
+      "attack",
+      "assail"
+    ]
+  },
+  "treat": {
+    "antonyms": [],
+    "troponyms": [
+      "mock",
+      "bemock",
+      "ignore",
+      "disregard",
+      "snub",
+      "cut",
+      "wrong",
+      "criminalize",
+      "nurse",
+      "strong-arm",
+      "upstage",
+      "rough-house",
+      "brutalize",
+      "brutalise",
+      "mistreat",
+      "maltreat",
+      "abuse",
+      "ill-use",
+      "step",
+      "ill-treat",
+      "pamper",
+      "featherbed",
+      "cosset",
+      "cocker",
+      "baby",
+      "coddle",
+      "mollycoddle",
+      "spoil",
+      "indulge"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "interact",
+      "act",
+      "move"
+    ],
+    "synonyms": [
+      "interact"
+    ]
+  },
+  "consist": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "exist",
+      "be"
+    ],
+    "synonyms": [
+      "exist",
+      "be"
+    ]
+  },
+  "predominant": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [],
+    "synonyms": []
+  },
+  "kill": {
+    "antonyms": [],
+    "troponyms": [
+      "eliminate",
+      "annihilate",
+      "extinguish",
+      "eradicate",
+      "decimate",
+      "drown",
+      "massacre",
+      "slaughter",
+      "erase",
+      "butcher",
+      "poison",
+      "stone",
+      "lapidate",
+      "dispatch",
+      "zap",
+      "vaporize",
+      "sacrifice",
+      "tomahawk",
+      "destroy",
+      "saber",
+      "sabre",
+      "overlie",
+      "overlay",
+      "brain",
+      "neutralize",
+      "neutralise",
+      "liquidate",
+      "waste",
+      "exterminate",
+      "smother",
+      "asphyxiate",
+      "suffocate",
+      "strangle",
+      "strangulate",
+      "throttle",
+      "decapitate",
+      "behead",
+      "decollate",
+      "impale",
+      "stake",
+      "dismember",
+      "martyr",
+      "murder",
+      "slay",
+      "hit",
+      "off",
+      "remove",
+      "assassinate",
+      "execute",
+      "draw",
+      "quarter",
+      "lynch",
+      "shoot",
+      "pip",
+      "electrocute",
+      "fry"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "veto",
+      "blackball",
+      "negative",
+      "oppose",
+      "controvert",
+      "contradict",
+      "refute",
+      "rebut",
+      "disown",
+      "renounce",
+      "repudiate",
+      "reject",
+      "evaluate",
+      "judge",
+      "think",
+      "cogitate",
+      "cerebrate"
+    ],
+    "synonyms": [
+      "veto",
+      "blackball",
+      "negative"
+    ]
+  },
+  "decimate": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [
+      "kill"
+    ],
+    "synonyms": [
+      "kill"
+    ]
+  },
+  "bear": {
+    "antonyms": [],
+    "troponyms": [
+      "carry"
+    ],
+    "entails": [
+      "conceive"
+    ],
+    "hypernyms": [
+      "have",
+      "feature"
+    ],
+    "synonyms": [
+      "have",
+      "feature"
+    ]
+  },
+  "stimulate": {
+    "antonyms": [
+      "stifle",
+      "dampen"
+    ],
+    "troponyms": [
+      "quicken",
+      "invigorate",
+      "innervate",
+      "irritate"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "affect",
+      "impact",
+      "touch",
+      "change",
+      "alter",
+      "modify"
+    ],
+    "synonyms": [
+      "affect",
+      "impact",
+      "touch"
+    ]
+  },
+  "transmit": {
+    "antonyms": [],
+    "troponyms": [
+      "communicate",
+      "pass"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "transfer",
+      "move",
+      "displace"
+    ],
+    "synonyms": [
+      "transfer"
+    ]
+  },
+  "fond": {
+    "antonyms": [],
+    "troponyms": [],
+    "entails": [],
+    "hypernyms": [],
+    "synonyms": []
+  },
+  "common": {
+    "antonyms": [],
+    "troponyms": [
+      "funfair"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "tract",
+      "parcel",
+      "region",
+      "location",
+      "object",
+      "entity"
+    ],
+    "synonyms": []
+  },
+  "religion": {
+    "antonyms": [],
+    "troponyms": [
+      "apophatism",
+      "cataphatism",
+      "analogy",
+      "cult",
+      "cultus",
+      "ecclesiasticism",
+      "mysticism",
+      "theism",
+      "paganism",
+      "heathenism",
+      "Christianity",
+      "Hinduism",
+      "Hindooism",
+      "Brahmanism",
+      "Brahminism",
+      "Jainism",
+      "Sikhism",
+      "Buddhism",
+      "Taoism",
+      "Shinto",
+      "Shintoism",
+      "Manichaeism",
+      "Manichaeanism",
+      "Mithraism",
+      "Mithraicism",
+      "Zoroastrianism",
+      "Mazdaism",
+      "Bahaism",
+      "shamanism",
+      "Wicca"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "belief",
+      "content",
+      "cognition",
+      "knowledge",
+      "noesis",
+      "abstraction",
+      "entity",
+      "virtue",
+      "good",
+      "goodness",
+      "morality",
+      "quality",
+      "attribute"
+    ],
+    "synonyms": []
+  },
+  "win": {
+    "antonyms": [
+      "lose"
+    ],
+    "troponyms": [
+      "romp",
+      "carry",
+      "take",
+      "sweep",
+      "prevail",
+      "triumph"
+    ],
+    "entails": [
+      "compete",
+      "vie",
+      "contend"
+    ],
+    "hypernyms": [
+      "get",
+      "acquire"
+    ],
+    "synonyms": [
+      "get",
+      "acquire"
+    ]
+  },
+  "appear": {
+    "antonyms": [
+      "disappear",
+      "vanish"
+    ],
+    "troponyms": [
+      "make",
+      "cut",
+      "feel",
+      "sound",
+      "glow",
+      "beam",
+      "radiate",
+      "shine",
+      "glitter",
+      "glisten",
+      "glint",
+      "gleam",
+      "jump",
+      "rise",
+      "lift",
+      "rear",
+      "loom"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "be"
+    ],
+    "synonyms": [
+      "be"
+    ]
+  },
+  "award": {
+    "antonyms": [],
+    "troponyms": [
+      "certificate",
+      "confer",
+      "bestow"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "allocate",
+      "apportion",
+      "assign",
+      "allot",
+      "portion",
+      "distribute",
+      "administer",
+      "deal",
+      "lot",
+      "dispense",
+      "give",
+      "transfer"
+    ],
+    "synonyms": [
+      "allocate",
+      "apportion"
+    ]
+  },
+  "feed": {
+    "antonyms": [
+      "starve",
+      "famish"
+    ],
+    "troponyms": [
+      "dine",
+      "scavenge",
+      "fodder",
+      "slop",
+      "swill",
+      "regurgitate",
+      "corn",
+      "undernourish",
+      "malnourish",
+      "overfeed",
+      "spoonfeed",
+      "force-feed",
+      "lunch",
+      "breakfast",
+      "breastfeed",
+      "suckle",
+      "suck",
+      "nurse",
+      "wet-nurse",
+      "lactate",
+      "bottlefeed",
+      "inject",
+      "nutrify",
+      "aliment",
+      "nourish",
+      "range",
+      "crop",
+      "graze",
+      "pasture"
+    ],
+    "entails": [],
+    "hypernyms": [
+      "provide",
+      "supply",
+      "ply",
+      "cater",
+      "give",
+      "transfer"
+    ],
+    "synonyms": [
+      "provide",
+      "supply",
+      "ply",
+      "cater"
+    ]
+  },
+  "see": {
+    "antonyms": [],
+    "troponyms": [
+      "glimpse",
+      "behold"
+    ],
+    "entails": [
+      "look"
+    ],
+    "hypernyms": [
+      "perceive",
+      "comprehend"
+    ],
+    "synonyms": [
+      "perceive",
+      "comprehend"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ from typing import *
 Prop_Type = TypeVar('Prop_Type', bound='Prop')
 
 class Prop:
+	__slots__ = ['pred', 'args', 'types', 'basic_types', 'entity_types', 'date']
 	def __init__(self, predicate: str, args: List[str], date: Optional[datetime] = None):
 		self.pred = predicate
 		self.args = args
@@ -128,7 +129,8 @@ class Prop:
 
 	def __eq__(self, other):
 		if isinstance(other, self.__class__):
-			return self.__dict__ == other.__dict__
+			return self.prop_desc() == other.prop_desc()
+			# return self.__dict__ == other.__dict__
 		return False
 
 	def __str__(self):

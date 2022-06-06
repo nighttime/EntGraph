@@ -55,7 +55,7 @@ def acc(true: List[int], predicted: List[int]) -> float:
 	return correct/len(true)
 
 def answer_distribution(true: List[int], predicted: List[int]) -> Tuple[int, int, int, int]:
-	assert len(true) == len(predicted), f'Number true answers {len(true)} != number predicted {len(predicted)}'
+	assert len(true) == len(predicted)
 	tp, fp, tn, fn = 0, 0, 0, 0
 	for t,p in zip(true, predicted):
 		if t:
@@ -153,62 +153,11 @@ def filter_2D_data(data, mask):
 
 def subsample_prt(precision: np.ndarray, recall: np.ndarray, threshold: np.ndarray, num_steps: int) \
 		-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-	assert len(precision) == len(recall) == len(threshold), f'Inputs not of same length: {len(precision)}, {len(recall)}, {len(threshold)}'
 	step = max(int(len(precision) / num_steps), 1)
 	p = np.flip(np.flip(precision)[::step])
 	r = np.flip(np.flip(recall)[::step])
 	t = np.flip(np.flip(threshold)[::step])
 	return p, r, t
-
-@lru_cache(maxsize=None)
-def get_prt_curve_for_model(true_labels: Tuple[int], preds_flat: Tuple[float]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-	return metrics.precision_recall_curve(true_labels, preds_flat)
-
-def merge_results_pr(prediction_results: Dict[str, Tuple[List[List[float]], List[List[str]]]],
-					 true_labels: List[int],
-					 model_names: List[str],
-					 num_steps=1000) -> Tuple[List[float], List[float]]:
-
-	precisions, recalls, thresholds = {}, {}, {}
-	model_predictions = {name: preds for name, (preds, supports) in prediction_results.items() if name in model_names}
-
-	# Calculate precision-recall-threshold points for each model
-	for name, predictions in model_predictions.items():
-		preds_flat = [p for ps in predictions for p in ps]
-		precision, recall, threshold = get_prt_curve_for_model(tuple(true_labels), tuple(preds_flat))
-		precision, recall = precision[1:], recall[1:]
-		precision, recall, threshold = subsample_prt(precision, recall, threshold, num_steps=num_steps)
-
-		thresholds[name] = threshold
-		precisions[name] = precision
-		recalls[name] = recall
-
-	# Preallocate space for precision, recall
-	optimistic_union = np.zeros([2, num_steps])
-
-	# Sweep through precision levels to merge corresponding model results together
-	for i, prec in enumerate(np.arange(1.0, 0, -1 / num_steps)):
-		preds_and_threshes = [(model_predictions[m], thresholds[m][np.abs(precisions[m] - prec).argmin()]) for m in model_names]
-		threshed_classifications = np.array(
-				[[c for cs in threshold_sets(preds, thresh) for c in cs] for preds, thresh in preds_and_threshes])
-		optim_union_classifications: List[int] = np.any(threshed_classifications, axis=0).astype(int).tolist()
-
-		optimistic_union[0][i] = calc_precision(true_labels, optim_union_classifications)
-		optimistic_union[1][i] = calc_recall(true_labels, optim_union_classifications)
-
-	# Add initial point in line with the component models
-	try:
-		opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
-		optimistic_union = optimistic_union[:, :opt_first_recall_1_ind]
-		print(f'Trimmed off bad recall point for union of {model_names}')
-	except:
-		print(f'No bad recall point to trim for union of {model_names}')
-
-	optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
-	sorted_union = np.array(sorted(optimistic_union.T.tolist(), key=lambda x: x[1])).T
-	union_precisions, union_recalls = sorted_union[0].tolist(), sorted_union[1].tolist()
-	# union_precisions, union_recalls = optimistic_union[0].tolist(), optimistic_union[1].tolist()
-	return union_precisions, union_recalls
 
 def plot_results(folder: str,
 				 Q_list: List[List[Prop]],
@@ -341,27 +290,92 @@ def plot_results(folder: str,
 		ppdb_precision, ppdb_recall = precisions_ppdb[1], recalls_ppdb[1]
 		plt.plot([ppdb_recall], [ppdb_precision],  marker='*', markersize=markersize_ppdb, label='PPDB')
 
+	# for title, (predictions, support) in prediction_results.items():
+	# 	if title not in ppdb_types:
+	# 		continue
+	#
+	# 	preds_flat = [p for ps in predictions for p in ps]
+	# 	precision, recall, threshold = metrics.precision_recall_curve(true_flat, preds_flat)
+	# 	precision, recall = precision[1:], recall[1:]
+	# 	# precision, recall, threshold = subsample_prt(precision, recall, threshold, num_steps)
+	# 	ax = sns.lineplot(x=recall, y=precision, label=title)
+
+		# prec_score_thresh_idx = np.abs(precision - test_precision).argmin()
+		# prec_score_thresh = threshold[prec_score_thresh_idx]
+		# cutoffs[title] = prec_score_thresh
+		# thresholds[title] = threshold
+		# precisions[title] = precision
+		# recalls[title] = recall
+	# calculate component graph lines
+	for title, (predictions, support) in prediction_results.items():
+		if title not in comp_types + comp_types_LM:
+			continue
+
+		preds_flat = [p for ps in predictions for p in ps]
+		precision, recall, threshold = metrics.precision_recall_curve(true_flat, preds_flat)
+		# print(precision[0], precision[1], precision[20], precision[100], precision[-1])
+		precision, recall = precision[1:], recall[1:]
+		precision, recall, threshold = subsample_prt(precision, recall, threshold, num_steps)
+
+		# sns.lineplot(x=recall[:-1], y=threshold[:-1], label=title)
+		# if subset is not None and title in ['BB', 'UU', 'BB-LM']:
+		# 	sns.lineplot(x=recall, y=precision, label=title)
+		# elif title in ['BB', 'BB-LM']:
+		# 	sns.lineplot(x=recall, y=precision, label=title)
+
+		# sns.lineplot(x=recall, y=precision, label=title, alpha=0.3)
+
+		# adjusted_auc, normalized_adjusted_auc = calc_adjusted_auc(precision, recall, em_recall)
+		# print('{} adjusted AUC = {:.3f} ({:.3f} normalized)'.format(title, adjusted_auc, normalized_adjusted_auc))
+
+		prec_score_thresh_idx = np.abs(precision - test_precision).argmin()
+		prec_score_thresh = threshold[prec_score_thresh_idx]
+		cutoffs[title] = prec_score_thresh
+		thresholds[title] = threshold
+		precisions[title] = precision
+		recalls[title] = recall
+
 	# Generate unions
 	comp_labels = [c for c in comp_types if c in prediction_results]
 	comp_labels_lm = [c + '-LM' for c in comp_types if c + '-LM' in prediction_results]
+	# comp_labels, components = tuple(zip(*((k,v[0]) for k,v in prediction_results.items() if k in comp_types)))
+	components = [prediction_results[label][0] for label in comp_labels]
+	components_lm = [prediction_results[label][0] for label in comp_labels_lm]
 
-	for labels in [comp_labels, comp_labels_lm]:
+	for comp_labels, components in [(comp_labels, components), (comp_labels_lm, components_lm)]:
 		plt.gca().set_prop_cycle(None)
-		is_lm_boosted = labels == comp_labels_lm
-		contrast_base_EGs = comp_labels_lm and not is_lm_boosted
-
-		for ind in range(1, len(labels)+1):
-			union_labels = labels[:ind]
-			legend = ' + '.join(union_labels)
-			# Add in base EG models if plotting LM-boosts
-			if is_lm_boosted:
-				union_labels = union_labels + [label[:-3] for label in union_labels if '-LM' in label]
+		unions = []
+		for ind in range(1, len(comp_labels)+1):
+			union_labels = comp_labels[:ind]
+			union_models = components[:ind]
 			print('Generating union results for {} from {} sample points'.format(union_labels, num_steps))
-			union_prec, union_recall = merge_results_pr(prediction_results, true_flat, union_labels, num_steps=num_steps)
-			sns.lineplot(x=union_recall, y=union_prec, label=legend)
+
+			# Preallocate space for precision, recall
+			optimistic_union = np.zeros([2, num_steps])
+
+			for i,prec in enumerate(np.arange(1.0, 0, -1/num_steps)):
+				threshes = [thresholds[l][np.abs(precisions[l] - prec).argmin()] for l in union_labels]
+				threshed_classifications = np.array([[c for cs in threshold_sets(comp, thresh) for c in cs] for comp,thresh in zip(union_models, threshes)])
+				optim_union_classifications: List[int] = np.any(threshed_classifications, axis=0).astype(int).tolist()
+
+				optimistic_union[0][i] = calc_precision(true_flat, optim_union_classifications)
+				optimistic_union[1][i] = calc_recall(true_flat, optim_union_classifications)
+
+			# Cut off points before the dead drop to 1.0 recall
+			try:
+				opt_first_recall_1_ind = np.where(optimistic_union[1] == 1)[0][0]
+				optimistic_union = optimistic_union[:,:opt_first_recall_1_ind]
+			except:
+				print('recall in union != 1 anywhere?')
+
+			# Add initial point in line with the component models
+			optimistic_union = np.insert(optimistic_union, 0, [1, 0], axis=1)
+			unions.append(optimistic_union)
+
+			sns.lineplot(x=optimistic_union[1], y=optimistic_union[0], label=' + '.join(union_labels))
 
 			# Make unboosted MV graph dashed if plotting with boosted graph
-			if contrast_base_EGs:
+			if comp_labels_lm and comp_labels != comp_labels_lm:
 				ax.lines[-1].set_linestyle('dashed')
 
 			# opt_adjusted_auc, opt_normalized_adjusted_auc = calc_adjusted_auc(optimistic_union[0], optimistic_union[1], em_recall)

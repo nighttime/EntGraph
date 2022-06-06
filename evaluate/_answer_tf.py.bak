@@ -2,7 +2,6 @@ import math
 from collections import defaultdict, Counter, namedtuple
 from operator import itemgetter, attrgetter
 
-import proposition
 import utils
 from graph_encoder import GraphDeducer
 from proposition import *
@@ -25,16 +24,12 @@ def answer_tf_sets(claims_list: List[List[Prop]], evidence_list: List[Tuple[List
 	predictions = []
 	supports = []
 	for i, cs in enumerate(claims_list):
-		utils.print_progress(i / len(claims_list), 'completed')
-		if not cs:
-			predictions.append([])
-			supports.append([])
-			continue
+		utils.print_progress(i / len(claims_list), 'sets completed')
 		answers_list = A_list[i] if A_list else None
-		pred_list, pred_support = answer_tf(i, cs, evidence_list[i], models, answer_modes, answers=answers_list)
+		pred_list, pred_support = answer_tf(cs, evidence_list[i], models, answer_modes, answers=answers_list)
 		predictions.append(pred_list)
 		supports.append(pred_support)
-	utils.print_progress(1.0, 'completed')
+	utils.print_progress(1.0, 'sets completed')
 
 	if 'Sim' in answer_modes and not any(m in answer_modes for m in ['UU', 'BU', 'BB']):
 		global P_TOTAL, P_NF, P_NAN, P_FETCH_ERR, H_TOTAL, H_NF, H_NAN, H_FETCH_ERR
@@ -86,7 +81,7 @@ def _make_b_arg_cache(props: List[Prop], removals: List[Prop]=[]) -> Dict[str, L
 # Input | uu_graph : str
 # Input | bu_graph : str
 # Returns answer sets for each question : [[str]]
-def answer_tf(set_num: int, claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
+def answer_tf(claims: List[Prop], evidence: Tuple[List[Prop], List[Prop]],
 			  models: Dict[str, Any],
 			  answer_modes: Set[str],
 			  answers: Optional[List[Set[str]]]=None) -> Tuple[List[float], List[Dict[str, Prop]]]:
@@ -105,7 +100,7 @@ def answer_tf(set_num: int, claims: List[Prop], evidence: Tuple[List[Prop], List
 	# Return answers to the posed questions
 	predictions = []
 	prediction_support = []
-	for j, c in enumerate(claims):
+	for c in claims:
 		if reference.RUNNING_LOCAL and 'UU' in models and 'BU' in models and 'person' not in c.basic_types:
 			continue
 
@@ -139,21 +134,16 @@ def answer_tf(set_num: int, claims: List[Prop], evidence: Tuple[List[Prop], List
 				score = 1
 				prediction_support[-1]['Literal B'] = literal_support
 
-		if 'Lemma Baseline' in answer_modes:
-			if models['Lemma Baseline'][set_num] == 1.0:
-				score = 1
-				prediction_support[-1]['Lemma Baseline'] = evidence[0]
-
 		# q_found = prop_in_graphs(c, models['UU'], models['BU'])
 
 		# Get inferred answers from U->U graph
 		if 'UU' in answer_modes and is_unary:
 			uu_score, uu_support = infer_claim_UU(c, prop_facts_u, arg_facts_u, models['UU'])
-			if uu_support and 'UU-LM' not in answer_modes:
+			if uu_support:
 				score = max(score, uu_score)
 				prediction_support[-1]['UU'] = uu_support
 			elif 'UU-LM' in answer_modes:
-				uulm_score, uulm_support, _ = deduce_edge(c, available_support_u, models, 'UU-LM')
+				uulm_score, uulm_support = deduce_edge(c, available_support_u, models, 'UU-LM')
 				if uulm_support:
 					score = max(score, uulm_score)
 					prediction_support[-1]['UU-LM'] = uulm_support
@@ -161,11 +151,11 @@ def answer_tf(set_num: int, claims: List[Prop], evidence: Tuple[List[Prop], List
 		# Get inferred answers from B->B/U graph
 		if 'BU' in answer_modes and is_unary:
 			bu_score, bu_support = infer_claim_BU(c, prop_facts_b, arg_facts_u, models['BU'])
-			if bu_support and 'BU-LM' not in answer_modes:
+			if bu_support:
 				score = max(score, bu_score)
 				prediction_support[-1]['BU'] = bu_support
 			elif 'BU-LM' in answer_modes:
-				bulm_score, bulm_support, _ = deduce_edge(c, available_support_b, models, 'BU-LM')
+				bulm_score, bulm_support = deduce_edge(c, available_support_b, models, 'BU-LM')
 				if bulm_support:
 					score = max(score, bulm_score)
 					prediction_support[-1]['BU-LM'] = bulm_support
@@ -173,26 +163,11 @@ def answer_tf(set_num: int, claims: List[Prop], evidence: Tuple[List[Prop], List
 		# Get inferred answers from B->B/U graph
 		if 'BB' in answer_modes and not is_unary:
 			bb_score, bb_support = infer_claim_BB(c, prop_facts_b, arg_facts_b, models['BU'])
-
-			cond1_always_use_EG_support = bb_support and reference.SMOOTHING_TRIGGER != reference.TRIGGER.NO_EG_UNCOMBINED
-			cond1_use_EG_support_UNCOMB = bb_support and 'BB-LM' not in answer_modes and reference.SMOOTHING_TRIGGER == reference.TRIGGER.NO_EG_UNCOMBINED
-
-			cond2_no_EG = not bb_support and 'BB-LM' in answer_modes and reference.SMOOTHING_TRIGGER == reference.TRIGGER.NO_EG_SUPPORT
-			cond2_no_EG_UNCOMB = not bb_support and 'BB-LM' in answer_modes and reference.SMOOTHING_TRIGGER == reference.TRIGGER.NO_EG_UNCOMBINED
-			cond2_always = 'BB-LM' in answer_modes and reference.SMOOTHING_TRIGGER == reference.TRIGGER.ALWAYS
-
-			# if bb_support:
-			# if bb_support and 'BB-LM' not in answer_modes:
-			if any([cond1_always_use_EG_support, cond1_use_EG_support_UNCOMB]):
+			if bb_support:
 				score = max(score, bb_score)
 				prediction_support[-1]['BB'] = bb_support
-
-				# elif not bb_support and 'BB-LM' in answer_modes:
-				# elif 'BB-LM' in answer_modes:
-				# if 'BB-LM' in answer_modes:
-			if any([cond2_no_EG, cond2_no_EG_UNCOMB, cond2_always]):
-				bblm_score, bblm_support, expansions = deduce_edge(c, available_support_b, models, 'BB-LM')
-				prediction_support[-1]['BB-LM-Expansions'] = expansions
+			elif 'BB-LM' in answer_modes:
+				bblm_score, bblm_support = deduce_edge(c, available_support_b, models, 'BB-LM')
 				if bblm_support:
 					score = max(score, bblm_score)
 					prediction_support[-1]['BB-LM'] = bblm_support
@@ -373,8 +348,7 @@ def infer_claim_BB(claim: Prop, prop_cache: Dict[str, List[Prop]], arg_cache: Di
 	##############################
 	# need to detect if the premise is in the graph
 	evidence_props = arg_cache[tuple(sorted(claim.args))]
-	no_premises_found = not any(p.pred_desc() in ent_graphs['#'.join(p.types)].nodes for p in evidence_props if '#'.join(p.types) in ent_graphs)
-	# no_premises_found = not any(ent_graphs['#'.join(p.types)].get_entailments(p.pred_desc()) for p in evidence_props if '#'.join(p.types) in ent_graphs)
+	no_premises_found = not any(ent_graphs['#'.join(p.types)].get_entailments(p.pred_desc()) for p in evidence_props if '#'.join(p.types) in ent_graphs)
 	both_nodes_not_found = node_not_found or no_premises_found
 
 	backoff_node = node_not_found and reference.GRAPH_BACKOFF == 'node'
@@ -582,62 +556,20 @@ def infer_claim_ppdb(claim: Prop,
 	# 	print('ppdb: {} => {} / {} => {}'.format(best_p_text, best_h_text, support, claim))
 	return normed_score, support
 
-def pred_length(p: str) -> int:
-	start = p.index('(') + 1
-	stop = p.index(')')
-	pred = p[start:stop]
-	return len(pred)
-
-# q_start : pred_desc, q_cand : pred_desc
-def good_Q_cand(q_start: str, q_cand: str) -> bool:
-	if q_cand == q_start:
-		return True
-
-	# If cand is negated start
-	if q_cand == 'NEG__' + q_start:
-		return False
-
-	stop_words = {'be', 'get', 'have', 'do', 'go', 'give', 'take', 'make', 'let'}
-	def get_words(pred: str) -> Set[str]:
-		return {w for w in '.'.join(pred.split('(')[1].split(')')[0].split(',')).split('.') if w not in {'1', '2', '3'}}
-
-	q_start_words = get_words(q_start)
-	q_cand_words = get_words(q_cand)
-
-	# If cand is just a stop-word
-	if len(q_cand_words) == 1 and list(q_cand_words)[0] in stop_words and len(q_start_words) > 1:
-		return False
-
-	# If cand is a truncated version of start
-	if q_cand_words.issubset(q_start_words) and len(q_start_words) > len(q_cand_words):
-		return False
-
-	# If cand contains a generic stop-word replacement
-	for w in stop_words:
-		if w in q_cand_words and w not in q_start_words:
-			if (q_cand_words - {w}).issubset(q_start_words):
-				return False
-
-	return True
-
-
-def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mode: str) -> Tuple[float, Optional[Prop], List[Tuple[str, str, float]]]:
+def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mode: str) -> Tuple[float, Optional[Prop]]:
 	# Parameters
+	k = 4
 	# k = 'logscale'
 	# k = 'proportional'
-	k = reference.SMOOTHING_K
-	smooth_P = reference.SMOOTH_P
-	smooth_Q = reference.SMOOTH_Q
-
-	positional_weighting = False
+	augment_P = ['none', 'missing', 'all'][1]
+	augment_Q = ['none', 'missing', 'all'][1]
+	positional_weighting = True
 
 	score = 0
 	support = None
-	all_expansions_edges = []
-	# analyze the expansions of X in position P and Q, and what edges they lead to. Should lead to many FPs in Q position and mostly TPs in P position
 
 	if not evidence:
-		return score, support, all_expansions_edges
+		return score, support
 	evidence = list(set(evidence))
 
 	deducer_l = models[{'BB-LM': 'BV-B-Deducer', 'BU-LM': 'BV-B-Deducer', 'UU-LM': 'UV-U-Deducer'}[answer_mode]]
@@ -657,71 +589,21 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 	ps_grouped = ps_by_type.values()
 	ps_ordered = [p for ps in ps_grouped for p in ps]
 	for group in ps_grouped:
-		if smooth_P == reference.SMOOTH.ALL:
+		if augment_P == 'all':
 			to_expand_P = [True] * len(group)
-		elif smooth_P == reference.SMOOTH.MISSING:
+		elif augment_P == 'missing':
 			to_expand_P = [not prop_in_graphs(p, graph_uu, graph_bu) for p in group]
-		elif smooth_P == reference.SMOOTH.NONE:
+		else:
 			to_expand_P = [False] * len(group)
 
 		preds_to_expand = [p.pred_desc() for i, p in enumerate(group) if to_expand_P[i]]
 		preds_not_to_expand = [p.pred_desc() for i, p in enumerate(group) if not to_expand_P[i]]
 
-		if 'WN-P' in models:
-			preds_to_expand = [p for p in preds_to_expand if not p.startswith('(be.1,be.in.2')]
-			ps_base = [proposition.extract_predicate_base_term(p) for p in preds_to_expand]
-			# ps_replacements = [models['WN-P'][b]['hypernyms'] if b in models['WN-P'] else [] for b in ps_base]
-			# ps_repl_filter_syn = [list(set(ps_replacements[i]) - set(models['WN-P'][b]['synonyms'])) if b in models['WN-P'] else [] for i,b in enumerate(ps_base)]
-			# new_ps = [[Prop.swap_pred(p, new_p_base) for new_p_base in ps_replacements[i]] if ps_replacements[i] else [preds_to_expand[i]] for i,p in enumerate(preds_to_expand)]
-			# new_ps = [[Prop.swap_pred(p, new_p_base) for new_p_base in ps_repl_filter_syn[i]] if ps_repl_filter_syn[i] else [preds_to_expand[i]] for i, p in enumerate(preds_to_expand)]
-
-			ps_replacements = []
-			for b in ps_base:
-				if b in models['WN-P']:
-					# Filter out synonyms if we are not actively using them
-					if reference.P_WN_RELATION == reference.WN_RELATION.SYNONYM:
-						replacements = [p for p in models['WN-P'][b][reference.P_WN_RELATION.value]]
-					else:
-						replacements = [p for p in models['WN-P'][b][reference.P_WN_RELATION.value] if p not in models['WN-P'][b]['synonyms']]
-					ps_replacements.append(replacements)
-				else:
-					ps_replacements.append([])
-
-			new_ps = [[Prop.swap_pred(p, new_p_base) for new_p_base in ps_replacements[i]] if ps_replacements[i] else [p] for i,p in enumerate(preds_to_expand)]
-			new_scores = [[1.0]*len(ps) for ps in new_ps]
-			res_ps = (new_ps, new_scores)
-		elif 'hyp-tree-P' in models:
-			pred_typings = ['#'.join(p.split('#')[1:]).replace('_1', '').replace('_2', '') for p in preds_to_expand]
-			if pred_typings and pred_typings[0] not in models['hyp-tree-P']:
-				return score, support, all_expansions_edges
-			# graph_trees = [models['hyp-tree-P'][pred_typings[i]][0] for i in range(len(preds_to_expand))]
-			# new_ps = [[p for p,score in graph_trees[i][p] if p in graph_trees[i]][:k] for i,p in enumerate(preds_to_expand)]
-			if preds_to_expand:
-				graph_tree = models['hyp-tree-P'][pred_typings[0]][0]
-				new_p_cands = [[(p, 1.0)] for p in preds_to_expand]
-				seen_ps = [set() for p in preds_to_expand]
-				for i in range(1):
-					new_p_cands = [[(p2,s*s2) for p, s in pgroup for p2, s2 in (graph_tree[p] if p in graph_tree else [])] for pgroup in new_p_cands]
-					# expand only to unseen predicates
-					# new_p_cands = [[(p2, s * s2) for p, s in new_p_cands[i] for p2, s2 in (graph_tree[p] if p in graph_tree else []) if p2 not in seen_ps[i]]
-					# 		  for i in range(len(new_p_cands))]
-					# new_p_cands = [sorted(pgroup, reverse=True, key=lambda x: x[1])[:k] for pgroup in new_p_cands]
-					# seen_ps = [seen_ps[i] | set([p for p,s in new_p_cands[i]]) for i in range(len(seen_ps))]
-				new_ps = [[p for p,s in sorted(pgroup, reverse=True, key=lambda x: x[1])[:k]] for pgroup in new_p_cands]
-			else:
-				new_ps = []
-			new_scores = [[1.0]*len(ps) for ps in new_ps]
-			res_ps = (new_ps, new_scores)
-		else:
-			res_ps = deducer_l.get_nearest_node(preds_to_expand, k=k, available_graphs=set(graph.keys()))
-			# force lm-found neighbors to have score of 1.0
-			if res_ps:
-				res_ps = (res_ps[0], [[1]*len(ps) for ps in res_ps[1]])
-
-		if res_ps:
+		res_ps_nn = deducer_l.get_nearest_node(preds_to_expand, k=k, available_graphs=set(graph.keys()))
+		if res_ps_nn:
 			deducer_l.log['{} LHS: nn found'.format(answer_mode)] += 1
-			nearest_pred_clusters_l.extend(res_ps[0])
-			nearest_score_clusters_l.extend(res_ps[1])
+			nearest_pred_clusters_l.extend(res_ps_nn[0])
+			nearest_score_clusters_l.extend(res_ps_nn[1])
 		else:
 			deducer_l.log['{} LHS: nn not found'.format(answer_mode)] += 1
 			nearest_pred_clusters_l.extend([[p] for p in preds_to_expand])
@@ -730,20 +612,6 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 		if preds_not_to_expand:
 			nearest_pred_clusters_l.extend([[p] for p in preds_not_to_expand])
 			nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_not_to_expand))])
-
-		# res_ps_nn = deducer_l.get_nearest_node(preds_to_expand, k=k, available_graphs=set(graph.keys()))
-		# if res_ps_nn:
-		# 	deducer_l.log['{} LHS: nn found'.format(answer_mode)] += 1
-		# 	nearest_pred_clusters_l.extend(res_ps_nn[0])
-		# 	nearest_score_clusters_l.extend(res_ps_nn[1])
-		# else:
-		# 	deducer_l.log['{} LHS: nn not found'.format(answer_mode)] += 1
-		# 	nearest_pred_clusters_l.extend([[p] for p in preds_to_expand])
-		# 	nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_to_expand))])
-		#
-		# if preds_not_to_expand:
-		# 	nearest_pred_clusters_l.extend([[p] for p in preds_not_to_expand])
-		# 	nearest_score_clusters_l.extend([[1.0] for _ in range(len(preds_not_to_expand))])
 
 	# res_ps_nn = deducer_l.get_nearest_node([p.pred_desc() for p in evidence], k=k, model_typings=set(graph.keys()))
 
@@ -758,72 +626,25 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 
 	res_r = ([q.pred_desc()], [1.0])
 
-	expand_Q = False
-	if smooth_Q == reference.SMOOTH.ALL:
+	if augment_Q == 'all':
 		expand_Q = True
-	elif smooth_Q == reference.SMOOTH.MISSING:
+	elif augment_Q == 'missing':
 		expand_Q = not prop_in_graphs(q, graph_uu, graph_bu)
-	elif smooth_Q == reference.SMOOTH.NONE:
+	else:
 		expand_Q = False
 
 	if expand_Q and answer_mode != 'BU-LM':
-		if 'WN-Q' in models:
-			q_base = proposition.extract_predicate_base_term(q.pred)
-			# Filter out synonyms if we are not actively using them
-			if reference.Q_WN_RELATION == reference.WN_RELATION.SYNONYM:
-				q_replacements = [p for p in models['WN-Q'][q_base][reference.Q_WN_RELATION.value]] if q_base in models['WN-Q'] else []
-			else:
-				q_replacements = [p for p in models['WN-Q'][q_base][reference.Q_WN_RELATION.value] if
-								  p not in models['WN-Q'][q_base]['synonyms']] if q_base in models['WN-Q'] else []
-				bad_troponyms = ['get', 'give', 'take', 'have', 'see', 'meet', 'make', 'say', 'set', 'move', 'be'] # 'put', 'hold', 'keep'
-				q_replacements = [p for p in q_replacements if p not in bad_troponyms]
-
-			new_qs = [Prop.swap_pred(q.pred_desc(), new_q_base) for new_q_base in q_replacements] or res_r[0]
-			new_scores = [1.0] * len(new_qs)
-			res_r = (new_qs, new_scores)
-		elif 'hyp-tree-Q' in models:
-			typing = '#'.join(q.basic_types)
-			if typing not in models['hyp-tree-Q']:
-				return score, support, all_expansions_edges
-			graph_tree_hypo = models['hyp-tree-Q'][typing][1]
-			graph_tree_hyper = models['hyp-tree-Q'][typing][0]
-
-			if q.pred_desc() in graph_tree_hypo and pred_length(q.pred) < pred_length(ps_ordered[0].pred):
-				q_cands = [p for p, score in graph_tree_hypo[q.pred_desc()]]
-				# q_cands = [p for p in q_cands if p not in [p_ for p_, score_ in graph_tree_hyper[q.pred_desc()]]]
-				# new_qs = [p for p in q_cands if good_Q_cand(q.pred_desc(), p)][:k]
-				new_qs = q_cands[:k]
-			else:
-				new_qs = []
-
-			# Sort and filter qs by length (may not be helpful)
-			# new_qs = [p for p, score in graph_tree_hypo[q.pred_desc()]] if q.pred_desc() in graph_tree_hypo else []
-			# new_qs = sorted([nq for nq in new_qs if pred_length(nq) > pred_length(q.pred_desc())], reverse=True, key=pred_length)[:k]
-
-			# if q.pred_desc() in graph_tree_hypo:
-			# 	new_qs = [p for p, score in graph_tree_hypo[q.pred_desc()] if not (q.pred_desc() != p and p in graph_tree_hypo and q.pred_desc() in [_q for _q, _s in graph_tree_hypo[p]])]
-			# 	new_qs = new_qs[:k]
-			# else:
-			# 	new_qs = []
-			new_scores = [1.0] * len(new_qs)
-			if new_qs:
-				res_r = (new_qs, new_scores)
+		res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, available_graphs=set(graph.keys()))
+		if res_q_nn:
+			res_r = (res_q_nn[0][0], res_q_nn[1][0])
+			deducer_r.log['{} RHS: nn found'.format(answer_mode)] += 1
 		else:
-			res_q_nn = deducer_r.get_nearest_node([q.pred_desc()], k=k, available_graphs=set(graph.keys()))
-			if res_q_nn:
-				# res_r = (res_q_nn[0][0], res_q_nn[1][0])
-				res_r = (res_q_nn[0][0], [1]*len(res_q_nn[1][0]))
-				deducer_r.log['{} RHS: nn found'.format(answer_mode)] += 1
-			else:
-				deducer_r.log['{} RHS: nn not found'.format(answer_mode)] += 1
+			deducer_r.log['{} RHS: nn not found'.format(answer_mode)] += 1
 
 	for i in range(len(nearest_pred_clusters_l)):
 		preds = nearest_pred_clusters_l[i]
 		scores = nearest_score_clusters_l[i]
 		p = ps_ordered[i]
-
-		if not preds:
-			continue
 
 		res_l = (preds, scores)
 
@@ -841,9 +662,10 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 			lhs = Prop.with_new_pred(p, lhs_pred)
 			if positional_weighting:
 				try:
-					lhs_score *= (1 / (1 + math.log10(1 + graph[basic_typing].get_entailments_count(lhs_pred))))
+					lhs_score *= (1/(1+math.log10(1+len(graph[basic_typing].get_entailments(lhs_pred)))))
 				except KeyError:
-					lhs_score *= 1 / 4
+					lhs_score *= 1/4
+					# deducer_l.log['LHS: type not found: {}'.format(basic_typing)] += 1
 
 			for rhs_pred, rhs_score in zip(*res_r):
 				rhs = Prop.with_new_pred(q, rhs_pred)
@@ -853,6 +675,7 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 						rhs_score *= (1 / (1 + math.log10(1 + len(graph[basic_typing].get_antecedents(rhs_pred)))))
 					except KeyError:
 						rhs_score *= 1 / 4
+						# print('RHS: type not found: {} for {}'.format(basic_typing, rhs_pred))
 
 				possible_score, possible_support = 0, None
 				if answer_mode == 'UU-LM':
@@ -870,16 +693,14 @@ def deduce_edge(q: Prop, evidence: List[Prop], models: Dict[str, Any], answer_mo
 					arg_facts_u = _make_u_arg_cache([lhs], removals=[rhs])
 					possible_score, possible_support = infer_claim_BU(rhs, prop_facts_b, arg_facts_u, graph)
 
-				all_expansions_edges.append((lhs.pred_desc(), rhs.pred_desc(), possible_score))
 				if possible_support:
 					possible_score = possible_score * lhs_score * rhs_score
 					# possible_score = (bb_score * min(lhs_score, rhs_score))
-
 					if possible_score > score:
 						score = possible_score
 						support = lhs
 
-	# if answer_mode == 'UU-LM':
-	# 	score *= 2
+	if answer_mode == 'UU-LM':
+		score *= 2
 
-	return score, support, all_expansions_edges
+	return score, support

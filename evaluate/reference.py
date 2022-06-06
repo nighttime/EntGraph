@@ -1,6 +1,6 @@
 # This file is to be used for common reference across modules
+from enum import Enum
 
-# RUNNING_LOCAL = True
 try:
 	RUNNING_LOCAL = bool(int(open('RUNNING_LOCAL').readline()))
 except:
@@ -8,13 +8,44 @@ except:
 
 FINISH_TIME = None
 
+DS_SHORT_NAME_TO_DISPLAY = {'levy_holt': 'Levy/Holt', 'sl_ant': 'ANT'}
+
+# EVAL HYPERPARAMETERS
+class SMOOTH(Enum):
+	ALL 	= 'ALL'
+	MISSING = 'MISSING'
+	NONE 	= 'NONE'
+
+class TRIGGER(Enum):
+	NO_EG_SUPPORT	 = 'NO_EG_SUPPORT'		# Smooth if EG finds no support, combine with EG
+	NO_EG_UNCOMBINED = 'NO_EG_UNCOMBINED' 	# Smooth if EG finds no support, DO NOT combine with EG
+	ALWAYS			 = 'ALWAYS'				# Always smooth
+
+class WN_RELATION(Enum):
+	SYNONYM 	= 'synonyms'
+	ANTONYM		= 'antonyms'
+	HYPERNYM 	= 'hypernyms'
+	HYPONYM		= 'troponyms'
+
+SMOOTHING_K = 4
+SMOOTH_P = SMOOTH.MISSING
+SMOOTH_Q = SMOOTH.MISSING
+SMOOTHING_SELF_LOOPS = True
+SMOOTHING_TRIGGER = TRIGGER.NO_EG_SUPPORT
+P_WN_RELATION = WN_RELATION.HYPERNYM
+Q_WN_RELATION = WN_RELATION.HYPONYM
+
+
 GRAPH_BACKOFF = None
+
 
 K_UNARY_ENT_MENTIONS = 6
 K_BINARY_ENT_MENTIONS = 6
 
 K_UNARY_PRED_MENTIONS = 5
 K_BINARY_PRED_MENTIONS = 5
+
+
 
 MODAL_VERBS = {'can', 'may', 'must', 'could', 'would', 'should', 'might', 'shall', 'will', 'ought'}
 AUXILIARY_VERBS = {'do', 'have'} | MODAL_VERBS # also 'be' but we like the linking verb!

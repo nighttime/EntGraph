@@ -173,8 +173,8 @@ def read_source_data(source_fname: str, save_sents=True, read_dates=False, targe
 				entity_types = parts[3]
 				if not all(e in 'GE' for e in entity_types):
 					continue
-				if REQUIRE_ONE_NE and 'E' not in entity_types:
-					continue
+				# if REQUIRE_ONE_NE and 'E' not in entity_types:
+				# 	continue
 				typing = [get_type(norm_ents[i], 'E' == entity_types[i]) for i in range(2)]
 
 				prop_date = None

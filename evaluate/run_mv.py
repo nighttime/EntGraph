@@ -295,13 +295,13 @@ def run_evaluate() -> Tuple[List[List[Article]],
 		cache_location = ARGS.data_folder
 		if ARGS.test_mode:
 			cache_location = os.path.join(cache_location, 'test_data')
-		try:
-			sim_cache_bert = load_similarity_cache(cache_location, 'bert')
-			models['BERT'] = sim_cache_bert
-			found = True
-			print('Loaded BERT...', end=' ', flush=True)
-		except:
-			print(reference.tcolors.FAIL + 'FAILED to load BERT...' + reference.tcolors.ENDC, end=' ', flush=True)
+		# try:
+		# 	sim_cache_bert = load_similarity_cache(cache_location, 'bert')
+		# 	models['BERT'] = sim_cache_bert
+		# 	found = True
+		# 	print('Loaded BERT...', end=' ', flush=True)
+		# except:
+		# 	print(reference.tcolors.FAIL + 'FAILED to load BERT...' + reference.tcolors.ENDC, end=' ', flush=True)
 		try:
 			sim_cache_roberta = load_similarity_cache(cache_location, 'roberta')
 			models['RoBERTa'] = sim_cache_roberta
@@ -360,6 +360,23 @@ def run_evaluate() -> Tuple[List[List[Article]],
 	if ARGS.save_qs:
 		utils.write_questions_to_file(P_list, N_list)
 		print('Questions written to file.')
+
+	if ARGS.save_bin_q_pred_freqs:
+		print('Counting frequencies of q preds...')
+		bin_qs_pos = {p.pred_desc() for ps in P_list for p in ps if len(p.args) == 2}
+		bin_qs_neg = {p.pred_desc() for ps in N_list for p in ps if len(p.args) == 2}
+		all_preds = [p.pred_desc() for a in articles for p in a.selected_binary_props]
+
+		freqs_pos = defaultdict(int)
+		freqs_neg = defaultdict(int)
+		for p in all_preds:
+			if p in bin_qs_pos:
+				freqs_pos[p] += 1
+			if p in bin_qs_neg:
+				freqs_neg[p] += 1
+
+		utils.write_q_pred_freqs_to_file(freqs_pos, freqs_neg)
+		print('Question predicate frequencies written to file.')
 
 	if ARGS.save_preds:
 		utils.write_pred_cache_to_file(top_pred_cache)
@@ -451,7 +468,7 @@ def run_evaluate() -> Tuple[List[List[Article]],
 
 	if ARGS.save_results:
 		utils.print_bar()
-		utils.save_results_on_file(ARGS.data_folder, Q_list, A_list, results)
+		utils.save_results_on_file(ARGS.data_folder, Q_list, A_list, results, memo=ARGS.memo)
 
 	if ARGS.plot:
 		utils.print_bar()
@@ -501,6 +518,7 @@ parser.add_argument('--sample', action='store_true', help='Sample results at spe
 parser.add_argument('--save-results', action='store_true', help='')
 parser.add_argument('--save-thresh', action='store_true', help='Save precision-level cutoffs for entailment graphs')
 parser.add_argument('--save-qs', action='store_true', help='Save generated questions to file')
+parser.add_argument('--save-bin-q-pred-freqs', action='store_true', help='Save a json dict of binary question preds mapped to their frequencies in the corpus')
 parser.add_argument('--save-preds', action='store_true', help='Save top predicates to file')
 parser.add_argument('--save-errors', action='store_true', help='Save erroneous propositions to file')
 

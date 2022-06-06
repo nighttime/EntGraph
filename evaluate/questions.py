@@ -60,8 +60,8 @@ def generate_questions(partition: List[Article],
 	un_Q_cand = un_Q_NE
 
 	# Filter out questions not answerable using the graphs, if available (essentially for local debug mode)
-	if uu_graphs:
-		un_Q_cand = [p for p in un_Q_cand if p.types[0] in uu_graphs]
+	# if uu_graphs:
+	# 	un_Q_cand = [p for p in un_Q_cand if p.types[0] in uu_graphs]
 
 	# Filter out duplicate props
 	un_Q_cand = list(set(un_Q_cand))
@@ -73,8 +73,9 @@ def generate_questions(partition: List[Article],
 	bin_Q_cand = [p for p in bin_Q_cand if proposition.extract_predicate_base_term(p.pred) not in reference.PREPOSITIONS]
 
 	# Filter out questions not answerable using the graphs, if available (essentially for local debug mode)
-	if bu_graphs:
-		bin_Q_cand = [p for p in bin_Q_cand if '#'.join(p.basic_types) in bu_graphs]
+	# if bu_graphs:
+	# 	bin_Q_cand = [p for p in bin_Q_cand if '#'.join(p.basic_types) in bu_graphs]
+	print('USING ALL QUESTIONS EVEN IF IN LOCAL DEBUG MODE')
 
 	# Filter out duplicate props
 	bin_Q_cand = list(set(bin_Q_cand))
@@ -529,7 +530,11 @@ def generate_negative_question_sets(P_list: List[List[Prop]],
 	rej = defaultdict(Counter)
 	swap_pairs = defaultdict(set)
 
-	article_pred_cache = {p.pred_desc() for articles in partitions for article in articles for p in article.unary_props + article.selected_binary_props}
+	# article_pred_cache = {p.pred_desc() for articles in partitions for article in articles for p in article.unary_props + article.selected_binary_props}
+	total_pred_freqs = Counter([p.pred_desc() for articles in partitions for article in articles for p in article.unary_props + article.selected_binary_props])
+	article_pred_cache = {p for p,ct in total_pred_freqs.items() if
+						  (p.count('#')==1 and ct >= reference.K_UNARY_PRED_MENTIONS) or
+						  (p.count('#')==2 and ct >= reference.K_BINARY_PRED_MENTIONS)}
 
 	for i, ps in enumerate(P_list):
 		# Cache the local predicates seen with each local entity

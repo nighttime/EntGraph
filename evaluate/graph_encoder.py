@@ -111,7 +111,7 @@ class GraphDeducer:
 		# 	self.log['Skipping graph size >5000'] += 1
 		# 	return None
 
-		query_emb = self._encode_pred(preds)
+		query_emb = self.encode_preds(preds)
 
 		if k == 'logscale':
 			k = max(2, round(math.log10(graph_sz)))
@@ -120,6 +120,9 @@ class GraphDeducer:
 		else:
 			k = int(k)
 		self.log['k={}'.format(k)] += 1
+
+		if not reference.SMOOTHING_SELF_LOOPS:
+			k += 1
 
 		# COSINE
 		# norm_query_emb = query_emb / np.linalg.norm(query_emb)
@@ -158,8 +161,15 @@ class GraphDeducer:
 			self.log['! scaling k to {} for {}'.format(k, basic_typing)] += 1
 
 		top_k_dists, top_k_inds = graph_embs.query(query_emb, k=k)
-		top_k_scores = (1 / (1 + top_k_dists)).tolist()
+		top_k_scores = (1 / (1 + (top_k_dists ** 2))).tolist()
 		top_k_preds = [[inv_idx[i] for i in row] for row in top_k_inds]
+
+		if not reference.SMOOTHING_SELF_LOOPS:
+			for i, pred in enumerate(preds):
+				# idx = top_k_preds[i].index(pred) if pred in top_k_preds else len(top_k_preds)
+				idx = top_k_preds[i].index(pred) if pred in top_k_preds[i] else len(top_k_preds[i])-1 # changed from above 4/28/22 (bug?)
+				del top_k_preds[i][idx]
+				del top_k_scores[i][idx]
 
 		# Cache calculated results if needed later
 		for i,pred in enumerate(preds):
@@ -174,7 +184,7 @@ class GraphDeducer:
 
 		return top_k_preds, top_k_scores
 
-	def _encode_pred(self, preds) -> np.ndarray:
+	def encode_preds(self, preds) -> np.ndarray:
 		batch = [(pred, *construct_sentence(Prop.from_descriptions(pred, pred.split('#')[1:]))) for pred in preds]
 		cache_map = {}
 		if len(preds) > 200:
